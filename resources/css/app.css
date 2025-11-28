@@ -1,0 +1,373 @@
+/* Bootstrap CSS */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+
+/* Custom styles */
+body {
+    font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Custom Bootstrap overrides */
+:root {
+    --bs-primary: #0d6efd;
+    --bs-secondary: #6c757d;
+    --bs-success: #198754;
+    --bs-info: #0dcaf0;
+    --bs-warning: #ffc107;
+    --bs-danger: #dc3545;
+    --bs-light: #f8f9fa;
+    --bs-dark: #212529;
+}
+
+/* Dark mode support - Modern theme */
+.dark {
+    --bs-body-bg: #0f172a;
+    --bs-body-color: #e2e8f0;
+    --bs-primary: #3b82f6;
+    --bs-secondary: #64748b;
+    --bs-success: #10b981;
+    --bs-info: #06b6d4;
+    --bs-warning: #f59e0b;
+    --bs-danger: #ef4444;
+    --bs-light: #1e293b;
+    --bs-dark: #0f172a;
+}
+
+.dark body {
+    background-color: #0f172a !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .bg-light {
+    background-color: #1e293b !important;
+}
+
+.dark .bg-white {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .text-dark {
+    color: #e2e8f0 !important;
+}
+
+.dark .text-muted {
+    color: #94a3b8 !important;
+}
+
+.dark .border {
+    border-color: #334155 !important;
+}
+
+.dark .border-bottom {
+    border-color: #334155 !important;
+}
+
+.dark .card {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+.dark .table {
+    --bs-table-bg: #1e293b;
+    --bs-table-color: #e2e8f0;
+    --bs-table-border-color: #334155;
+}
+
+.dark .table-hover tbody tr:hover {
+    background-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .table-hover tbody tr:hover td,
+.dark .table-hover tbody tr:hover th {
+    color: #e2e8f0 !important;
+}
+
+.dark .table-hover tbody tr:hover a {
+    color: #60a5fa !important;
+}
+
+.dark .table-hover tbody tr:hover .text-muted {
+    color: #94a3b8 !important;
+}
+
+.dark .table-hover tbody tr:hover .text-success {
+    color: #34d399 !important;
+}
+
+.dark .table-hover tbody tr:hover .text-danger {
+    color: #f87171 !important;
+}
+
+.dark .form-control,
+.dark .form-select {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+.dark .form-control:focus,
+.dark .form-select:focus {
+    background-color: #1e293b;
+    border-color: #3b82f6;
+    color: #e2e8f0;
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+}
+
+.dark .btn-outline-secondary {
+    color: #94a3b8;
+    border-color: #475569;
+}
+
+.dark .btn-outline-secondary:hover {
+    background-color: #475569;
+    border-color: #475569;
+    color: white;
+}
+
+.dark .btn-outline-primary {
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+.dark .btn-outline-primary:hover {
+    background-color: #60a5fa;
+    border-color: #60a5fa;
+    color: white;
+}
+
+.dark .btn-outline-success {
+    color: #34d399;
+    border-color: #34d399;
+}
+
+.dark .btn-outline-success:hover {
+    background-color: #34d399;
+    border-color: #34d399;
+    color: white;
+}
+
+.dark .btn-outline-danger {
+    color: #f87171;
+    border-color: #f87171;
+}
+
+.dark .btn-outline-danger:hover {
+    background-color: #f87171;
+    border-color: #f87171;
+    color: white;
+}
+
+.dark .dropdown-menu {
+    background-color: #1e293b;
+    border-color: #334155;
+}
+
+.dark .dropdown-item {
+    color: #e2e8f0;
+}
+
+.dark .dropdown-item:hover {
+    background-color: #334155;
+    color: #e2e8f0;
+}
+
+.dark .breadcrumb {
+    background-color: transparent;
+}
+
+.dark .badge {
+    color: #e2e8f0;
+}
+
+.dark .form-control-plaintext {
+    color: #e2e8f0 !important;
+}
+
+.dark .form-control-plaintext.text-dark-emphasis {
+    color: #e2e8f0 !important;
+}
+
+.dark .card-body p {
+    color: #e2e8f0 !important;
+}
+
+.dark .card-body .form-control-plaintext {
+    color: #e2e8f0 !important;
+}
+
+.dark input[type="text"],
+.dark input[type="number"],
+.dark input[type="email"],
+.dark input[type="date"],
+.dark textarea,
+.dark select {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark input[type="text"]:focus,
+.dark input[type="number"]:focus,
+.dark input[type="email"]:focus,
+.dark input[type="date"]:focus,
+.dark textarea:focus,
+.dark select:focus {
+    background-color: #1e293b !important;
+    border-color: #3b82f6 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .input-group-text {
+    background-color: #334155 !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .invalid-feedback {
+    color: #f87171 !important;
+}
+
+.dark .nav-link {
+    color: rgba(226, 232, 240, 0.8) !important;
+}
+
+.dark .nav-link:hover {
+    color: #e2e8f0 !important;
+}
+
+.dark .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .breadcrumb-item.active {
+    color: #94a3b8 !important;
+}
+
+.dark .text-decoration-none {
+    color: #e2e8f0 !important;
+}
+
+.dark .text-decoration-none:hover {
+    color: #60a5fa !important;
+}
+
+.dark .text-primary {
+    color: #60a5fa !important;
+}
+
+.dark .text-success {
+    color: #34d399 !important;
+}
+
+.dark .text-danger {
+    color: #f87171 !important;
+}
+
+.dark .text-warning {
+    color: #fbbf24 !important;
+}
+
+.dark .alert {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .alert-success {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    border-color: #10b981 !important;
+    color: #34d399 !important;
+}
+
+.dark .alert-danger {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    border-color: #ef4444 !important;
+    color: #f87171 !important;
+}
+
+.dark .alert-warning {
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    border-color: #f59e0b !important;
+    color: #fbbf24 !important;
+}
+
+.dark .alert-info {
+    background-color: rgba(6, 182, 212, 0.1) !important;
+    border-color: #06b6d4 !important;
+    color: #22d3ee !important;
+}
+
+/* Sidebar toujours en dark - même en mode light - FORCER avec spécificité maximale */
+.sidebar,
+.sidebar.bg-primary,
+.sidebar.sidebar-dark,
+div.sidebar,
+div.sidebar.bg-primary,
+div.sidebar.sidebar-dark {
+    background-color: #1e293b !important;
+    background: #1e293b !important;
+    background-image: none !important;
+}
+
+/* Forcer même si Bootstrap applique bg-primary */
+.bg-primary.sidebar,
+.sidebar.bg-primary {
+    background-color: #1e293b !important;
+    background: #1e293b !important;
+    background-image: none !important;
+}
+
+/* Sidebar dark mode override */
+.dark .sidebar.bg-primary {
+    background-color: #1e293b !important;
+}
+
+.dark .sidebar .bg-primary {
+    background-color: #1e293b !important;
+}
+
+.dark .sidebar-header {
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .sidebar-footer {
+    border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .sidebar .nav-link i {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.dark .sidebar .nav-link:hover i {
+    color: white !important;
+}
+
+.dark .sidebar .nav-link.active i {
+    color: white !important;
+}
+
+.dark .sidebar .dropdown-toggle::after {
+    border-top-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.dark .sidebar-overlay {
+    background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Custom utilities */
+.text-truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.text-truncate-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
