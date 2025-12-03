@@ -162,19 +162,19 @@
                 <div v-if="product.expiration_date">
                   <div class="small">{{ formatDate(product.expiration_date) }}</div>
                   <span 
-                    v-if="product.days_until_expiration !== null"
+                    v-if="product.days_until_expiration !== null && product.days_until_expiration !== undefined"
                     :class="[
                       'badge',
-                      product.days_until_expiration < 0 ? 'bg-danger' : 
-                      product.days_until_expiration === 0 ? 'bg-danger' :
-                      product.days_until_expiration <= 7 ? 'bg-warning text-dark' :
+                      (product.days_until_expiration ?? 0) < 0 ? 'bg-danger' : 
+                      (product.days_until_expiration ?? 0) === 0 ? 'bg-danger' :
+                      (product.days_until_expiration ?? 0) <= 7 ? 'bg-warning text-dark' :
                       'bg-info'
                     ]"
                   >
-                    <span v-if="product.days_until_expiration < 0">
-                      Expiré ({{ Math.abs(product.days_until_expiration) }}j)
+                    <span v-if="(product.days_until_expiration ?? 0) < 0">
+                      Expiré ({{ Math.abs(product.days_until_expiration ?? 0) }}j)
                     </span>
-                    <span v-else-if="product.days_until_expiration === 0">
+                    <span v-else-if="(product.days_until_expiration ?? 0) === 0">
                       Expire aujourd'hui
                     </span>
                     <span v-else>

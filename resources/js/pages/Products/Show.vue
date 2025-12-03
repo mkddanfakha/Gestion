@@ -381,7 +381,7 @@ const { success, error, confirm } = useSweetAlert()
 const page = usePage()
 
 // Afficher les messages flash au chargement de la page
-watch(() => page.props.flash, (flash) => {
+watch(() => (page.props as any)?.flash, (flash: any) => {
   if (flash?.success) {
     success(flash.success)
   }
