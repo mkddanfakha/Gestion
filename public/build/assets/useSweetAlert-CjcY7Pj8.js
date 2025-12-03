@@ -1,0 +1,6 @@
+import{S as r}from"./sweetalert2.esm.all-NNS-RXd7.js";const c=()=>({success:(t,n="Succès")=>r.fire({icon:"success",title:n,text:t,confirmButtonText:"OK",confirmButtonColor:"#198754"}),error:(t,n="Erreur")=>{const o=t.includes("<")||t.includes("&lt;");return r.fire({icon:"error",title:n,...o?{html:t}:{text:t},confirmButtonText:"OK",confirmButtonColor:"#dc3545"})},warning:(t,n="Attention")=>r.fire({icon:"warning",title:n,text:t,confirmButtonText:"OK",confirmButtonColor:"#ffc107",confirmButtonTextColor:"#000"}),info:(t,n="Information")=>r.fire({icon:"info",title:n,text:t,confirmButtonText:"OK",confirmButtonColor:"#0dcaf0",confirmButtonTextColor:"#000"}),confirm:(t,n="Confirmation")=>r.fire({icon:"warning",title:n,text:t,showCancelButton:!0,confirmButtonText:"Oui",cancelButtonText:"Non",confirmButtonColor:"#dc3545",cancelButtonColor:"#6c757d",reverseButtons:!0}).then(o=>o.isConfirmed),confirmWithDetails:(t,n="Confirmation",o)=>r.fire({icon:"warning",title:n,html:`
+          <div class="text-start">
+            <p>${t}</p>
+            ${o?`<div class="mt-3"><strong>Détails :</strong><br><small class="text-muted">${o}</small></div>`:""}
+          </div>
+        `,showCancelButton:!0,confirmButtonText:"Oui",cancelButtonText:"Non",confirmButtonColor:"#dc3545",cancelButtonColor:"#6c757d",reverseButtons:!0}).then(e=>e.isConfirmed)});export{c as u};
