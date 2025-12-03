@@ -234,4 +234,24 @@ class Product extends Model implements HasMedia
             ->quality(80)
             ->nonQueued();
     }
+
+    /**
+     * Obtenir l'URL relative d'un média pour éviter les problèmes CORS
+     */
+    public static function getMediaUrl($media, string $conversion = ''): ?string
+    {
+        if (!$media) {
+            return null;
+        }
+        
+        $url = $conversion ? $media->getUrl($conversion) : $media->getUrl();
+        
+        // Convertir l'URL absolue en URL relative pour éviter les problèmes CORS
+        if (strpos($url, 'http') === 0) {
+            $parsedUrl = parse_url($url);
+            $url = $parsedUrl['path'] ?? $url;
+        }
+        
+        return $url;
+    }
 }

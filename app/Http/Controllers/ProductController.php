@@ -62,7 +62,7 @@ class ProductController extends Controller
                         'expiration_date' => $product->expiration_date ? $product->expiration_date->format('Y-m-d') : null,
                         'days_until_expiration' => $product->days_until_expiration,
                         'category' => $product->category,
-                        'image_url' => $firstImage ? $firstImage->getUrl('thumb') : null,
+                        'image_url' => Product::getMediaUrl($firstImage, 'thumb'),
                     ];
                 });
             
@@ -88,7 +88,7 @@ class ProductController extends Controller
                     $product->expiration_date = $product->expiration_date->format('Y-m-d');
                 }
                 $firstImage = $product->getFirstMedia('images');
-                $product->image_url = $firstImage ? $firstImage->getUrl('thumb') : null;
+                $product->image_url = Product::getMediaUrl($firstImage, 'thumb');
                 return $product;
             });
         }
@@ -205,7 +205,7 @@ class ProductController extends Controller
         $media = $product->getMedia('images')->map(function ($mediaItem) {
             return [
                 'id' => $mediaItem->id,
-                'url' => $mediaItem->getUrl(),
+                'url' => Product::getMediaUrl($mediaItem),
                 'name' => $mediaItem->name,
             ];
         })->toArray();
@@ -238,7 +238,7 @@ class ProductController extends Controller
             'images' => $product->getMedia('images')->map(function ($media) {
                 return [
                     'id' => $media->id,
-                    'url' => $media->getUrl(),
+                    'url' => Product::getMediaUrl($media),
                     'name' => $media->name,
                 ];
             }),

@@ -50,7 +50,7 @@ return [
         'media' => [
             'driver' => 'local',
             'root' => public_path('storage'),
-            'url' => env('APP_URL').'/storage',
+            'url' => '/storage', // URL relative pour éviter les problèmes CORS
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
