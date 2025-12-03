@@ -95,6 +95,8 @@ export function route(name: string, params: any = {}) {
         'login': '/login',
         'logout': '/logout',
         'register': '/register',
+        'verification.notice': '/verify-email',
+        'verification.send': '/email/verification-notification',
         'home': '/',
                'notifications.mark-as-read': '/notifications/mark-as-read',
                'notifications.mark-all-as-read': '/notifications/mark-all-as-read',

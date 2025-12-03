@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TextLink from '@/components/TextLink.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
-import { logout, send } from '@/routes/verification';
+import { route } from '@/lib/routes';
 import { Head, router } from '@inertiajs/vue3';
 import { useSweetAlert } from '@/composables/useSweetAlert';
 import { ref } from 'vue';
@@ -13,9 +13,12 @@ defineProps<{
 const { success, error: showError } = useSweetAlert();
 const processing = ref(false);
 
+const logout = () => route('logout');
+const send = () => route('verification.send');
+
 const resendVerification = () => {
     processing.value = true;
-    router.post(send().url, {}, {
+    router.post(send(), {}, {
         onSuccess: (page) => {
             processing.value = false;
             const flash = (page.props as any)?.flash;
@@ -70,6 +73,6 @@ const resendVerification = () => {
                     </TextLink>
                 </div>
             </div>
-        </Form>
+        </div>
     </AuthLayout>
 </template>
