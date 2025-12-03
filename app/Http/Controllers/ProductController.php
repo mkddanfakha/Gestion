@@ -144,7 +144,7 @@ class ProductController extends Controller
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
                 $product->addMedia($image)
-                    ->toMediaCollection('images');
+                    ->toMediaCollection('images', 'media');
             }
         }
 
@@ -306,7 +306,7 @@ class ProductController extends Controller
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
                 $product->addMedia($image)
-                    ->toMediaCollection('images');
+                    ->toMediaCollection('images', 'media');
             }
         }
 
