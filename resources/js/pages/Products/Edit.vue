@@ -613,8 +613,21 @@ const deletedImageIds = ref<number[]>([])
 
 const existingImages = computed(() => {
   return props.images.map((img) => {
-    // S'assurer que l'URL est complète
-    const url = img.url.startsWith('http') ? img.url : (img.url.startsWith('/') ? window.location.origin + img.url : img.url)
+    // Utiliser l'URL telle quelle si elle est relative, sinon convertir en relative
+    let url = img.url
+    if (url.startsWith('http')) {
+      // Si c'est une URL absolue, extraire le chemin pour éviter les problèmes CORS
+      try {
+        const urlObj = new URL(url)
+        url = urlObj.pathname
+      } catch {
+        // Si l'URL est invalide, utiliser telle quelle
+      }
+    }
+    // Si l'URL ne commence pas par /, l'ajouter
+    if (!url.startsWith('/')) {
+      url = '/' + url
+    }
     return {
       source: url,
       options: {
