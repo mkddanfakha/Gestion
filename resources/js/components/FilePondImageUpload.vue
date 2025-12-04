@@ -107,41 +107,9 @@ onMounted(() => {
     revert: null,
     restore: null,
     load: (source, load, error, progress, abort, headers) => {
-      // Charger les images depuis une URL avec XMLHttpRequest
-      const xhr = new XMLHttpRequest()
-      xhr.open('GET', source)
-      xhr.responseType = 'blob'
-      
-      xhr.onload = function() {
-        if (xhr.status === 200) {
-          load(xhr.response)
-        } else {
-          error('Erreur lors du chargement de l\'image (status: ' + xhr.status + ')')
-        }
-      }
-      
-      xhr.onerror = function() {
-        error('Erreur réseau lors du chargement de l\'image')
-      }
-      
-      xhr.onabort = function() {
-        abort()
-      }
-      
-      xhr.onprogress = function(e) {
-        if (e.lengthComputable) {
-          progress(e.lengthComputable, e.loaded, e.total)
-        }
-      }
-      
-      xhr.send()
-      
-      // Retourner une fonction d'annulation
-      return {
-        abort: () => {
-          xhr.abort()
-        }
-      }
+      // Cette fonction est conservée pour compatibilité mais n'est plus utilisée
+      // Les images sont chargées manuellement dans onMounted
+      error('Chargement non supporté via cette méthode')
     },
     fetch: null,
   } : uploadUrl
@@ -163,28 +131,69 @@ onMounted(() => {
   })
 
   // Charger les fichiers existants après que FilePond soit prêt
-  setTimeout(() => {
-    if (props.files && props.files.length > 0) {
-      props.files.forEach((file) => {
-        if (file.source) {
-          // Si c'est une URL (http/https ou chemin relatif), utiliser load
-          if (file.source.startsWith('http') || file.source.startsWith('/')) {
-            // Utiliser addFile avec l'URL directement - FilePond utilisera la fonction load
-            pond.addFile(file.source).catch((error) => {
-              console.error('Erreur lors du chargement du fichier:', error, file.source)
-            })
-          } else {
-            // Sinon, traiter comme un fichier local
-            pond.addFile(file.source, {
-              type: file.options?.type || 'local',
-            }).catch((error) => {
-              console.error('Erreur lors du chargement du fichier local:', error)
-            })
+  // Charger manuellement les images et les passer comme File
+  if (props.files && props.files.length > 0) {
+    props.files.forEach(async (file) => {
+      if (file.source && (file.source.startsWith('http') || file.source.startsWith('/'))) {
+        try {
+          // Convertir l'URL relative en absolue
+          let fileUrl = file.source
+          if (file.source.startsWith('/') && !file.source.startsWith('http')) {
+            fileUrl = window.location.origin + file.source
           }
+          
+          // Charger l'image manuellement
+          const response = await fetch(fileUrl)
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+          
+          const blob = await response.blob()
+          const urlParts = fileUrl.split('/')
+          const originalFileName = urlParts[urlParts.length - 1] || 'image.jpg'
+          const contentType = response.headers.get('content-type') || 'image/jpeg'
+          
+          // Inclure l'ID du média dans le nom du fichier pour faciliter la récupération
+          // Format: mediaId_originalFileName
+          let fileName = originalFileName
+          if (file.options?.metadata?.mediaId) {
+            fileName = `${file.options.metadata.mediaId}_${originalFileName}`
+          }
+          
+          // Créer un File à partir du blob
+          const fileObj = new File([blob], fileName, { type: contentType })
+          
+          // Préparer les options avec les métadonnées
+          const fileOptions: any = {
+            type: file.options?.type || 'limbo',
+          }
+          
+          if (file.options?.metadata) {
+            fileOptions.metadata = file.options.metadata
+          }
+          
+          // Ajouter le fichier à FilePond
+          const addedFile = await pond.addFile(fileObj, fileOptions)
+          
+          // S'assurer que les métadonnées sont bien attachées
+          if (addedFile && file.options?.metadata) {
+            // FilePond peut stocker les métadonnées différemment selon la version
+            // Essayer plusieurs méthodes pour s'assurer qu'elles sont bien stockées
+            if (addedFile.setMetadata) {
+              addedFile.setMetadata(file.options.metadata)
+            }
+            if (addedFile.metadata) {
+              Object.assign(addedFile.metadata, file.options.metadata)
+            }
+            // Stocker aussi dans une propriété personnalisée
+            (addedFile as any).__mediaId = file.options.metadata.mediaId
+          }
+        } catch (err) {
+          console.error('Erreur lors du chargement manuel de l\'image:', err, file.source)
         }
-      })
-    }
-  }, 200)
+      }
+    })
+  }
 
   // Écouter les événements
   pond.on('addfile', (error, file) => {
@@ -192,6 +201,22 @@ onMounted(() => {
       console.error('Erreur lors de l\'ajout du fichier:', error)
       return
     }
+    
+    // S'assurer que les métadonnées sont bien attachées après l'ajout
+    // Les métadonnées peuvent être passées via les options lors de addFile
+    // mais il faut parfois les réattacher après l'ajout
+    if (file && !file.metadata) {
+      // Essayer de récupérer les métadonnées depuis les options si disponibles
+      const fileOptions = (file as any).options
+      if (fileOptions && fileOptions.metadata) {
+        if (file.setMetadata) {
+          file.setMetadata(fileOptions.metadata)
+        } else {
+          (file as any).metadata = fileOptions.metadata
+        }
+      }
+    }
+    
     emit('addfile', file)
     emit('update:files', pond?.getFiles() || [])
   })
@@ -247,16 +272,74 @@ watch(
       })
 
       // Ajouter les nouveaux fichiers
-      newFiles.forEach((file) => {
+      newFiles.forEach(async (file) => {
         if (!currentSources.includes(file.source) && file.source) {
+          // Si c'est une URL, charger manuellement comme dans onMounted
           if (file.source.startsWith('http') || file.source.startsWith('/')) {
-            pond?.addFile(file.source).catch((error) => {
-              console.error('Erreur lors du chargement du fichier:', error)
-            })
+            try {
+              // Convertir l'URL relative en absolue
+              let fileUrl = file.source
+              if (file.source.startsWith('/') && !file.source.startsWith('http')) {
+                fileUrl = window.location.origin + file.source
+              }
+              
+              // Charger l'image manuellement
+              const response = await fetch(fileUrl)
+              if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+              }
+              
+              const blob = await response.blob()
+              const urlParts = fileUrl.split('/')
+              const originalFileName = urlParts[urlParts.length - 1] || 'image.jpg'
+              const contentType = response.headers.get('content-type') || 'image/jpeg'
+              
+              // Inclure l'ID du média dans le nom du fichier pour faciliter la récupération
+              let fileName = originalFileName
+              if (file.options?.metadata?.mediaId) {
+                fileName = `${file.options.metadata.mediaId}_${originalFileName}`
+              }
+              
+              // Créer un File à partir du blob
+              const fileObj = new File([blob], fileName, { type: contentType })
+              
+              // Préparer les options avec les métadonnées
+              const fileOptions: any = {
+                type: file.options?.type || 'limbo',
+              }
+              
+              if (file.options?.metadata) {
+                fileOptions.metadata = file.options.metadata
+              }
+              
+              // Ajouter le fichier à FilePond
+              const addedFile = await pond?.addFile(fileObj, fileOptions)
+              
+              // S'assurer que les métadonnées sont bien attachées
+              if (addedFile && file.options?.metadata) {
+                if (addedFile.setMetadata) {
+                  addedFile.setMetadata(file.options.metadata)
+                }
+                if (addedFile.metadata) {
+                  Object.assign(addedFile.metadata, file.options.metadata)
+                }
+                // Stocker aussi dans une propriété personnalisée
+                (addedFile as any).__mediaId = file.options.metadata.mediaId
+              }
+            } catch (err) {
+              console.error('Erreur lors du chargement du fichier:', err, file.source)
+            }
           } else {
-            pond?.addFile(file.source, {
-              type: file.options?.type || 'local',
-            }).catch((error) => {
+            // Pour les fichiers locaux, utiliser addFile directement
+            const fileOptions: any = {
+              type: file.options?.type || 'limbo',
+            }
+            
+            if (file.options?.metadata) {
+              fileOptions.metadata = file.options.metadata
+            }
+            
+            pond?.addFile(file.source, fileOptions).catch((error) => {
               console.error('Erreur lors du chargement du fichier local:', error)
             })
           }

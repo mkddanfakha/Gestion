@@ -448,8 +448,36 @@ const props = withDefaults(defineProps<Props>(), {
 
 const { success, error, confirm } = useSweetAlert()
 
+// Initialiser le formulaire AVANT les fonctions qui l'utilisent
+const form = useForm({
+  name: props.product.name,
+  description: props.product.description || '',
+  sku: props.product.sku,
+  barcode: props.product.barcode || '',
+  price: props.product.price,
+  cost_price: props.product.cost_price || 0,
+  stock_quantity: props.product.stock_quantity,
+  min_stock_level: props.product.min_stock_level,
+  unit: props.product.unit,
+  location: props.product.location || '',
+  is_active: props.product.is_active,
+  category_id: props.product.category_id,
+  expiration_date: props.product.expiration_date ? new Date(props.product.expiration_date).toISOString().split('T')[0] : '',
+  alert_threshold_value: props.product.alert_threshold_value || null,
+  alert_threshold_unit: props.product.alert_threshold_unit || '' as 'days' | 'weeks' | 'months' | '',
+})
+
+// Computed pour les erreurs du formulaire
+const errors = computed(() => form.errors)
+
+// Computed pour l'état de traitement du formulaire
+const processing = computed(() => form.processing)
+
 // État des erreurs de validation côté client
 const clientErrors = ref<Record<string, string>>({})
+
+// Variables pour la génération de SKU
+const isGeneratingSku = ref(false)
 
 // Fonction pour obtenir le label d'un champ
 const getFieldLabel = (field: string): string => {
@@ -632,6 +660,10 @@ const existingImages = computed(() => {
       source: url,
       options: {
         type: 'limbo' as const,
+        metadata: {
+          mediaId: img.id, // Stocker l'ID du média dans les métadonnées
+          originalUrl: img.url, // Stocker l'URL originale pour référence
+        },
       },
     }
   })
@@ -673,45 +705,136 @@ const handleFilesUpdate = (files: any[]) => {
     })
     .map((file: any) => file.file)
   
-  // Identifier les images supprimées en comparant les URLs normalisées
+  // Identifier les images supprimées en utilisant les IDs des médias stockés dans les métadonnées
   const currentImageIds = props.images.map((img) => img.id)
-  const remainingUrls = files
-    .map((file: any) => file.source)
-    .filter((url: any) => typeof url === 'string' && (url.startsWith('http') || url.startsWith('/')))
-    .map((url: string) => normalizeUrl(url))
   
-  deletedImageIds.value = currentImageIds.filter((id) => {
-    const image = props.images.find((img) => img.id === id)
-    if (!image) return false
-    
-    // Normaliser l'URL de l'image pour la comparaison
-    const normalizedImageUrl = normalizeUrl(image.url)
-    
-    // Vérifier si cette URL normalisée existe dans les URLs restantes
-    return !remainingUrls.includes(normalizedImageUrl)
-  })
+  // Vérifier s'il y a un nouveau fichier uploadé
+  const hasNewFile = uploadedFiles.value.length > 0
   
+  // Si un nouveau fichier est ajouté et qu'il y avait une image existante,
+  // l'ancienne sera automatiquement remplacée, donc la marquer comme supprimée
+  if (hasNewFile && currentImageIds.length > 0) {
+    // L'ancienne image sera remplacée par la nouvelle, donc on supprime toutes les anciennes
+    deletedImageIds.value = currentImageIds
+    return
+  }
+  
+  // Si pas de nouveau fichier, vérifier quelles images ont été supprimées manuellement
+  // Extraire les IDs des médias qui sont encore présents dans FilePond
+  // Filtrer d'abord les fichiers qui sont vraiment des images existantes (ont un ID)
+  const remainingMediaIds = files
+      .filter((file: any) => {
+        // Ignorer les fichiers qui sont clairement des nouveaux fichiers (File natif)
+        if (file.file instanceof File && !file.source) {
+          return false
+        }
+        // Ignorer les fichiers qui ont du HTML comme source
+        if (file.source && typeof file.source === 'string' && file.source.trim().startsWith('<!DOCTYPE')) {
+          return false
+        }
+        return true
+      })
+      .map((file: any) => {
+      // Récupérer l'ID du média depuis les métadonnées FilePond
+      let mediaId = null
+      
+      // Essayer d'accéder aux métadonnées de différentes façons
+      // FilePond peut stocker les métadonnées dans différentes propriétés
+      if (file.metadata) {
+        if (typeof file.metadata === 'object' && file.metadata.mediaId) {
+          mediaId = file.metadata.mediaId
+        } else if (typeof file.metadata === 'function') {
+          const metadata = file.metadata()
+          mediaId = metadata?.mediaId
+        }
+      }
+      
+      if (!mediaId && file.getMetadata && typeof file.getMetadata === 'function') {
+        try {
+          const metadata = file.getMetadata()
+          mediaId = metadata?.mediaId
+        } catch (e) {
+          // Ignorer les erreurs
+        }
+      }
+      
+      if (!mediaId && file.serverId) {
+        mediaId = file.serverId
+      }
+      
+      // Si on n'a pas trouvé d'ID dans les métadonnées, essayer de le déduire de l'URL ou du nom du fichier
+      if (!mediaId) {
+        // Essayer depuis file.source (URL) - s'assurer que c'est une chaîne et pas du HTML
+        if (file.source && typeof file.source === 'string' && !file.source.trim().startsWith('<!DOCTYPE')) {
+          const match = file.source.match(/\/storage\/(\d+)\//)
+          if (match && match[1]) {
+            const potentialId = parseInt(match[1], 10)
+            if (!isNaN(potentialId) && currentImageIds.includes(potentialId)) {
+              mediaId = potentialId
+            }
+          }
+        }
+        
+        // Essayer depuis file.filename (nom du fichier contient l'ID au format: mediaId_filename)
+        if (!mediaId && file.filename && typeof file.filename === 'string') {
+          // Format: mediaId_originalFileName
+          const match = file.filename.match(/^(\d+)_/)
+          if (match && match[1]) {
+            const potentialId = parseInt(match[1], 10)
+            if (!isNaN(potentialId) && currentImageIds.includes(potentialId)) {
+              mediaId = potentialId
+            }
+          }
+        }
+        
+        // Essayer depuis file.file.name si c'est un File (pour les fichiers chargés manuellement)
+        if (!mediaId && file.file && file.file instanceof File && file.file.name) {
+          const match = file.file.name.match(/^(\d+)_/)
+          if (match && match[1]) {
+            const potentialId = parseInt(match[1], 10)
+            if (!isNaN(potentialId) && currentImageIds.includes(potentialId)) {
+              mediaId = potentialId
+            }
+          }
+        }
+        
+        // Essayer depuis la propriété personnalisée __mediaId
+        if (!mediaId && (file as any).__mediaId) {
+          mediaId = (file as any).__mediaId
+        }
+        
+        // Essayer depuis file.id si c'est un nombre (peut être l'ID du média)
+        if (!mediaId && file.id && typeof file.id === 'number') {
+          if (currentImageIds.includes(file.id)) {
+            mediaId = file.id
+          }
+        }
+      }
+      
+      // S'assurer que mediaId est un nombre valide
+      if (mediaId && typeof mediaId === 'number' && !isNaN(mediaId) && currentImageIds.includes(mediaId)) {
+        return mediaId
+      }
+      
+      // Si mediaId est une chaîne qui ressemble à un nombre, essayer de le convertir
+      if (mediaId && typeof mediaId === 'string' && /^\d+$/.test(mediaId)) {
+        const numId = parseInt(mediaId, 10)
+        if (!isNaN(numId) && currentImageIds.includes(numId)) {
+          return numId
+        }
+      }
+      
+      return null
+    })
+    .filter((id: any) => {
+      // Filtrer uniquement les nombres valides qui correspondent à des images existantes
+      return id !== null && id !== undefined && typeof id === 'number' && !isNaN(id) && currentImageIds.includes(id)
+    })
+  
+  // Les images supprimées sont celles qui ont un ID dans currentImageIds mais pas dans remainingMediaIds
+  // IMPORTANT: Ne pas supprimer les images qui n'ont pas d'ID (nouvelles images)
+  deletedImageIds.value = currentImageIds.filter((id) => !remainingMediaIds.includes(id))
 }
-
-const isGeneratingSku = ref(false)
-
-const form = useForm({
-  name: props.product.name,
-  description: props.product.description || '',
-  sku: props.product.sku,
-  barcode: props.product.barcode || '',
-  price: props.product.price,
-  cost_price: props.product.cost_price || 0,
-  stock_quantity: props.product.stock_quantity,
-  min_stock_level: props.product.min_stock_level,
-  unit: props.product.unit,
-  location: props.product.location || '',
-  is_active: props.product.is_active,
-  category_id: props.product.category_id,
-  expiration_date: props.product.expiration_date ? new Date(props.product.expiration_date).toISOString().split('T')[0] : '',
-  alert_threshold_value: props.product.alert_threshold_value || null,
-  alert_threshold_unit: props.product.alert_threshold_unit || '' as 'days' | 'weeks' | 'months' | '',
-})
 
 const generateSku = async () => {
   if (!form.name || !form.category_id) return
@@ -849,9 +972,4 @@ const submit = () => {
     error('Une erreur inattendue s\'est produite lors de la modification du produit.')
   }
 }
-
-const { processing } = form
-
-// Créer un computed pour les erreurs pour maintenir la réactivité
-const errors = computed(() => form.errors)
 </script>
