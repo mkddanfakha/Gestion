@@ -244,14 +244,55 @@ class Product extends Model implements HasMedia
             return null;
         }
         
-        $url = $conversion ? $media->getUrl($conversion) : $media->getUrl();
-        
-        // Convertir l'URL absolue en URL relative pour éviter les problèmes CORS
-        if (strpos($url, 'http') === 0) {
-            $parsedUrl = parse_url($url);
-            $url = $parsedUrl['path'] ?? $url;
+        try {
+            // Obtenir le chemin du fichier sur le disque
+            $disk = $media->disk;
+            $filePath = $conversion 
+                ? $media->getPath($conversion) 
+                : $media->getPath();
+            
+            // Pour le disque 'media', les fichiers sont dans public/storage
+            // Construire l'URL relative à partir du chemin réel
+            if ($disk === 'media') {
+                // Le chemin réel est public/storage/{id}/{filename}
+                // ou public/storage/{id}/conversions/{conversion}-{filename}
+                // On doit extraire la partie après public/storage
+                $publicStoragePath = public_path('storage');
+                if (strpos($filePath, $publicStoragePath) === 0) {
+                    // Extraire la partie relative après public/storage
+                    $relativePath = str_replace($publicStoragePath, '', $filePath);
+                    // Normaliser les séparateurs de chemin pour les URLs
+                    $relativePath = str_replace('\\', '/', $relativePath);
+                    // S'assurer que le chemin commence par /
+                    if (!str_starts_with($relativePath, '/')) {
+                        $relativePath = '/' . $relativePath;
+                    }
+                    return '/storage' . $relativePath;
+                }
+            }
+            
+            // Pour les autres disques ou si la construction manuelle échoue,
+            // utiliser la méthode standard mais convertir en relative
+            $url = $conversion ? $media->getUrl($conversion) : $media->getUrl();
+            
+            // Convertir l'URL absolue en URL relative pour éviter les problèmes CORS
+            if (str_starts_with($url, 'http')) {
+                $parsedUrl = parse_url($url);
+                $url = $parsedUrl['path'] ?? $url;
+            }
+            
+            return $url;
+        } catch (\Exception $e) {
+            // En cas d'erreur, utiliser la méthode standard
+            $url = $conversion ? $media->getUrl($conversion) : $media->getUrl();
+            
+            // Convertir l'URL absolue en URL relative
+            if (str_starts_with($url, 'http')) {
+                $parsedUrl = parse_url($url);
+                $url = $parsedUrl['path'] ?? $url;
+            }
+            
+            return $url;
         }
-        
-        return $url;
     }
 }

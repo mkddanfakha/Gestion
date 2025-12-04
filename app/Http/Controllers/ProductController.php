@@ -166,6 +166,9 @@ class ProductController extends Controller
     {
         $this->checkPermission($request, 'products', 'view');
         
+        // Recharger le produit pour s'assurer qu'il est à jour
+        $product->refresh();
+        
         // Charger toutes les relations nécessaires
         $product->load([
             'category', 
@@ -311,6 +314,8 @@ class ProductController extends Controller
         }
 
         // Recharger les médias pour s'assurer qu'ils sont à jour
+        // Utiliser unload et reload pour forcer le rechargement
+        $product->unsetRelation('media');
         $product->load('media');
         $product->refresh();
 
