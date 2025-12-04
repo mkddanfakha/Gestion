@@ -105,10 +105,65 @@ php artisan media-library:regenerate
 2. Testez une URL d'image directement : `https://votre-domaine.com/storage/media/1/filename.jpg`
 3. Vérifiez les logs Laravel pour d'éventuelles erreurs : `tail -f storage/logs/laravel.log`
 
+## Solution 6 : Erreur 403 (Forbidden) - Accès refusé
+
+Si vous obtenez une erreur 403 lors du chargement des images, c'est que le serveur bloque l'accès aux fichiers.
+
+### Pour Apache :
+
+Créez un fichier `.htaccess` dans `storage/app/public/` :
+
+```bash
+# Créer le fichier .htaccess
+cat > storage/app/public/.htaccess << 'EOF'
+# Autoriser l'accès aux fichiers dans le dossier public
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+
+# Pour les serveurs Apache 2.2 et antérieurs
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
+EOF
+```
+
+### Pour Nginx :
+
+Ajoutez dans votre configuration Nginx :
+
+```nginx
+location /storage {
+    alias /path/to/your/app/storage/app/public;
+    try_files $uri $uri/ =404;
+    
+    location ~ \.(jpg|jpeg|png|gif|ico|svg|webp)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+```
+
+### Vérifier les permissions :
+
+```bash
+# Permissions pour les fichiers
+find storage/app/public -type f -exec chmod 644 {} \;
+
+# Permissions pour les dossiers
+find storage/app/public -type d -exec chmod 755 {} \;
+
+# Propriétaire (remplacez www-data par votre utilisateur)
+chown -R www-data:www-data storage/app/public
+```
+
 ## Si le problème persiste
 
 1. Vérifiez les logs du serveur web (Apache/Nginx)
 2. Vérifiez que le module `mod_rewrite` est activé (Apache)
 3. Vérifiez la configuration Nginx pour les liens symboliques
 4. Vérifiez que `APP_URL` correspond exactement à votre domaine
+5. Vérifiez que le fichier `.htaccess` existe dans `storage/app/public/`
+6. Vérifiez les permissions avec `ls -la storage/app/public/`
 

@@ -310,6 +310,10 @@ class ProductController extends Controller
             }
         }
 
+        // Recharger les médias pour s'assurer qu'ils sont à jour
+        $product->load('media');
+        $product->refresh();
+
         // Vérifier si le produit est en stock faible
         if ($product->stock_quantity <= $product->min_stock_level) {
             NotificationService::notifyLowStock($product);

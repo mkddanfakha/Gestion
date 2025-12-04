@@ -637,6 +637,28 @@ const existingImages = computed(() => {
   })
 })
 
+// Fonction pour normaliser une URL (convertir en chemin relatif)
+const normalizeUrl = (url: string): string => {
+  if (!url || typeof url !== 'string') return ''
+  
+  // Si c'est une URL absolue, extraire le chemin
+  if (url.startsWith('http')) {
+    try {
+      const urlObj = new URL(url)
+      url = urlObj.pathname
+    } catch {
+      // Si l'URL est invalide, utiliser telle quelle
+    }
+  }
+  
+  // S'assurer que l'URL commence par /
+  if (!url.startsWith('/')) {
+    url = '/' + url
+  }
+  
+  return url
+}
+
 const handleFilesUpdate = (files: any[]) => {
   // Filtrer uniquement les nouveaux fichiers (ceux qui ont un objet File natif)
   // Ne pas inclure les fichiers existants qui sont chargés depuis le serveur
@@ -651,15 +673,22 @@ const handleFilesUpdate = (files: any[]) => {
     })
     .map((file: any) => file.file)
   
-  // Identifier les images supprimées
+  // Identifier les images supprimées en comparant les URLs normalisées
   const currentImageIds = props.images.map((img) => img.id)
   const remainingUrls = files
     .map((file: any) => file.source)
     .filter((url: any) => typeof url === 'string' && (url.startsWith('http') || url.startsWith('/')))
+    .map((url: string) => normalizeUrl(url))
   
   deletedImageIds.value = currentImageIds.filter((id) => {
     const image = props.images.find((img) => img.id === id)
-    return image && !remainingUrls.includes(image.url)
+    if (!image) return false
+    
+    // Normaliser l'URL de l'image pour la comparaison
+    const normalizedImageUrl = normalizeUrl(image.url)
+    
+    // Vérifier si cette URL normalisée existe dans les URLs restantes
+    return !remainingUrls.includes(normalizedImageUrl)
   })
   
 }
