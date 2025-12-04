@@ -244,35 +244,26 @@ class Product extends Model implements HasMedia
             return null;
         }
         
-        try {
-            // Obtenir le chemin du fichier sur le disque
-            $disk = $media->disk;
-            $filePath = $conversion 
-                ? $media->getPath($conversion) 
-                : $media->getPath();
-            
-            // Pour le disque 'media', les fichiers sont dans public/storage
-            // Construire l'URL relative à partir du chemin réel
-            if ($disk === 'media') {
-                // Le chemin réel est public/storage/{id}/{filename}
-                // ou public/storage/{id}/conversions/{conversion}-{filename}
-                // On doit extraire la partie après public/storage
-                $publicStoragePath = public_path('storage');
-                if (strpos($filePath, $publicStoragePath) === 0) {
-                    // Extraire la partie relative après public/storage
-                    $relativePath = str_replace($publicStoragePath, '', $filePath);
-                    // Normaliser les séparateurs de chemin pour les URLs
-                    $relativePath = str_replace('\\', '/', $relativePath);
-                    // S'assurer que le chemin commence par /
-                    if (!str_starts_with($relativePath, '/')) {
-                        $relativePath = '/' . $relativePath;
-                    }
-                    return '/storage' . $relativePath;
-                }
+        $disk = $media->disk;
+        $mediaId = $media->id;
+        $fileName = $media->file_name;
+        
+        // Pour le disque 'media', construire l'URL directement à partir des données de la BD
+        // MediaLibrary stocke les fichiers dans : public/storage/{id}/{filename}
+        // Pour les conversions : public/storage/{id}/conversions/{conversion}-{filename}
+        if ($disk === 'media') {
+            if ($conversion) {
+                // Construire le nom de fichier de la conversion
+                $pathInfo = pathinfo($fileName);
+                $conversionFileName = $pathInfo['filename'] . '-' . $conversion . '.' . ($pathInfo['extension'] ?? 'jpg');
+                return '/storage/' . $mediaId . '/conversions/' . $conversionFileName;
+            } else {
+                return '/storage/' . $mediaId . '/' . $fileName;
             }
-            
-            // Pour les autres disques ou si la construction manuelle échoue,
-            // utiliser la méthode standard mais convertir en relative
+        }
+        
+        // Pour les autres disques, utiliser la méthode standard mais convertir en relative
+        try {
             $url = $conversion ? $media->getUrl($conversion) : $media->getUrl();
             
             // Convertir l'URL absolue en URL relative pour éviter les problèmes CORS
@@ -283,16 +274,8 @@ class Product extends Model implements HasMedia
             
             return $url;
         } catch (\Exception $e) {
-            // En cas d'erreur, utiliser la méthode standard
-            $url = $conversion ? $media->getUrl($conversion) : $media->getUrl();
-            
-            // Convertir l'URL absolue en URL relative
-            if (str_starts_with($url, 'http')) {
-                $parsedUrl = parse_url($url);
-                $url = $parsedUrl['path'] ?? $url;
-            }
-            
-            return $url;
+            // En cas d'erreur, retourner null ou construire une URL de base
+            return null;
         }
     }
 }

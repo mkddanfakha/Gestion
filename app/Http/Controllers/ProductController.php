@@ -204,14 +204,21 @@ class ProductController extends Controller
             }
         }
         
-        // Préparer les médias
-        $media = $product->getMedia('images')->map(function ($mediaItem) {
+        // Préparer les médias - s'assurer que la relation est bien chargée
+        $product->load('media');
+        $mediaItems = $product->getMedia('images');
+        
+        $media = $mediaItems->map(function ($mediaItem) {
+            $url = Product::getMediaUrl($mediaItem);
             return [
                 'id' => $mediaItem->id,
-                'url' => Product::getMediaUrl($mediaItem),
+                'url' => $url,
                 'name' => $mediaItem->name,
             ];
-        })->toArray();
+        })->filter(function ($item) {
+            // Filtrer les médias qui n'ont pas d'URL valide
+            return !empty($item['url']);
+        })->values()->toArray();
         
         
         // Préparer les données pour le frontend
@@ -231,20 +238,28 @@ class ProductController extends Controller
         
         $categories = Category::orderBy('name')->get();
         
-        // Charger les images
+        // Charger les images - s'assurer que la relation est bien chargée
+        $product->refresh();
         $product->load('media');
+        $mediaItems = $product->getMedia('images');
+        
+        $images = $mediaItems->map(function ($media) {
+            $url = Product::getMediaUrl($media);
+            return [
+                'id' => $media->id,
+                'url' => $url,
+                'name' => $media->name,
+            ];
+        })->filter(function ($item) {
+            // Filtrer les médias qui n'ont pas d'URL valide
+            return !empty($item['url']);
+        })->values();
         
         return Inertia::render('Products/Edit', [
             'product' => $product,
             'categories' => $categories,
             'uploadUrl' => route('products.upload-image'),
-            'images' => $product->getMedia('images')->map(function ($media) {
-                return [
-                    'id' => $media->id,
-                    'url' => Product::getMediaUrl($media),
-                    'name' => $media->name,
-                ];
-            }),
+            'images' => $images,
         ]);
     }
 
@@ -316,8 +331,11 @@ class ProductController extends Controller
         // Recharger les médias pour s'assurer qu'ils sont à jour
         // Utiliser unload et reload pour forcer le rechargement
         $product->unsetRelation('media');
-        $product->load('media');
         $product->refresh();
+        $product->load('media');
+        
+        // Vérifier que les médias sont bien chargés (pour debug)
+        // \Log::info('Médias après mise à jour:', ['count' => $product->getMedia('images')->count(), 'product_id' => $product->id]);
 
         // Vérifier si le produit est en stock faible
         if ($product->stock_quantity <= $product->min_stock_level) {
