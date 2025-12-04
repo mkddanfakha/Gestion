@@ -325,6 +325,7 @@ class ProductController extends Controller
             foreach ($request->file('images') as $image) {
                 $product->addMedia($image)
                     ->toMediaCollection('images', 'media');
+                // Les conversions sont configurées avec ->nonQueued() donc elles sont générées automatiquement
             }
         }
 

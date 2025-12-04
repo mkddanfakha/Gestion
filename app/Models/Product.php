@@ -245,26 +245,23 @@ class Product extends Model implements HasMedia
         }
         
         $disk = $media->disk;
-        $mediaId = $media->id;
-        $fileName = $media->file_name;
         
-        // Pour le disque 'media', construire l'URL directement à partir des données de la BD
-        // MediaLibrary stocke les fichiers dans : public/storage/{id}/{filename}
-        // Pour les conversions : public/storage/{id}/conversions/{conversion}-{filename}
-        if ($disk === 'media') {
-            if ($conversion) {
-                // Construire le nom de fichier de la conversion
-                $pathInfo = pathinfo($fileName);
-                $conversionFileName = $pathInfo['filename'] . '-' . $conversion . '.' . ($pathInfo['extension'] ?? 'jpg');
-                return '/storage/' . $mediaId . '/conversions/' . $conversionFileName;
-            } else {
-                return '/storage/' . $mediaId . '/' . $fileName;
-            }
-        }
-        
-        // Pour les autres disques, utiliser la méthode standard mais convertir en relative
+        // Utiliser la méthode native de MediaLibrary pour obtenir l'URL
+        // puis convertir en URL relative
         try {
-            $url = $conversion ? $media->getUrl($conversion) : $media->getUrl();
+            if ($conversion) {
+                // Vérifier si la conversion existe
+                $generatedConversions = $media->generated_conversions ?? [];
+                if (!isset($generatedConversions[$conversion]) || !$generatedConversions[$conversion]) {
+                    // Si la conversion n'existe pas, retourner l'URL de l'image originale
+                    $url = $media->getUrl();
+                } else {
+                    // Utiliser la méthode native pour obtenir l'URL de la conversion
+                    $url = $media->getUrl($conversion);
+                }
+            } else {
+                $url = $media->getUrl();
+            }
             
             // Convertir l'URL absolue en URL relative pour éviter les problèmes CORS
             if (str_starts_with($url, 'http')) {
@@ -272,9 +269,34 @@ class Product extends Model implements HasMedia
                 $url = $parsedUrl['path'] ?? $url;
             }
             
+            // S'assurer que l'URL commence par /
+            if (!str_starts_with($url, '/')) {
+                $url = '/' . $url;
+            }
+            
             return $url;
         } catch (\Exception $e) {
-            // En cas d'erreur, retourner null ou construire une URL de base
+            // En cas d'erreur, construire l'URL manuellement à partir des données de la BD
+            $mediaId = $media->id;
+            $fileName = $media->file_name;
+            
+            if ($disk === 'media') {
+                if ($conversion) {
+                    // Vérifier si la conversion existe dans generated_conversions
+                    $generatedConversions = $media->generated_conversions ?? [];
+                    if (!isset($generatedConversions[$conversion]) || !$generatedConversions[$conversion]) {
+                        // Si la conversion n'existe pas, retourner l'URL de l'image originale
+                        return '/storage/' . $mediaId . '/' . $fileName;
+                    }
+                    // Construire le nom de fichier de la conversion selon le format de MediaLibrary
+                    $pathInfo = pathinfo($fileName);
+                    $conversionFileName = $pathInfo['filename'] . '-' . $conversion . '.' . ($pathInfo['extension'] ?? 'jpg');
+                    return '/storage/' . $mediaId . '/conversions/' . $conversionFileName;
+                } else {
+                    return '/storage/' . $mediaId . '/' . $fileName;
+                }
+            }
+            
             return null;
         }
     }
