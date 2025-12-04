@@ -716,6 +716,7 @@ const handleFilesUpdate = (files: any[]) => {
   if (hasNewFile && currentImageIds.length > 0) {
     // L'ancienne image sera remplacée par la nouvelle, donc on supprime toutes les anciennes
     deletedImageIds.value = currentImageIds
+    console.log('Nouveau fichier ajouté, ancienne image sera remplacée:', deletedImageIds.value)
     return
   }
   
@@ -834,6 +835,20 @@ const handleFilesUpdate = (files: any[]) => {
   // Les images supprimées sont celles qui ont un ID dans currentImageIds mais pas dans remainingMediaIds
   // IMPORTANT: Ne pas supprimer les images qui n'ont pas d'ID (nouvelles images)
   deletedImageIds.value = currentImageIds.filter((id) => !remainingMediaIds.includes(id))
+  
+  // Debug: afficher les IDs pour vérification
+  console.log('Images actuelles:', currentImageIds)
+  console.log('Nombre de fichiers dans FilePond:', files.length)
+  console.log('Fichiers FilePond:', files.map((f: any) => ({
+    filename: f.filename,
+    file_name: f.file?.name,
+    source: typeof f.source === 'string' ? f.source.substring(0, 50) : f.source,
+    metadata: f.metadata,
+    __mediaId: (f as any).__mediaId
+  })))
+  console.log('Images restantes dans FilePond:', remainingMediaIds)
+  console.log('Images à supprimer:', deletedImageIds.value)
+  
 }
 
 const generateSku = async () => {
