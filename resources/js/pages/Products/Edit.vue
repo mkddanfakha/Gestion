@@ -981,13 +981,16 @@ const submit = () => {
   // 1. Un nouveau fichier est ajouté (remplacement) OU
   // 2. L'utilisateur a explicitement supprimé l'image (FilePond est vide mais il y avait des images)
   
-  // PROTECTION : Si aucun nouveau fichier n'est ajouté et qu'il y a des images existantes,
-  // on ne supprime JAMAIS les images
+  // PROTECTION CRITIQUE : Si aucun nouveau fichier n'est ajouté et qu'il y a des images existantes,
+  // on ne supprime JAMAIS les images, peu importe ce que dit deletedImageIds
+  // Cette vérification DOIT être faite EN PREMIER pour éviter toute suppression accidentelle
   if (!hasNewFiles && hasExistingImages) {
     // Pas de nouveau fichier et il y a des images existantes
-    // Ne jamais supprimer les images dans ce cas
-    console.log('Aucun nouveau fichier et images existantes présentes - aucune image ne sera supprimée')
+    // FORCER deletedImageIds à être vide pour éviter toute suppression
+    console.log('PROTECTION CRITIQUE: Aucun nouveau fichier et images existantes présentes - FORCEMENT aucune image ne sera supprimée')
+    console.log('deletedImageIds AVANT protection:', deletedImageIds.value)
     deletedImageIds.value = []
+    console.log('deletedImageIds APRÈS protection:', deletedImageIds.value)
   } else if (deletedImageIds.value.length > 0) {
     // Il y a des images marquées pour suppression
     // Vérifier si on doit vraiment les supprimer
