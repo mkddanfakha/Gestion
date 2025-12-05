@@ -309,15 +309,32 @@ class ProductController extends Controller
         $product->refresh();
 
         // Gérer la suppression d'images si demandée (AVANT l'ajout de nouvelles)
-        if ($request->has('delete_images') && is_array($request->delete_images)) {
+        // Ne supprimer que si delete_images est présent ET non vide
+        // Utiliser filled() au lieu de has() pour vérifier que le tableau n'est pas vide
+        if ($request->filled('delete_images') && is_array($request->delete_images) && !empty($request->delete_images)) {
+            \Log::info('Suppression d\'images demandée', [
+                'delete_images' => $request->delete_images,
+                'product_id' => $product->id,
+                'has_new_images' => $request->hasFile('images')
+            ]);
             foreach ($request->delete_images as $imageId) {
                 if ($imageId) {
                     $media = $product->media()->find($imageId);
                     if ($media) {
                         $media->delete();
+                        \Log::info('Image supprimée', ['media_id' => $imageId, 'product_id' => $product->id]);
                     }
                 }
             }
+        } else {
+            \Log::info('Aucune suppression d\'image demandée', [
+                'has_delete_images' => $request->has('delete_images'),
+                'delete_images' => $request->delete_images ?? 'non défini',
+                'is_array' => is_array($request->delete_images ?? null),
+                'is_empty' => empty($request->delete_images ?? []),
+                'product_id' => $product->id,
+                'has_new_images' => $request->hasFile('images')
+            ]);
         }
 
         // Gérer l'upload de nouvelles images

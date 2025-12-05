@@ -1004,10 +1004,15 @@ const submit = () => {
     }
     
     // Ajouter les IDs des images à supprimer (seulement si le tableau n'est pas vide)
+    // IMPORTANT: Ne jamais envoyer delete_images si le tableau est vide
+    // pour éviter que le backend ne supprime les images par erreur
     if (deletedImageIds.value.length > 0) {
+      console.log('Envoi de delete_images au serveur:', deletedImageIds.value)
       deletedImageIds.value.forEach((id) => {
         formData.append('delete_images[]', String(id))
       })
+    } else {
+      console.log('Aucune image à supprimer - delete_images ne sera pas envoyé au serveur')
     }
   }
   
