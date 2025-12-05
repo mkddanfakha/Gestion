@@ -721,6 +721,16 @@ const handleFilesUpdate = (files: any[]) => {
   }
   
   // Si pas de nouveau fichier, vérifier quelles images ont été supprimées manuellement
+  // Si FilePond est vide mais qu'il y avait des images, elles ont été supprimées
+  // Sinon, on considère que toutes les images existantes sont toujours présentes
+  if (files.length === 0 && currentImageIds.length > 0) {
+    // FilePond est vide, toutes les images ont été supprimées
+    deletedImageIds.value = currentImageIds
+    console.log('FilePond vide, toutes les images seront supprimées:', deletedImageIds.value)
+    return
+  }
+  
+  // Si FilePond contient des fichiers, essayer de récupérer les IDs
   // Extraire les IDs des médias qui sont encore présents dans FilePond
   // Filtrer d'abord les fichiers qui sont vraiment des images existantes (ont un ID)
   const remainingMediaIds = files
@@ -834,7 +844,17 @@ const handleFilesUpdate = (files: any[]) => {
   
   // Les images supprimées sont celles qui ont un ID dans currentImageIds mais pas dans remainingMediaIds
   // IMPORTANT: Ne pas supprimer les images qui n'ont pas d'ID (nouvelles images)
-  deletedImageIds.value = currentImageIds.filter((id) => !remainingMediaIds.includes(id))
+  // Si on n'a pas pu récupérer d'IDs depuis FilePond mais qu'il y a des fichiers,
+  // on considère que toutes les images existantes sont toujours présentes (pas de suppression)
+  if (remainingMediaIds.length === 0 && files.length > 0 && currentImageIds.length > 0) {
+    // On n'a pas pu identifier les images dans FilePond, mais il y a des fichiers
+    // On considère que toutes les images existantes sont toujours présentes
+    deletedImageIds.value = []
+    console.log('Impossible de récupérer les IDs depuis FilePond, aucune image ne sera supprimée')
+  } else {
+    // On a réussi à identifier certaines images, supprimer celles qui ne sont plus présentes
+    deletedImageIds.value = currentImageIds.filter((id) => !remainingMediaIds.includes(id))
+  }
   
   // Debug: afficher les IDs pour vérification
   console.log('Images actuelles:', currentImageIds)
