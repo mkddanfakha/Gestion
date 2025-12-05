@@ -950,20 +950,6 @@ const submit = () => {
     formData.append('alert_threshold_unit', form.alert_threshold_unit)
   }
   
-  // Ajouter les fichiers (uniquement les NOUVEAUX fichiers, pas les fichiers existants)
-  // Utiliser realNewFiles au lieu de uploadedFiles.value pour être sûr
-  realNewFiles.forEach((file) => {
-    // Vérifier que c'est bien un objet File natif
-    if (file instanceof File) {
-      formData.append('images[]', file)
-      console.log('Ajout d\'un nouveau fichier au FormData:', file.name)
-    }
-  })
-  
-  if (realNewFiles.length === 0) {
-    console.log('Aucun nouveau fichier à ajouter au FormData')
-  }
-  
   // Gérer la suppression des images
   // RÈGLE IMPORTANTE : Si aucun nouveau fichier n'est ajouté et qu'il y a des images existantes,
   // on ne supprime JAMAIS les images, peu importe ce que dit deletedImageIds
@@ -980,6 +966,20 @@ const submit = () => {
   })
   const hasNewFiles = realNewFiles.length > 0
   const hasExistingImages = props.images && props.images.length > 0
+  
+  // Ajouter les fichiers (uniquement les NOUVEAUX fichiers, pas les fichiers existants)
+  // Utiliser realNewFiles au lieu de uploadedFiles.value pour être sûr
+  realNewFiles.forEach((file) => {
+    // Vérifier que c'est bien un objet File natif
+    if (file instanceof File) {
+      formData.append('images[]', file)
+      console.log('Ajout d\'un nouveau fichier au FormData:', file.name)
+    }
+  })
+  
+  if (realNewFiles.length === 0) {
+    console.log('Aucun nouveau fichier à ajouter au FormData')
+  }
   
   console.log('=== ÉTAT AU MOMENT DE LA SOUMISSION ===')
   console.log('uploadedFiles.value:', uploadedFiles.value)
