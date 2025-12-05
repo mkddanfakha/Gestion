@@ -309,13 +309,35 @@ class ProductController extends Controller
         $product->refresh();
 
         // Gérer la suppression d'images si demandée (AVANT l'ajout de nouvelles)
-        // Ne supprimer que si delete_images est présent ET non vide
-        // Utiliser filled() au lieu de has() pour vérifier que le tableau n'est pas vide
-        if ($request->filled('delete_images') && is_array($request->delete_images) && !empty($request->delete_images)) {
-            \Log::info('Suppression d\'images demandée', [
+        // PROTECTION CRITIQUE : Ne supprimer les images que si :
+        // 1. Un nouveau fichier est ajouté (remplacement) OU
+        // 2. delete_images est explicitement envoyé ET qu'aucun nouveau fichier n'est ajouté (suppression manuelle)
+        $hasNewImages = $request->hasFile('images');
+        $hasDeleteImages = $request->filled('delete_images') && is_array($request->delete_images) && !empty($request->delete_images);
+        
+        \Log::info('État de la mise à jour des images', [
+            'has_new_images' => $hasNewImages,
+            'has_delete_images' => $hasDeleteImages,
+            'delete_images' => $request->delete_images ?? 'non défini',
+            'product_id' => $product->id,
+            'existing_images_count' => $product->getMedia('images')->count()
+        ]);
+        
+        // PROTECTION : Si aucun nouveau fichier n'est ajouté, ne JAMAIS supprimer les images existantes
+        // même si delete_images est envoyé (c'est probablement une erreur du frontend)
+        if ($hasDeleteImages && !$hasNewImages) {
+            // delete_images est envoyé mais aucun nouveau fichier n'est ajouté
+            // C'est probablement une erreur - ne pas supprimer les images par sécurité
+            \Log::warning('PROTECTION: delete_images envoyé sans nouveau fichier - aucune image ne sera supprimée', [
+                'delete_images' => $request->delete_images,
+                'product_id' => $product->id
+            ]);
+        } elseif ($hasDeleteImages && $hasNewImages) {
+            // Nouveau fichier ajouté ET delete_images envoyé - c'est un remplacement, supprimer les anciennes images
+            \Log::info('Suppression d\'images demandée (remplacement)', [
                 'delete_images' => $request->delete_images,
                 'product_id' => $product->id,
-                'has_new_images' => $request->hasFile('images')
+                'has_new_images' => true
             ]);
             foreach ($request->delete_images as $imageId) {
                 if ($imageId) {
@@ -328,12 +350,9 @@ class ProductController extends Controller
             }
         } else {
             \Log::info('Aucune suppression d\'image demandée', [
-                'has_delete_images' => $request->has('delete_images'),
-                'delete_images' => $request->delete_images ?? 'non défini',
-                'is_array' => is_array($request->delete_images ?? null),
-                'is_empty' => empty($request->delete_images ?? []),
-                'product_id' => $product->id,
-                'has_new_images' => $request->hasFile('images')
+                'has_delete_images' => $hasDeleteImages,
+                'has_new_images' => $hasNewImages,
+                'product_id' => $product->id
             ]);
         }
 
