@@ -193,30 +193,19 @@
                   <div class="row g-3">
                     <div class="col-md-5">
                       <label class="form-label">Produit <span class="text-danger">*</span></label>
-                      <select
+                      <ProductAutocomplete
                         v-model="item.product_id"
-                        required
-                        class="form-select"
-                        :class="{ 'is-invalid': clientErrors[`items.${index}.product_id`] || isProductDuplicate(index) }"
-                        @change="updateItemPrice(index); validateItemField(index, 'product_id', item.product_id)"
-                        @blur="validateItemField(index, 'product_id', item.product_id)"
-                      >
-                        <option value="0">Sélectionner un produit</option>
-                        <option 
-                          v-for="product in products" 
-                          :key="product.id" 
-                          :value="product.id"
-                          :disabled="isProductAlreadySelected(product.id, index)"
-                        >
-                          {{ product.name }}
-                          <span v-if="isProductAlreadySelected(product.id, index)"> - Déjà sélectionné</span>
-                        </option>
-                      </select>
-                      <div v-if="isProductDuplicate(index)" class="invalid-feedback">
-                        Ce produit est déjà sélectionné dans ce bon de livraison.
-                      </div>
-                      <div v-if="clientErrors[`items.${index}.product_id`]" class="invalid-feedback">
+                        :products="products"
+                        :exclude-product-ids="getExcludedProductIds(index)"
+                        :is-invalid="isProductDuplicate(index) || !!clientErrors[`items.${index}.product_id`]"
+                        placeholder="Rechercher un produit..."
+                        @selected="(product) => handleProductSelected(product, index)"
+                      />
+                      <div v-if="clientErrors[`items.${index}.product_id`]" class="invalid-feedback d-block">
                         {{ clientErrors[`items.${index}.product_id`] }}
+                      </div>
+                      <div v-if="isProductDuplicate(index)" class="invalid-feedback d-block">
+                        Ce produit est déjà sélectionné dans ce bon de livraison.
                       </div>
                     </div>
 
@@ -366,6 +355,7 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 
 interface Supplier {
   id: number
