@@ -383,6 +383,29 @@ const isProductAlreadySelected = (productId: number, currentIndex: number) => {
   return form.items.some((item, idx) => item.product_id === productId && idx !== currentIndex)
 }
 
+// Vérifier si l'item actuel est en doublon
+const isProductDuplicate = (index: number): boolean => {
+  const currentItem = form.items[index]
+  if (!currentItem.product_id || currentItem.product_id === 0) return false
+  return isProductAlreadySelected(currentItem.product_id, index)
+}
+
+// Obtenir les IDs des produits à exclure pour un index donné
+const getExcludedProductIds = (currentIndex: number): number[] => {
+  return form.items
+    .map((item, index) => index !== currentIndex ? item.product_id : null)
+    .filter((id): id is number => id !== null && id > 0)
+}
+
+// Gérer la sélection d'un produit
+const handleProductSelected = (product: Product, index: number) => {
+  const item = form.items[index]
+  item.product_id = product.id
+  item.unit_price = product.cost_price || product.price
+  updateItemTotal(index)
+  validateProductSelection(index)
+}
+
 const validateProductSelection = (index: number) => {
   const item = form.items[index]
   
