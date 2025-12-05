@@ -319,18 +319,23 @@ class DeliveryNoteController extends Controller
 
         $file = $request->file('file');
 
-        // Dossier de destination sur le disque public
+        // Dossier de destination sur le disque media (public/storage)
         $directory = 'delivery-notes/' . $deliveryNote->id;
 
         // Nom de fichier unique
         $filename = now()->format('Ymd_His') . '_' . str_replace(' ', '_', $file->getClientOriginalName());
 
-        // Stocker sur le disque public pour accès via /storage
-        $path = $file->storeAs($directory, $filename, 'public');
+        // Stocker sur le disque media pour accès via /storage
+        $path = $file->storeAs($directory, $filename, 'media');
 
         // Supprimer l'ancien fichier si existant
-        if ($deliveryNote->invoice_file_path && Storage::disk('public')->exists($deliveryNote->invoice_file_path)) {
-            Storage::disk('public')->delete($deliveryNote->invoice_file_path);
+        if ($deliveryNote->invoice_file_path) {
+            // Vérifier sur les deux disques pour compatibilité
+            if (Storage::disk('media')->exists($deliveryNote->invoice_file_path)) {
+                Storage::disk('media')->delete($deliveryNote->invoice_file_path);
+            } elseif (Storage::disk('public')->exists($deliveryNote->invoice_file_path)) {
+                Storage::disk('public')->delete($deliveryNote->invoice_file_path);
+            }
         }
 
         // Mettre à jour les métadonnées
@@ -356,16 +361,32 @@ class DeliveryNoteController extends Controller
         }
 
         $path = $deliveryNote->invoice_file_path;
-        if (!Storage::disk('public')->exists($path)) {
+        
+        // Vérifier d'abord sur le disque media, puis sur public pour compatibilité
+        $disk = null;
+        $absolutePath = null;
+        
+        if (Storage::disk('media')->exists($path)) {
+            $disk = 'media';
+            $absolutePath = Storage::disk('media')->path($path);
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+            $absolutePath = Storage::disk('public')->path($path);
+        } else {
             return back()->withErrors(['message' => 'Fichier introuvable sur le serveur.']);
         }
 
-        $absolutePath = Storage::disk('public')->path($path);
+        // Vérifier que le fichier existe vraiment
+        if (!file_exists($absolutePath)) {
+            return back()->withErrors(['message' => 'Fichier introuvable sur le serveur.']);
+        }
 
         // Affichage inline pour PDF/images
         return response()->file($absolutePath, [
             'Content-Type' => $deliveryNote->invoice_file_mime ?? mime_content_type($absolutePath),
-            'Content-Disposition' => 'inline; filename="' . ($deliveryNote->invoice_file_name ?? basename($absolutePath)) . '"'
+            'Content-Disposition' => 'inline; filename="' . addslashes($deliveryNote->invoice_file_name ?? basename($absolutePath)) . '"',
+            'Cache-Control' => 'private, max-age=0, must-revalidate',
+            'Pragma' => 'public',
         ]);
     }
 
@@ -376,8 +397,14 @@ class DeliveryNoteController extends Controller
     {
         $this->checkPermission($request, 'delivery-notes', 'invoice');
         
-        if ($deliveryNote->invoice_file_path && Storage::disk('public')->exists($deliveryNote->invoice_file_path)) {
-            Storage::disk('public')->delete($deliveryNote->invoice_file_path);
+        if ($deliveryNote->invoice_file_path) {
+            // Supprimer sur les deux disques pour compatibilité
+            if (Storage::disk('media')->exists($deliveryNote->invoice_file_path)) {
+                Storage::disk('media')->delete($deliveryNote->invoice_file_path);
+            }
+            if (Storage::disk('public')->exists($deliveryNote->invoice_file_path)) {
+                Storage::disk('public')->delete($deliveryNote->invoice_file_path);
+            }
         }
 
         $deliveryNote->update([
