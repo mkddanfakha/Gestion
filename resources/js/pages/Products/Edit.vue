@@ -852,20 +852,6 @@ const handleFilesUpdate = (files: any[]) => {
     // On a réussi à identifier certaines images, supprimer celles qui ne sont plus présentes
     deletedImageIds.value = currentImageIds.filter((id) => !remainingMediaIds.includes(id))
   }
-  
-  // Debug: afficher les IDs pour vérification
-  console.log('Images actuelles:', currentImageIds)
-  console.log('Nombre de fichiers dans FilePond:', files.length)
-  console.log('Fichiers FilePond:', files.map((f: any) => ({
-    filename: f.filename,
-    file_name: f.file?.name,
-    source: typeof f.source === 'string' ? f.source.substring(0, 50) : f.source,
-    metadata: f.metadata,
-    __mediaId: (f as any).__mediaId
-  })))
-  console.log('Images restantes dans FilePond:', remainingMediaIds)
-  console.log('Images à supprimer:', deletedImageIds.value)
-  
 }
 
 const generateSku = async () => {
