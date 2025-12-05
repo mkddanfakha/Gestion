@@ -27,17 +27,13 @@
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label">Client</label>
-                  <select
+                  <CustomerAutocomplete
+                    :customers="customers"
                     v-model="form.customer_id"
-                    class="form-select"
-                    :class="{ 'is-invalid': errors.customer_id }"
-                  >
-                    <option value="">Sélectionner un client (optionnel)</option>
-                    <option v-for="customer in customers" :key="customer.id" :value="customer.id">
-                      {{ customer.name }}
-                    </option>
-                  </select>
-                  <div v-if="errors.customer_id" class="invalid-feedback">{{ errors.customer_id }}</div>
+                    placeholder="Rechercher un client (optionnel)..."
+                    :is-invalid="!!errors.customer_id"
+                  />
+                  <div v-if="errors.customer_id" class="invalid-feedback d-block">{{ errors.customer_id }}</div>
                 </div>
 
                 <div class="col-md-6">
@@ -365,10 +361,13 @@ import { computed, ref, watch } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
+import CustomerAutocomplete from '@/components/CustomerAutocomplete.vue'
 
 interface Customer {
   id: number
   name: string
+  email?: string | null
+  phone?: string | null
 }
 
 interface Category {
