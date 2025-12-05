@@ -309,8 +309,11 @@ class DeliveryNoteController extends Controller
     /**
      * Upload de la facture/BL fournisseur (image/PDF etc.)
      */
-    public function uploadInvoice(Request $request, DeliveryNote $deliveryNote)
+    public function uploadInvoice(Request $request, $deliveryNote)
     {
+        // Résoudre le DeliveryNote manuellement pour éviter les problèmes de model binding
+        $deliveryNote = DeliveryNote::findOrFail($deliveryNote);
+        
         $this->checkPermission($request, 'delivery-notes', 'invoice');
         
         $request->validate([
@@ -352,8 +355,11 @@ class DeliveryNoteController extends Controller
     /**
      * Afficher / télécharger la facture/BL fournisseur
      */
-    public function showInvoice(Request $request, DeliveryNote $deliveryNote)
+    public function showInvoice(Request $request, $deliveryNote)
     {
+        // Résoudre le DeliveryNote manuellement pour éviter les problèmes de model binding
+        $deliveryNote = DeliveryNote::findOrFail($deliveryNote);
+        
         $this->checkPermission($request, 'delivery-notes', 'invoice');
         
         if (!$deliveryNote->invoice_file_path) {
@@ -390,8 +396,11 @@ class DeliveryNoteController extends Controller
     /**
      * Supprimer le fichier de facture/BL
      */
-    public function deleteInvoice(Request $request, DeliveryNote $deliveryNote)
+    public function deleteInvoice(Request $request, $deliveryNote)
     {
+        // Résoudre le DeliveryNote manuellement pour éviter les problèmes de model binding
+        $deliveryNote = DeliveryNote::findOrFail($deliveryNote);
+        
         $this->checkPermission($request, 'delivery-notes', 'invoice');
         
         if ($deliveryNote->invoice_file_path) {
