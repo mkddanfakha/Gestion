@@ -127,6 +127,7 @@ interface Product {
   id: number
   name: string
   price: number
+  cost_price?: number | null
   stock_quantity: number
   unit: string
   category?: Category

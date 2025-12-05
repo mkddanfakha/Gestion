@@ -612,7 +612,21 @@ const getExcludedProductIds = (currentIndex: number): number[] => {
 const handleProductSelected = (product: Product, index: number) => {
   const item = form.items[index]
   item.product_id = product.id
-  item.unit_price = product.cost_price || product.price
+  
+  // Récupérer le produit complet depuis la liste pour avoir toutes les propriétés
+  const fullProduct = props.products.find(p => p.id === product.id)
+  if (fullProduct) {
+    // Utiliser cost_price si disponible et > 0, sinon price si disponible et > 0, sinon 0
+    const costPrice = fullProduct.cost_price != null && fullProduct.cost_price > 0 ? fullProduct.cost_price : null
+    const price = fullProduct.price != null && fullProduct.price > 0 ? fullProduct.price : null
+    item.unit_price = costPrice ?? price ?? 0
+  } else {
+    // Fallback si le produit n'est pas trouvé dans la liste
+    const costPrice = product.cost_price != null && product.cost_price > 0 ? product.cost_price : null
+    const price = product.price != null && product.price > 0 ? product.price : null
+    item.unit_price = costPrice ?? price ?? 0
+  }
+  
   updateItemTotal(index)
 }
 
