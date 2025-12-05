@@ -140,24 +140,17 @@
                   <div class="row g-3">
                     <div class="col-md-5">
                       <label class="form-label">Produit <span class="text-danger">*</span></label>
-                      <select
+                      <ProductAutocomplete
                         v-model="item.product_id"
-                        required
-                        class="form-select"
-                        @change="updateItemPrice(index); validateProductSelection(index)"
-                        @blur="validateProductSelection(index)"
-                      >
-                        <option value="0">Sélectionner un produit</option>
-                        <option 
-                          v-for="product in products" 
-                          :key="product.id" 
-                          :value="product.id"
-                          :disabled="isProductAlreadySelected(product.id, index)"
-                        >
-                          {{ product.name }}
-                          <span v-if="isProductAlreadySelected(product.id, index)"> - Déjà sélectionné</span>
-                        </option>
-                      </select>
+                        :products="products"
+                        :exclude-product-ids="getExcludedProductIds(index)"
+                        :is-invalid="isProductDuplicate(index)"
+                        placeholder="Rechercher un produit..."
+                        @selected="(product) => handleProductSelected(product, index)"
+                      />
+                      <div v-if="isProductDuplicate(index)" class="invalid-feedback d-block">
+                        Ce produit est déjà sélectionné dans ce bon de commande.
+                      </div>
                     </div>
 
                     <div class="col-md-2">
@@ -291,6 +284,7 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 
 interface Supplier {
   id: number

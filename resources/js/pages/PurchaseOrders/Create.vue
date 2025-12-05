@@ -143,27 +143,19 @@
                   <div class="row g-3">
                     <div class="col-md-5">
                       <label class="form-label">Produit <span class="text-danger">*</span></label>
-                      <select
+                      <ProductAutocomplete
                         v-model="item.product_id"
-                        required
-                        class="form-select"
-                        :class="{ 'is-invalid': clientErrors[`items.${index}.product_id`] }"
-                        @change="updateItemPrice(index); validateItemField(index, 'product_id', item.product_id)"
-                        @blur="validateItemField(index, 'product_id', item.product_id)"
-                      >
-                        <option value="0">Sélectionner un produit</option>
-                        <option 
-                          v-for="product in products" 
-                          :key="product.id" 
-                          :value="product.id"
-                          :disabled="isProductAlreadySelected(product.id, index)"
-                        >
-                          {{ product.name }}
-                          <span v-if="isProductAlreadySelected(product.id, index)"> - Déjà sélectionné</span>
-                        </option>
-                      </select>
-                      <div v-if="clientErrors[`items.${index}.product_id`]" class="invalid-feedback">
+                        :products="products"
+                        :exclude-product-ids="getExcludedProductIds(index)"
+                        :is-invalid="!!clientErrors[`items.${index}.product_id`] || isProductDuplicate(index)"
+                        placeholder="Rechercher un produit..."
+                        @selected="(product) => handleProductSelected(product, index)"
+                      />
+                      <div v-if="clientErrors[`items.${index}.product_id`]" class="invalid-feedback d-block">
                         {{ clientErrors[`items.${index}.product_id`] }}
+                      </div>
+                      <div v-if="isProductDuplicate(index)" class="invalid-feedback d-block">
+                        Ce produit est déjà sélectionné dans ce bon de commande.
                       </div>
                     </div>
 
@@ -308,6 +300,7 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 
 const { success, error } = useSweetAlert()
 
@@ -482,6 +475,29 @@ const updateItemPrice = (index: number) => {
 
 const isProductAlreadySelected = (productId: number, currentIndex: number) => {
   return form.items.some((item, idx) => item.product_id === productId && idx !== currentIndex)
+}
+
+// Vérifier si l'item actuel est en doublon
+const isProductDuplicate = (index: number): boolean => {
+  const currentItem = form.items[index]
+  if (!currentItem.product_id || currentItem.product_id === 0) return false
+  return isProductAlreadySelected(currentItem.product_id, index)
+}
+
+// Obtenir les IDs des produits à exclure pour un index donné
+const getExcludedProductIds = (currentIndex: number): number[] => {
+  return form.items
+    .map((item, index) => index !== currentIndex ? item.product_id : null)
+    .filter((id): id is number => id !== null && id > 0)
+}
+
+// Gérer la sélection d'un produit
+const handleProductSelected = (product: Product, index: number) => {
+  const item = form.items[index]
+  item.product_id = product.id
+  item.unit_price = product.cost_price || product.price
+  updateItemTotal(index)
+  validateItemField(index, 'product_id', item.product_id)
 }
 
 const updateItemTotal = (index: number) => {
