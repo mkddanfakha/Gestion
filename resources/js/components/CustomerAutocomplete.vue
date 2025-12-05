@@ -42,21 +42,22 @@
           overflowY: 'auto'
         }"
       >
-      <div
-        v-for="(customer, index) in filteredCustomers"
-        :key="customer.id"
-        class="dropdown-item"
-        :class="{ 'active': index === selectedIndex }"
-        @mousedown.prevent="selectCustomer(customer)"
-        @mouseenter="selectedIndex = index"
-      >
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="fw-medium">{{ customer.name }}</div>
-            <div v-if="customer.email || customer.phone" class="text-muted small mt-1">
-              <span v-if="customer.email">{{ customer.email }}</span>
-              <span v-if="customer.email && customer.phone"> • </span>
-              <span v-if="customer.phone">{{ customer.phone }}</span>
+        <div
+          v-for="(customer, index) in filteredCustomers"
+          :key="customer.id"
+          class="dropdown-item"
+          :class="{ 'active': index === selectedIndex }"
+          @mousedown.prevent="selectCustomer(customer)"
+          @mouseenter="selectedIndex = index"
+        >
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <div class="fw-medium">{{ customer.name }}</div>
+              <div v-if="customer.email || customer.phone" class="text-muted small mt-1">
+                <span v-if="customer.email">{{ customer.email }}</span>
+                <span v-if="customer.email && customer.phone"> • </span>
+                <span v-if="customer.phone">{{ customer.phone }}</span>
+              </div>
             </div>
           </div>
         </div>
