@@ -958,11 +958,39 @@ const submit = () => {
     }
   })
   
-  // Ajouter les IDs des images à supprimer (seulement si le tableau n'est pas vide)
+  // Gérer la suppression des images
+  // Vérifier l'état actuel de FilePond au moment de la soumission
+  const filePondFiles = filePondRef.value?.getFiles() || []
+  const filePondHasFiles = filePondFiles.length > 0
+  const hasNewFiles = uploadedFiles.value.length > 0
+  const hasExistingImages = props.images && props.images.length > 0
+  
+  // Ne supprimer les images que si :
+  // 1. Un nouveau fichier est ajouté (remplacement) OU
+  // 2. L'utilisateur a explicitement supprimé l'image (FilePond est vide mais il y avait des images)
   if (deletedImageIds.value.length > 0) {
-    deletedImageIds.value.forEach((id) => {
-      formData.append('delete_images[]', String(id))
-    })
+    // Vérifier si on doit vraiment supprimer les images
+    if (!hasNewFiles && hasExistingImages && filePondHasFiles) {
+      // Pas de nouveau fichier, il y a des images existantes, et FilePond contient encore des fichiers
+      // Ne pas supprimer les images - elles sont toujours présentes
+      console.log('FilePond contient encore des fichiers, aucune image ne sera supprimée')
+      deletedImageIds.value = []
+    } else if (!hasNewFiles && hasExistingImages && !filePondHasFiles) {
+      // Pas de nouveau fichier, il y a des images existantes, mais FilePond est vide
+      // Les images ont été supprimées manuellement
+      console.log('FilePond est vide, les images seront supprimées:', deletedImageIds.value)
+    }
+    
+    // Ajouter les IDs des images à supprimer (seulement si le tableau n'est pas vide)
+    if (deletedImageIds.value.length > 0) {
+      deletedImageIds.value.forEach((id) => {
+        formData.append('delete_images[]', String(id))
+      })
+    }
+  } else if (!hasNewFiles && hasExistingImages && filePondHasFiles) {
+    // Aucune image n'est marquée pour suppression, il y a des images existantes, et FilePond contient des fichiers
+    // S'assurer qu'aucune image ne sera supprimée
+    console.log('Aucune image ne sera supprimée (images existantes présentes dans FilePond)')
   }
   
   // Vérifier que toutes les valeurs requises sont présentes
