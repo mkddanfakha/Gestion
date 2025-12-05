@@ -959,26 +959,48 @@ const submit = () => {
   })
   
   // Gérer la suppression des images
+  // RÈGLE IMPORTANTE : Si aucun nouveau fichier n'est ajouté et qu'il y a des images existantes,
+  // on ne supprime JAMAIS les images, peu importe ce que dit deletedImageIds
+  const hasNewFiles = uploadedFiles.value.length > 0
+  const hasExistingImages = props.images && props.images.length > 0
+  
   // Vérifier l'état actuel de FilePond au moment de la soumission
   const filePondFiles = filePondRef.value?.getFiles() || []
   const filePondHasFiles = filePondFiles.length > 0
-  const hasNewFiles = uploadedFiles.value.length > 0
-  const hasExistingImages = props.images && props.images.length > 0
+  
+  console.log('État au moment de la soumission:', {
+    hasNewFiles,
+    hasExistingImages,
+    filePondHasFiles,
+    filePondFilesCount: filePondFiles.length,
+    deletedImageIds: deletedImageIds.value,
+    existingImagesCount: props.images?.length || 0
+  })
   
   // Ne supprimer les images que si :
   // 1. Un nouveau fichier est ajouté (remplacement) OU
   // 2. L'utilisateur a explicitement supprimé l'image (FilePond est vide mais il y avait des images)
-  if (deletedImageIds.value.length > 0) {
-    // Vérifier si on doit vraiment supprimer les images
-    if (!hasNewFiles && hasExistingImages && filePondHasFiles) {
-      // Pas de nouveau fichier, il y a des images existantes, et FilePond contient encore des fichiers
-      // Ne pas supprimer les images - elles sont toujours présentes
-      console.log('FilePond contient encore des fichiers, aucune image ne sera supprimée')
-      deletedImageIds.value = []
-    } else if (!hasNewFiles && hasExistingImages && !filePondHasFiles) {
-      // Pas de nouveau fichier, il y a des images existantes, mais FilePond est vide
-      // Les images ont été supprimées manuellement
+  
+  // PROTECTION : Si aucun nouveau fichier n'est ajouté et qu'il y a des images existantes,
+  // on ne supprime JAMAIS les images
+  if (!hasNewFiles && hasExistingImages) {
+    // Pas de nouveau fichier et il y a des images existantes
+    // Ne jamais supprimer les images dans ce cas
+    console.log('Aucun nouveau fichier et images existantes présentes - aucune image ne sera supprimée')
+    deletedImageIds.value = []
+  } else if (deletedImageIds.value.length > 0) {
+    // Il y a des images marquées pour suppression
+    // Vérifier si on doit vraiment les supprimer
+    if (hasNewFiles) {
+      // Un nouveau fichier est ajouté, supprimer les anciennes images
+      console.log('Nouveau fichier ajouté, suppression des anciennes images:', deletedImageIds.value)
+    } else if (!filePondHasFiles && hasExistingImages) {
+      // FilePond est vide mais il y avait des images - elles ont été supprimées manuellement
       console.log('FilePond est vide, les images seront supprimées:', deletedImageIds.value)
+    } else {
+      // Cas inattendu, ne pas supprimer par sécurité
+      console.log('Cas inattendu, aucune image ne sera supprimée par sécurité')
+      deletedImageIds.value = []
     }
     
     // Ajouter les IDs des images à supprimer (seulement si le tableau n'est pas vide)
@@ -987,10 +1009,6 @@ const submit = () => {
         formData.append('delete_images[]', String(id))
       })
     }
-  } else if (!hasNewFiles && hasExistingImages && filePondHasFiles) {
-    // Aucune image n'est marquée pour suppression, il y a des images existantes, et FilePond contient des fichiers
-    // S'assurer qu'aucune image ne sera supprimée
-    console.log('Aucune image ne sera supprimée (images existantes présentes dans FilePond)')
   }
   
   // Vérifier que toutes les valeurs requises sont présentes
