@@ -358,7 +358,15 @@ class DeliveryNoteController extends Controller
     public function showInvoice(Request $request, $deliveryNote)
     {
         // Résoudre le DeliveryNote manuellement pour éviter les problèmes de model binding
-        $deliveryNote = DeliveryNote::findOrFail($deliveryNote);
+        try {
+            $deliveryNote = DeliveryNote::findOrFail($deliveryNote);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            \Log::error('DeliveryNote non trouvé pour showInvoice', [
+                'id' => $deliveryNote,
+                'url' => $request->fullUrl(),
+            ]);
+            abort(404, 'Bon de livraison introuvable.');
+        }
         
         $this->checkPermission($request, 'delivery-notes', 'invoice');
         

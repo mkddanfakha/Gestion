@@ -77,7 +77,7 @@ export function route(name: string, params: any = {}) {
         'delivery-notes.edit': '/delivery-notes/{id}/edit',
         'delivery-notes.update': '/delivery-notes/{id}',
         'delivery-notes.destroy': '/delivery-notes/{id}',
-        'delivery-notes.validate': '/delivery-notes/{id}/validate',
+        'delivery-notes.validate': '/delivery-notes/{deliveryNote}/validate',
         'delivery-notes.download': '/delivery-notes/{deliveryNote}/download',
         'delivery-notes.print': '/delivery-notes/{deliveryNote}/print',
         // Fichier facture/BL fournisseur
