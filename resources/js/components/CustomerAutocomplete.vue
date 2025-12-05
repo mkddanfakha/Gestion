@@ -1,5 +1,5 @@
 <template>
-  <div ref="containerRef" class="customer-autocomplete position-relative">
+  <div ref="containerRef" class="customer-autocomplete position-relative" style="z-index: 1;">
     <div class="input-group">
       <input
         ref="inputRef"
@@ -28,11 +28,20 @@
     </div>
     
     <!-- Dropdown des résultats -->
-    <div
-      v-if="showDropdown && filteredCustomers.length > 0"
-      class="dropdown-menu show w-100"
-      style="max-height: 300px; overflow-y: auto;"
-    >
+    <Teleport to="body">
+      <div
+        v-if="showDropdown && filteredCustomers.length > 0"
+        class="customer-dropdown-menu"
+        :style="{
+          position: 'absolute',
+          top: dropdownPosition.top + 'px',
+          left: dropdownPosition.left + 'px',
+          width: dropdownPosition.width + 'px',
+          zIndex: 1050,
+          maxHeight: '300px',
+          overflowY: 'auto'
+        }"
+      >
       <div
         v-for="(customer, index) in filteredCustomers"
         :key="customer.id"
@@ -52,22 +61,28 @@
           </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Message si aucun résultat -->
-    <div
-      v-if="showDropdown && searchQuery && filteredCustomers.length === 0"
-      class="dropdown-menu show w-100"
-    >
-      <div class="dropdown-item text-muted">
-        Aucun client trouvé
+      <!-- Message si aucun résultat -->
+      <div
+        v-if="showDropdown && searchQuery && filteredCustomers.length === 0"
+        class="customer-dropdown-menu"
+        :style="{
+          position: 'absolute',
+          top: dropdownPosition.top + 'px',
+          left: dropdownPosition.left + 'px',
+          width: dropdownPosition.width + 'px',
+          zIndex: 1050
+        }"
+      >
+        <div class="dropdown-item text-muted">
+          Aucun client trouvé
+        </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 
 interface Customer {
   id: number
@@ -98,10 +113,12 @@ const emit = defineEmits<{
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)
+const containerRef = ref<HTMLElement | null>(null)
 const searchQuery = ref('')
 const showDropdown = ref(false)
 const selectedIndex = ref(-1)
 const selectedCustomer = ref<Customer | null>(null)
+const dropdownPosition = ref({ top: 0, left: 0, width: 0 })
 
 // Clients filtrés selon la recherche
 const filteredCustomers = computed(() => {
@@ -118,13 +135,27 @@ const filteredCustomers = computed(() => {
   }).slice(0, 10)
 })
 
+// Calculer la position du dropdown
+const updateDropdownPosition = () => {
+  if (containerRef.value) {
+    const rect = containerRef.value.getBoundingClientRect()
+    dropdownPosition.value = {
+      top: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX,
+      width: rect.width
+    }
+  }
+}
+
 // Gérer le focus
 const handleFocus = () => {
+  updateDropdownPosition()
   showDropdown.value = true
 }
 
 // Gérer la saisie
 const handleInput = () => {
+  updateDropdownPosition()
   showDropdown.value = true
   selectedIndex.value = -1
 }
@@ -198,13 +229,26 @@ watch(() => props.modelValue, (newValue) => {
   }
 }, { immediate: true })
 
-// Fermer le dropdown si on clique en dehors
-const containerRef = ref<HTMLElement | null>(null)
+// Mettre à jour la position du dropdown quand il est visible
+watch(showDropdown, (isVisible) => {
+  if (isVisible) {
+    nextTick(() => {
+      updateDropdownPosition()
+    })
+  }
+})
 
+// Fermer le dropdown si on clique en dehors
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as Node
   if (containerRef.value && !containerRef.value.contains(target)) {
-    showDropdown.value = false
+    // Vérifier aussi si le clic est sur le dropdown
+    const dropdown = document.querySelector('.customer-dropdown-menu')
+    if (dropdown && !dropdown.contains(target)) {
+      showDropdown.value = false
+    } else if (!dropdown) {
+      showDropdown.value = false
+    }
   }
 }
 
@@ -225,13 +269,14 @@ defineExpose({
 <style scoped>
 .customer-autocomplete {
   position: relative;
+  z-index: 1;
 }
 
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 1000;
+.customer-dropdown-menu {
+  background-color: white;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
   margin-top: 0.125rem;
 }
 
