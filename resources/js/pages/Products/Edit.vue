@@ -950,32 +950,47 @@ const submit = () => {
     formData.append('alert_threshold_unit', form.alert_threshold_unit)
   }
   
-  // Ajouter les fichiers (uniquement les nouveaux fichiers, pas les fichiers existants)
-  uploadedFiles.value.forEach((file) => {
+  // Ajouter les fichiers (uniquement les NOUVEAUX fichiers, pas les fichiers existants)
+  // Utiliser realNewFiles au lieu de uploadedFiles.value pour être sûr
+  realNewFiles.forEach((file) => {
     // Vérifier que c'est bien un objet File natif
     if (file instanceof File) {
       formData.append('images[]', file)
+      console.log('Ajout d\'un nouveau fichier au FormData:', file.name)
     }
   })
+  
+  if (realNewFiles.length === 0) {
+    console.log('Aucun nouveau fichier à ajouter au FormData')
+  }
   
   // Gérer la suppression des images
   // RÈGLE IMPORTANTE : Si aucun nouveau fichier n'est ajouté et qu'il y a des images existantes,
   // on ne supprime JAMAIS les images, peu importe ce que dit deletedImageIds
-  const hasNewFiles = uploadedFiles.value.length > 0
-  const hasExistingImages = props.images && props.images.length > 0
   
   // Vérifier l'état actuel de FilePond au moment de la soumission
   const filePondFiles = filePondRef.value?.getFiles() || []
   const filePondHasFiles = filePondFiles.length > 0
   
-  console.log('État au moment de la soumission:', {
-    hasNewFiles,
-    hasExistingImages,
-    filePondHasFiles,
-    filePondFilesCount: filePondFiles.length,
-    deletedImageIds: deletedImageIds.value,
-    existingImagesCount: props.images?.length || 0
+  // Vérifier si uploadedFiles contient vraiment des NOUVEAUX fichiers (pas des fichiers existants)
+  // Filtrer pour ne garder que les vrais nouveaux fichiers
+  const realNewFiles = uploadedFiles.value.filter((file) => {
+    // Un vrai nouveau fichier est un File natif qui n'a pas été chargé depuis le serveur
+    return file instanceof File
   })
+  const hasNewFiles = realNewFiles.length > 0
+  const hasExistingImages = props.images && props.images.length > 0
+  
+  console.log('=== ÉTAT AU MOMENT DE LA SOUMISSION ===')
+  console.log('uploadedFiles.value:', uploadedFiles.value)
+  console.log('realNewFiles:', realNewFiles)
+  console.log('hasNewFiles:', hasNewFiles)
+  console.log('hasExistingImages:', hasExistingImages)
+  console.log('filePondHasFiles:', filePondHasFiles)
+  console.log('filePondFilesCount:', filePondFiles.length)
+  console.log('deletedImageIds AVANT protection:', deletedImageIds.value)
+  console.log('existingImagesCount:', props.images?.length || 0)
+  console.log('========================================')
   
   // Ne supprimer les images que si :
   // 1. Un nouveau fichier est ajouté (remplacement) OU
