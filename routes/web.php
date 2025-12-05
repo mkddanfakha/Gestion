@@ -73,14 +73,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/delivery-notes/{deliveryNote}/download', [DeliveryNoteController::class, 'downloadDeliveryNote'])->name('delivery-notes.download');
     Route::get('/delivery-notes/{deliveryNote}/print', [DeliveryNoteController::class, 'printDeliveryNote'])->name('delivery-notes.print');
     // Facture/BL fournisseur: upload/affichage/suppression (AVANT la route resource)
+    // Utiliser des contraintes pour éviter les conflits avec la route resource
     Route::post('/delivery-notes/{deliveryNote}/invoice', [DeliveryNoteController::class, 'uploadInvoice'])
+        ->where('deliveryNote', '[0-9]+')
         ->name('delivery-notes.invoice.upload');
     Route::get('/delivery-notes/{deliveryNote}/invoice', [DeliveryNoteController::class, 'showInvoice'])
+        ->where('deliveryNote', '[0-9]+')
         ->name('delivery-notes.invoice.show');
     Route::delete('/delivery-notes/{deliveryNote}/invoice', [DeliveryNoteController::class, 'deleteInvoice'])
+        ->where('deliveryNote', '[0-9]+')
         ->name('delivery-notes.invoice.delete');
-    // Route resource en dernier
-    Route::resource('delivery-notes', DeliveryNoteController::class);
+    // Route resource en dernier avec exclusion de 'invoice' pour éviter les conflits
+    Route::resource('delivery-notes', DeliveryNoteController::class)->except(['invoice']);
     
     // Informations de l'entreprise
     Route::get('/company', [CompanyController::class, 'edit'])->name('company.edit');
