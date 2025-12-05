@@ -124,25 +124,15 @@
                       <label class="form-label">
                         Produit <span class="text-danger">*</span>
                       </label>
-                      <select
+                      <ProductAutocomplete
                         v-model="item.product_id"
-                        required
-                        class="form-select"
-                        :class="{ 'is-invalid': isProductDuplicate(index) }"
-                        @change="updateItemPrice(index)"
-                      >
-                        <option value="">Sélectionner un produit</option>
-                        <option 
-                          v-for="product in products" 
-                          :key="product.id" 
-                          :value="product.id"
-                          :disabled="isProductAlreadySelected(product.id, index)"
-                        >
-                          {{ product.name }}
-                          <span v-if="isProductAlreadySelected(product.id, index)"> - Déjà sélectionné</span>
-                        </option>
-                      </select>
-                      <div v-if="isProductDuplicate(index)" class="invalid-feedback">
+                        :products="products"
+                        :exclude-product-ids="getExcludedProductIds(index)"
+                        :is-invalid="isProductDuplicate(index)"
+                        placeholder="Rechercher un produit..."
+                        @selected="(product) => handleProductSelected(product, index)"
+                      />
+                      <div v-if="isProductDuplicate(index)" class="invalid-feedback d-block">
                         Ce produit est déjà sélectionné dans ce devis.
                       </div>
                     </div>
@@ -298,6 +288,7 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 
 interface Customer {
   id: number
@@ -398,6 +389,21 @@ const isProductDuplicate = (index: number): boolean => {
   const currentItem = form.items[index]
   if (!currentItem.product_id) return false
   return isProductAlreadySelected(currentItem.product_id, index)
+}
+
+// Obtenir les IDs des produits à exclure pour un index donné
+const getExcludedProductIds = (currentIndex: number): number[] => {
+  return form.items
+    .map((item, index) => index !== currentIndex ? item.product_id : null)
+    .filter((id): id is number => id !== null && id > 0)
+}
+
+// Gérer la sélection d'un produit
+const handleProductSelected = (product: Product, index: number) => {
+  const item = form.items[index]
+  item.product_id = product.id
+  item.unit_price = product.price
+  updateItemTotal(index)
 }
 
 // Vérifier s'il y a des produits dupliqués
