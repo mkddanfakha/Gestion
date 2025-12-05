@@ -315,46 +315,20 @@ class ProductController extends Controller
         $hasNewImages = $request->hasFile('images');
         $hasDeleteImages = $request->filled('delete_images') && is_array($request->delete_images) && !empty($request->delete_images);
         
-        \Log::info('État de la mise à jour des images', [
-            'has_new_images' => $hasNewImages,
-            'has_delete_images' => $hasDeleteImages,
-            'delete_images' => $request->delete_images ?? 'non défini',
-            'product_id' => $product->id,
-            'existing_images_count' => $product->getMedia('images')->count()
-        ]);
-        
         // PROTECTION : Si aucun nouveau fichier n'est ajouté, ne JAMAIS supprimer les images existantes
         // même si delete_images est envoyé (c'est probablement une erreur du frontend)
-        if ($hasDeleteImages && !$hasNewImages) {
-            // delete_images est envoyé mais aucun nouveau fichier n'est ajouté
-            // C'est probablement une erreur - ne pas supprimer les images par sécurité
-            \Log::warning('PROTECTION: delete_images envoyé sans nouveau fichier - aucune image ne sera supprimée', [
-                'delete_images' => $request->delete_images,
-                'product_id' => $product->id
-            ]);
-        } elseif ($hasDeleteImages && $hasNewImages) {
+        if ($hasDeleteImages && $hasNewImages) {
             // Nouveau fichier ajouté ET delete_images envoyé - c'est un remplacement, supprimer les anciennes images
-            \Log::info('Suppression d\'images demandée (remplacement)', [
-                'delete_images' => $request->delete_images,
-                'product_id' => $product->id,
-                'has_new_images' => true
-            ]);
             foreach ($request->delete_images as $imageId) {
                 if ($imageId) {
                     $media = $product->media()->find($imageId);
                     if ($media) {
                         $media->delete();
-                        \Log::info('Image supprimée', ['media_id' => $imageId, 'product_id' => $product->id]);
                     }
                 }
             }
-        } else {
-            \Log::info('Aucune suppression d\'image demandée', [
-                'has_delete_images' => $hasDeleteImages,
-                'has_new_images' => $hasNewImages,
-                'product_id' => $product->id
-            ]);
         }
+        // Si delete_images est envoyé sans nouveau fichier, on ignore (protection de sécurité)
 
         // Gérer l'upload de nouvelles images
         if ($request->hasFile('images')) {

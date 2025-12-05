@@ -716,7 +716,6 @@ const handleFilesUpdate = (files: any[]) => {
   if (hasNewFile && currentImageIds.length > 0) {
     // L'ancienne image sera remplacée par la nouvelle, donc on supprime toutes les anciennes
     deletedImageIds.value = currentImageIds
-    console.log('Nouveau fichier ajouté, ancienne image sera remplacée:', deletedImageIds.value)
     return
   }
   
@@ -726,7 +725,6 @@ const handleFilesUpdate = (files: any[]) => {
   if (files.length === 0 && currentImageIds.length > 0) {
     // FilePond est vide, toutes les images ont été supprimées
     deletedImageIds.value = currentImageIds
-    console.log('FilePond vide, toutes les images seront supprimées:', deletedImageIds.value)
     return
   }
   
@@ -850,7 +848,6 @@ const handleFilesUpdate = (files: any[]) => {
     // On n'a pas pu identifier les images dans FilePond, mais il y a des fichiers
     // On considère que toutes les images existantes sont toujours présentes
     deletedImageIds.value = []
-    console.log('Impossible de récupérer les IDs depuis FilePond, aucune image ne sera supprimée')
   } else {
     // On a réussi à identifier certaines images, supprimer celles qui ne sont plus présentes
     deletedImageIds.value = currentImageIds.filter((id) => !remainingMediaIds.includes(id))
@@ -973,24 +970,8 @@ const submit = () => {
     // Vérifier que c'est bien un objet File natif
     if (file instanceof File) {
       formData.append('images[]', file)
-      console.log('Ajout d\'un nouveau fichier au FormData:', file.name)
     }
   })
-  
-  if (realNewFiles.length === 0) {
-    console.log('Aucun nouveau fichier à ajouter au FormData')
-  }
-  
-  console.log('=== ÉTAT AU MOMENT DE LA SOUMISSION ===')
-  console.log('uploadedFiles.value:', uploadedFiles.value)
-  console.log('realNewFiles:', realNewFiles)
-  console.log('hasNewFiles:', hasNewFiles)
-  console.log('hasExistingImages:', hasExistingImages)
-  console.log('filePondHasFiles:', filePondHasFiles)
-  console.log('filePondFilesCount:', filePondFiles.length)
-  console.log('deletedImageIds AVANT protection:', deletedImageIds.value)
-  console.log('existingImagesCount:', props.images?.length || 0)
-  console.log('========================================')
   
   // Ne supprimer les images que si :
   // 1. Un nouveau fichier est ajouté (remplacement) OU
@@ -1002,22 +983,15 @@ const submit = () => {
   if (!hasNewFiles && hasExistingImages) {
     // Pas de nouveau fichier et il y a des images existantes
     // FORCER deletedImageIds à être vide pour éviter toute suppression
-    console.log('PROTECTION CRITIQUE: Aucun nouveau fichier et images existantes présentes - FORCEMENT aucune image ne sera supprimée')
-    console.log('deletedImageIds AVANT protection:', deletedImageIds.value)
     deletedImageIds.value = []
-    console.log('deletedImageIds APRÈS protection:', deletedImageIds.value)
   } else if (deletedImageIds.value.length > 0) {
     // Il y a des images marquées pour suppression
     // Vérifier si on doit vraiment les supprimer
-    if (hasNewFiles) {
-      // Un nouveau fichier est ajouté, supprimer les anciennes images
-      console.log('Nouveau fichier ajouté, suppression des anciennes images:', deletedImageIds.value)
-    } else if (!filePondHasFiles && hasExistingImages) {
+    if (!hasNewFiles && !filePondHasFiles && hasExistingImages) {
       // FilePond est vide mais il y avait des images - elles ont été supprimées manuellement
-      console.log('FilePond est vide, les images seront supprimées:', deletedImageIds.value)
-    } else {
+      // Dans ce cas, on garde deletedImageIds pour supprimer les images
+    } else if (!hasNewFiles) {
       // Cas inattendu, ne pas supprimer par sécurité
-      console.log('Cas inattendu, aucune image ne sera supprimée par sécurité')
       deletedImageIds.value = []
     }
     
@@ -1028,18 +1002,12 @@ const submit = () => {
     if (deletedImageIds.value.length > 0) {
       // Vérification finale de sécurité
       if (!hasNewFiles && hasExistingImages) {
-        console.log('PROTECTION FINALE: delete_images ne sera PAS envoyé car aucun nouveau fichier et images existantes présentes')
-        console.log('deletedImageIds.value avant protection finale:', deletedImageIds.value)
         deletedImageIds.value = []
-        console.log('deletedImageIds.value après protection finale:', deletedImageIds.value)
       } else {
-        console.log('Envoi de delete_images au serveur:', deletedImageIds.value)
         deletedImageIds.value.forEach((id) => {
           formData.append('delete_images[]', String(id))
         })
       }
-    } else {
-      console.log('Aucune image à supprimer - delete_images ne sera pas envoyé au serveur')
     }
   }
   
