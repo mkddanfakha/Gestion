@@ -66,19 +66,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/purchase-orders/{purchaseOrder}/print', [PurchaseOrderController::class, 'printPurchaseOrder'])->name('purchase-orders.print');
     
     // Bons de livraison
-    Route::resource('delivery-notes', DeliveryNoteController::class);
+    // Routes spécifiques AVANT la route resource pour éviter les conflits
     Route::post('/delivery-notes/{deliveryNote}/validate', [DeliveryNoteController::class, 'validate'])
         ->middleware(EnsureUserIsAdmin::class)
         ->name('delivery-notes.validate');
     Route::get('/delivery-notes/{deliveryNote}/download', [DeliveryNoteController::class, 'downloadDeliveryNote'])->name('delivery-notes.download');
     Route::get('/delivery-notes/{deliveryNote}/print', [DeliveryNoteController::class, 'printDeliveryNote'])->name('delivery-notes.print');
-    // Facture/BL fournisseur: upload/affichage/suppression
+    // Facture/BL fournisseur: upload/affichage/suppression (AVANT la route resource)
     Route::post('/delivery-notes/{deliveryNote}/invoice', [DeliveryNoteController::class, 'uploadInvoice'])
         ->name('delivery-notes.invoice.upload');
     Route::get('/delivery-notes/{deliveryNote}/invoice', [DeliveryNoteController::class, 'showInvoice'])
         ->name('delivery-notes.invoice.show');
     Route::delete('/delivery-notes/{deliveryNote}/invoice', [DeliveryNoteController::class, 'deleteInvoice'])
         ->name('delivery-notes.invoice.delete');
+    // Route resource en dernier
+    Route::resource('delivery-notes', DeliveryNoteController::class);
     
     // Informations de l'entreprise
     Route::get('/company', [CompanyController::class, 'edit'])->name('company.edit');
