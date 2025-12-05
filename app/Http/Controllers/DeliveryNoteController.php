@@ -357,9 +357,16 @@ class DeliveryNoteController extends Controller
      */
     public function showInvoice(Request $request, $deliveryNote)
     {
+        \Log::info('showInvoice appelé', [
+            'deliveryNote_id' => $deliveryNote,
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+        ]);
+        
         // Résoudre le DeliveryNote manuellement pour éviter les problèmes de model binding
         try {
             $deliveryNote = DeliveryNote::findOrFail($deliveryNote);
+            \Log::info('DeliveryNote trouvé', ['id' => $deliveryNote->id]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             \Log::error('DeliveryNote non trouvé pour showInvoice', [
                 'id' => $deliveryNote,
@@ -368,7 +375,16 @@ class DeliveryNoteController extends Controller
             abort(404, 'Bon de livraison introuvable.');
         }
         
-        $this->checkPermission($request, 'delivery-notes', 'invoice');
+        try {
+            $this->checkPermission($request, 'delivery-notes', 'invoice');
+            \Log::info('Permission vérifiée avec succès');
+        } catch (\Exception $e) {
+            \Log::error('Erreur de permission', [
+                'message' => $e->getMessage(),
+                'deliveryNote_id' => $deliveryNote->id,
+            ]);
+            throw $e;
+        }
         
         if (!$deliveryNote->invoice_file_path) {
             abort(404, 'Aucun fichier associé à ce bon de livraison.');
