@@ -398,7 +398,7 @@ const getStatusBadgeClass = (status: string) => {
 
 // Gestion fichier facture/BL
 const selectedFile = ref<File | null>(null)
-const invoicePreviewUrl = computed(() => route('delivery-notes.invoice.show', { id: props.deliveryNote.id }))
+const invoicePreviewUrl = computed(() => route('delivery-notes.invoice.show', { deliveryNote: props.deliveryNote.id }))
 const hasInvoiceFile = computed(() => !!props.deliveryNote.invoice_file_path)
 const isImage = computed(() => (props.deliveryNote.invoice_file_mime || '').startsWith('image'))
 const isPdf = computed(() => (props.deliveryNote.invoice_file_mime || '').includes('pdf'))
