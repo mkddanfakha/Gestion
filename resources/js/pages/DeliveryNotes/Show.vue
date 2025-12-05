@@ -425,7 +425,7 @@ const onUploadInvoice = async () => {
   if (!selectedFile.value) return
   const formData = new FormData()
   formData.append('file', selectedFile.value)
-  router.post(route('delivery-notes.invoice.upload', { id: props.deliveryNote.id }), formData, {
+  router.post(route('delivery-notes.invoice.upload', { deliveryNote: props.deliveryNote.id }), formData, {
     forceFormData: true,
     onSuccess: () => {
       selectedFile.value = null
@@ -441,7 +441,7 @@ const onUploadInvoice = async () => {
 const onDeleteInvoice = async () => {
   const confirmed = await confirm('Supprimer le fichier de facture/BL ?')
   if (!confirmed) return
-  router.delete(route('delivery-notes.invoice.delete', { id: props.deliveryNote.id }), {
+  router.delete(route('delivery-notes.invoice.delete', { deliveryNote: props.deliveryNote.id }), {
     onSuccess: () => {
       success('Fichier supprimé avec succès')
     },

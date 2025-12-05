@@ -81,9 +81,9 @@ export function route(name: string, params: any = {}) {
         'delivery-notes.download': '/delivery-notes/{deliveryNote}/download',
         'delivery-notes.print': '/delivery-notes/{deliveryNote}/print',
         // Fichier facture/BL fournisseur
-        'delivery-notes.invoice.upload': '/delivery-notes/{id}/invoice',
-        'delivery-notes.invoice.show': '/delivery-notes/{id}/invoice',
-        'delivery-notes.invoice.delete': '/delivery-notes/{id}/invoice',
+        'delivery-notes.invoice.upload': '/delivery-notes/{deliveryNote}/invoice',
+        'delivery-notes.invoice.show': '/delivery-notes/{deliveryNote}/invoice',
+        'delivery-notes.invoice.delete': '/delivery-notes/{deliveryNote}/invoice',
         'company.edit': '/company',
         'company.update': '/company',
         'profile.edit': '/settings/profile',

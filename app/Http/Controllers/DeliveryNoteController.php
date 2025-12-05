@@ -357,28 +357,25 @@ class DeliveryNoteController extends Controller
         $this->checkPermission($request, 'delivery-notes', 'invoice');
         
         if (!$deliveryNote->invoice_file_path) {
-            return back()->withErrors(['message' => 'Aucun fichier associé à ce bon de livraison.']);
+            abort(404, 'Aucun fichier associé à ce bon de livraison.');
         }
 
         $path = $deliveryNote->invoice_file_path;
         
         // Vérifier d'abord sur le disque media, puis sur public pour compatibilité
-        $disk = null;
         $absolutePath = null;
         
         if (Storage::disk('media')->exists($path)) {
-            $disk = 'media';
             $absolutePath = Storage::disk('media')->path($path);
         } elseif (Storage::disk('public')->exists($path)) {
-            $disk = 'public';
             $absolutePath = Storage::disk('public')->path($path);
         } else {
-            return back()->withErrors(['message' => 'Fichier introuvable sur le serveur.']);
+            abort(404, 'Fichier introuvable sur le serveur.');
         }
 
         // Vérifier que le fichier existe vraiment
         if (!file_exists($absolutePath)) {
-            return back()->withErrors(['message' => 'Fichier introuvable sur le serveur.']);
+            abort(404, 'Fichier introuvable sur le serveur.');
         }
 
         // Affichage inline pour PDF/images
