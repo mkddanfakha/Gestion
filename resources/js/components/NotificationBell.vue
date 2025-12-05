@@ -381,6 +381,11 @@ const badgeKey = ref(0)
 
 const page = usePage()
 
+// Récupérer le token CSRF depuis les props Inertia
+const getCsrfToken = (): string => {
+  return (page.props as any).csrf_token || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+}
+
 // Utiliser une ref réactive pour les notifications pour forcer la mise à jour
 const notificationsRef = ref<NotificationData>({
   salesDueToday: [],
@@ -477,7 +482,7 @@ const markNotificationAsRead = async (type: string, id: number, event?: Event) =
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+          'X-CSRF-TOKEN': getCsrfToken(),
           'Accept': 'application/json',
         },
         body: JSON.stringify({ type, id }),
@@ -494,7 +499,7 @@ const markNotificationAsRead = async (type: string, id: number, event?: Event) =
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        'X-CSRF-TOKEN': getCsrfToken(),
         'Accept': 'application/json',
       },
       body: JSON.stringify({ type, id }),
@@ -519,7 +524,7 @@ const markAllOfTypeAsRead = async (type: string) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        'X-CSRF-TOKEN': getCsrfToken(),
         'Accept': 'application/json',
       },
       body: JSON.stringify({ type }),
@@ -549,7 +554,7 @@ const markAllAsRead = async (event: Event) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        'X-CSRF-TOKEN': getCsrfToken(),
         'Accept': 'application/json',
       },
       body: JSON.stringify({ type: 'all' }),
