@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Quote;
+use App\Models\Sale;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Company;
@@ -373,5 +374,76 @@ class QuoteController extends Controller
             \Log::error('Erreur lors de la génération du PDF du devis: ' . $e->getMessage());
             abort(500, 'Erreur lors de la génération du PDF du devis.');
         }
+    }
+
+    /**
+     * Convertir un devis en vente
+     */
+    public function convertToSale(Request $request, Quote $quote)
+    {
+        $this->checkPermission($request, 'sales', 'create');
+        
+        // Vérifier que le devis peut être converti
+        if (!$quote->canBeConvertedToSale()) {
+            return back()->withErrors(['message' => 'Ce devis ne peut pas être converti en vente. Seuls les devis acceptés ou envoyés peuvent être convertis.']);
+        }
+
+        // Charger les items du devis
+        $quote->load('quoteItems.product');
+
+        // Vérifier le stock disponible pour chaque produit
+        $stockErrors = [];
+        foreach ($quote->quoteItems as $item) {
+            if ($item->product) {
+                if ($item->product->stock_quantity < $item->quantity) {
+                    $stockErrors[] = "Stock insuffisant pour {$item->product->name}. Stock disponible: {$item->product->stock_quantity}, Quantité demandée: {$item->quantity}";
+                }
+            }
+        }
+
+        if (!empty($stockErrors)) {
+            return back()->withErrors(['stock' => implode(' | ', $stockErrors)]);
+        }
+
+        // Créer la vente à partir du devis
+        $sale = Sale::create([
+            'sale_number' => Sale::generateSaleNumber(),
+            'customer_id' => $quote->customer_id,
+            'user_id' => auth()->id(),
+            'payment_method' => 'cash', // Par défaut, peut être modifié après
+            'notes' => $quote->notes ? "Converti depuis le devis {$quote->quote_number}. " . $quote->notes : "Converti depuis le devis {$quote->quote_number}.",
+            'subtotal' => $quote->subtotal,
+            'tax_amount' => $quote->tax_amount,
+            'discount_amount' => $quote->discount_amount,
+            'down_payment_amount' => 0,
+            'remaining_amount' => $quote->total_amount,
+            'total_amount' => $quote->total_amount,
+            'payment_status' => 'pending',
+            'status' => 'completed',
+        ]);
+
+        // Créer les items de vente
+        foreach ($quote->quoteItems as $quoteItem) {
+            $sale->saleItems()->create([
+                'product_id' => $quoteItem->product_id,
+                'quantity' => $quoteItem->quantity,
+                'unit_price' => $quoteItem->unit_price,
+                'total_price' => $quoteItem->total_price,
+                'discount_amount' => $quoteItem->discount_amount ?? 0,
+            ]);
+
+            // Décrémenter le stock
+            if ($quoteItem->product) {
+                $quoteItem->product->decrement('stock_quantity', $quoteItem->quantity);
+            }
+        }
+
+        // Marquer le devis comme accepté s'il était seulement envoyé
+        if ($quote->status === 'sent') {
+            $quote->update(['status' => 'accepted']);
+        }
+
+        return redirect()->route('sales.show', $sale)
+            ->with('success', "Devis converti en vente avec succès. Vente créée: {$sale->sale_number}");
     }
 }

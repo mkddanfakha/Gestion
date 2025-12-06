@@ -45,6 +45,7 @@ export function route(name: string, params: any = {}) {
         'quotes.destroy': '/quotes/{id}',
         'quotes.download': '/quotes/{quote}/download',
         'quotes.print': '/quotes/{quote}/print',
+        'quotes.convert-to-sale': '/quotes/{quote}/convert-to-sale',
         'expenses.index': '/expenses',
         'expenses.create': '/expenses/create',
         'expenses.store': '/expenses',

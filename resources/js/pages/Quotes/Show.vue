@@ -223,6 +223,16 @@
                 <i v-else class="bi bi-printer me-1"></i>
                 {{ isPrinting ? 'Ouverture...' : 'Imprimer le devis' }}
               </button>
+              <button
+                v-if="canConvertToSale"
+                @click="convertToSale"
+                class="btn btn-primary"
+                :disabled="isConverting || isDownloading || isPrinting"
+              >
+                <span v-if="isConverting" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <i v-else class="bi bi-cart-check me-1"></i>
+                {{ isConverting ? 'Conversion...' : 'Convertir en vente' }}
+              </button>
               <Link
                 :href="route('quotes.edit', { id: quote.id })"
                 class="btn btn-outline-primary"
@@ -276,7 +286,7 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const { success, error, confirm } = useSweetAlert()
 
@@ -476,6 +486,30 @@ const deleteQuote = async () => {
       }
     })
   }
+}
+
+const convertToSale = async () => {
+  if (isConverting.value) return
+  
+  const confirmed = await confirm(
+    `Êtes-vous sûr de vouloir convertir le devis "${props.quote.quote_number}" en vente ?\n\nCette action créera une nouvelle vente avec les mêmes informations et décrémentera le stock des produits.`
+  )
+  
+  if (!confirmed) return
+  
+  isConverting.value = true
+  
+  router.post(route('quotes.convert-to-sale', { quote: props.quote.id }), {}, {
+    onSuccess: () => {
+      // Le message de succès sera affiché via la redirection
+      isConverting.value = false
+    },
+    onError: (errors) => {
+      isConverting.value = false
+      const errorMessage = errors.message || errors.stock || 'Erreur lors de la conversion du devis en vente.'
+      error(errorMessage)
+    }
+  })
 }
 </script>
 

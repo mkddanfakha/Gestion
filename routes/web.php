@@ -51,6 +51,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('quotes', QuoteController::class);
     Route::get('/quotes/{quote}/download', [QuoteController::class, 'downloadQuote'])->name('quotes.download');
     Route::get('/quotes/{quote}/print', [QuoteController::class, 'printQuote'])->name('quotes.print');
+    Route::post('/quotes/{quote}/convert-to-sale', [QuoteController::class, 'convertToSale'])->name('quotes.convert-to-sale');
     
     // Dépenses
     Route::resource('expenses', ExpenseController::class);
