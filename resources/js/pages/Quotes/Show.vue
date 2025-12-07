@@ -292,6 +292,12 @@ const { success, error, confirm } = useSweetAlert()
 
 const isDownloading = ref(false)
 const isPrinting = ref(false)
+const isConverting = ref(false)
+
+// Vérifier si le devis peut être converti en vente
+const canConvertToSale = computed(() => {
+  return props.quote.status === 'accepted' || props.quote.status === 'sent'
+})
 
 interface Category {
   id: number
