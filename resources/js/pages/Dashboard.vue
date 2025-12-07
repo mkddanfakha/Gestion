@@ -493,6 +493,7 @@
 import { withDefaults, watch } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, usePage } from '@inertiajs/vue3'
+import { formatDate, formatDateShort } from '@/utils/dateFormatter'
 import { route } from '@/lib/routes'
 import ProductSalesChart from '@/components/ProductSalesChart.vue'
 import { useSweetAlert } from '@/composables/useSweetAlert'
@@ -600,18 +601,16 @@ watch(() => page.props.flash, (flash) => {
   }
 }, { immediate: true, deep: true })
 
+import { formatDate, formatDateShort } from '@/utils/dateFormatter'
+
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('fr-FR')
 }
 
 const formatMonth = (month: string) => {
   const [year, monthNum] = month.split('-')
   const date = new Date(parseInt(year), parseInt(monthNum) - 1)
-  return date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
+  return formatDateShort(date)
 }
 </script>
 
