@@ -249,6 +249,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { ref, watch, onMounted } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { formatDate, formatTime } from '@/utils/dateFormatter'
 
 interface Sale {
   id: number
@@ -325,19 +326,10 @@ watch(() => props.filters, (newFilters) => {
   }
 }, { deep: true, immediate: true })
 
+import { formatDate, formatTime } from '@/utils/dateFormatter'
+
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('fr-FR')
-}
-
-const formatTime = (date: string) => {
-  return new Date(date).toLocaleTimeString('fr-FR', { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  })
 }
 
 const formatPaymentMethod = (method: string) => {

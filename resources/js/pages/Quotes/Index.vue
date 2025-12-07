@@ -264,6 +264,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { formatDate, formatTime } from '@/utils/dateFormatter'
 
 interface Quote {
   id: number
@@ -323,16 +324,7 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
 }
 
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('fr-FR')
-}
-
-const formatTime = (date: string) => {
-  return new Date(date).toLocaleTimeString('fr-FR', { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  })
-}
+import { formatDate, formatTime } from '@/utils/dateFormatter'
 
 const getStatusLabel = (status: string) => {
   const labels: Record<string, string> = {

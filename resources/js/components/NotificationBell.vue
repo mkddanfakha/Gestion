@@ -338,6 +338,7 @@ import { computed, onMounted, onUnmounted, ref, watch, watchEffect, nextTick } f
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useRealtimeNotifications } from '@/composables/useRealtimeNotifications'
+import { formatDate } from '@/utils/dateFormatter'
 
 interface NotificationData {
   salesDueToday?: Array<{
@@ -586,14 +587,6 @@ const markAllAsRead = async (event: Event) => {
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  })
 }
 
 const getExpirationIconClass = (daysUntilExpiration: number | null) => {

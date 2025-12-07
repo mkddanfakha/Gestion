@@ -273,6 +273,7 @@ import { computed, ref, watch } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { debounce } from 'lodash-es'
+import { formatDate, formatTime } from '@/utils/dateFormatter'
 
 interface User {
   id: number
@@ -390,14 +391,6 @@ const filteredExpenses = computed(() => {
 // Fonctions utilitaires
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
-
-const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString('fr-FR')
-}
-
-const formatTime = (date: string): string => {
-  return new Date(date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
 const truncateText = (text: string, maxLength: number): string => {

@@ -24,9 +24,13 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * Bootstrap any application services.
-     */    public function boot(): void
+     */
+    public function boot(): void
     {
         Schema::defaultStringLength(191); // Set a shorter default string length
+        
+        // Configurer le fuseau horaire du Sénégal globalement
+        date_default_timezone_set('Africa/Dakar');
         
         // Ignorer silencieusement tous les événements de backup pour éviter les erreurs de notification
         Event::listen([

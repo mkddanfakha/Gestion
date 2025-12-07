@@ -287,6 +287,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { ref, computed } from 'vue'
+import { formatDate } from '@/utils/dateFormatter'
 
 const { success, error, confirm } = useSweetAlert()
 
@@ -361,14 +362,6 @@ const props = defineProps<Props>()
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('fr-FR', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
 }
 
 const getStatusLabel = (status: string) => {
