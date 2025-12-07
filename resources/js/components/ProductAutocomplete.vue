@@ -1,5 +1,5 @@
 <template>
-  <div ref="containerRef" class="product-autocomplete position-relative">
+  <div ref="containerRef" class="product-autocomplete position-relative" style="z-index: 1;">
     <div class="input-group">
       <input
         ref="inputRef"
@@ -28,11 +28,20 @@
     </div>
     
     <!-- Dropdown des résultats -->
-    <div
-      v-if="showDropdown && filteredProducts.length > 0"
-      class="dropdown-menu show w-100"
-      style="max-height: 400px; overflow-y: auto;"
-    >
+    <Teleport to="body">
+      <div
+        v-if="showDropdown && filteredProducts.length > 0"
+        class="product-dropdown-menu dropdown-menu show"
+        :style="{
+          position: 'absolute',
+          top: dropdownPosition.top + 'px',
+          left: dropdownPosition.left + 'px',
+          width: dropdownPosition.width + 'px',
+          zIndex: 1050,
+          maxHeight: '400px',
+          overflowY: 'auto'
+        }"
+      >
       <div
         v-for="(product, index) in filteredProducts"
         :key="product.id"
@@ -100,22 +109,28 @@
           </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Message si aucun résultat -->
-    <div
-      v-if="showDropdown && searchQuery && filteredProducts.length === 0"
-      class="dropdown-menu show w-100"
-    >
-      <div class="dropdown-item text-muted">
-        Aucun produit trouvé
+      <!-- Message si aucun résultat -->
+      <div
+        v-if="showDropdown && searchQuery && filteredProducts.length === 0"
+        class="product-dropdown-menu dropdown-menu show"
+        :style="{
+          position: 'absolute',
+          top: dropdownPosition.top + 'px',
+          left: dropdownPosition.left + 'px',
+          width: dropdownPosition.width + 'px',
+          zIndex: 1050
+        }"
+      >
+        <div class="dropdown-item text-muted">
+          Aucun produit trouvé
+        </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 
 interface Category {
   id: number
@@ -158,10 +173,12 @@ const emit = defineEmits<{
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)
+const containerRef = ref<HTMLElement | null>(null)
 const searchQuery = ref('')
 const showDropdown = ref(false)
 const selectedIndex = ref(-1)
 const selectedProduct = ref<Product | null>(null)
+const dropdownPosition = ref({ top: 0, left: 0, width: 0 })
 
 // Produits filtrés selon la recherche
 const filteredProducts = computed(() => {
@@ -184,13 +201,27 @@ const isProductSelected = (productId: number): boolean => {
   return props.excludeProductIds.includes(productId)
 }
 
+// Calculer la position du dropdown
+const updateDropdownPosition = () => {
+  if (containerRef.value) {
+    const rect = containerRef.value.getBoundingClientRect()
+    dropdownPosition.value = {
+      top: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX,
+      width: rect.width
+    }
+  }
+}
+
 // Gérer le focus
 const handleFocus = () => {
+  updateDropdownPosition()
   showDropdown.value = true
 }
 
 // Gérer la saisie
 const handleInput = () => {
+  updateDropdownPosition()
   showDropdown.value = true
   selectedIndex.value = -1
 }
@@ -273,22 +304,37 @@ watch(() => props.modelValue, (newValue) => {
   }
 }, { immediate: true })
 
-// Fermer le dropdown si on clique en dehors
-const containerRef = ref<HTMLElement | null>(null)
+// Mettre à jour la position du dropdown quand il est visible
+watch(showDropdown, (isVisible) => {
+  if (isVisible) {
+    nextTick(() => {
+      updateDropdownPosition()
+    })
+  }
+})
 
+// Fermer le dropdown si on clique en dehors
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as Node
   if (containerRef.value && !containerRef.value.contains(target)) {
-    showDropdown.value = false
+    // Vérifier aussi si le clic est sur le dropdown
+    const dropdown = document.querySelector('.product-dropdown-menu')
+    if (dropdown && !dropdown.contains(target)) {
+      showDropdown.value = false
+    }
   }
 }
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('scroll', updateDropdownPosition, true)
+  window.addEventListener('resize', updateDropdownPosition)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('scroll', updateDropdownPosition, true)
+  window.removeEventListener('resize', updateDropdownPosition)
 })
 
 defineExpose({
