@@ -30,7 +30,13 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191); // Set a shorter default string length
         
         // Configurer le fuseau horaire du Sénégal globalement
-        date_default_timezone_set('Africa/Dakar');
+        try {
+            date_default_timezone_set('Africa/Dakar');
+        } catch (\Exception $e) {
+            // Si le fuseau horaire n'est pas disponible, utiliser UTC
+            // Le fuseau horaire est déjà configuré dans config/app.php
+            \Log::warning('Impossible de définir le fuseau horaire Africa/Dakar: ' . $e->getMessage());
+        }
         
         // Ignorer silencieusement tous les événements de backup pour éviter les erreurs de notification
         Event::listen([
