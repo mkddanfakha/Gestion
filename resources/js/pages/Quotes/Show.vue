@@ -295,8 +295,10 @@ const isPrinting = ref(false)
 const isConverting = ref(false)
 
 // Vérifier si le devis peut être converti en vente
+// Un devis peut être converti s'il n'est pas rejeté ou expiré
 const canConvertToSale = computed(() => {
-  return props.quote.status === 'accepted' || props.quote.status === 'sent'
+  const status = props.quote.status
+  return status === 'accepted' || status === 'sent' || status === 'draft'
 })
 
 interface Category {

@@ -383,9 +383,9 @@ class QuoteController extends Controller
     {
         $this->checkPermission($request, 'sales', 'create');
         
-        // Vérifier que le devis peut être converti
-        if (!$quote->canBeConvertedToSale()) {
-            return back()->withErrors(['message' => 'Ce devis ne peut pas être converti en vente. Seuls les devis acceptés ou envoyés peuvent être convertis.']);
+        // Vérifier que le devis peut être converti (pas rejeté ou expiré)
+        if ($quote->status === 'rejected' || $quote->status === 'expired') {
+            return back()->withErrors(['message' => 'Ce devis ne peut pas être converti en vente. Seuls les devis acceptés, envoyés ou en brouillon peuvent être convertis.']);
         }
 
         // Charger les items du devis
