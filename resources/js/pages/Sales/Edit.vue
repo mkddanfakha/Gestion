@@ -359,7 +359,7 @@
 
               <!-- Champ Montant reçu (uniquement pour paiement en espèces) -->
               <div v-if="form.payment_method === 'cash'" class="mb-3">
-                <label class="form-label">Montant reçu (Fcfa) <span class="text-danger">*</span></label>
+                <label class="form-label">Montant reçu (Fcfa)</label>
                 <div class="input-group">
                   <input
                     type="number"
@@ -989,11 +989,13 @@ const submit = () => {
     return
   }
 
-  // Vérifier le montant reçu pour paiement en espèces
-  const amountToPay = form.down_payment_amount > 0 ? remainingAmount.value : totalAmount.value
-  if (form.payment_method === 'cash' && cashReceivedAmount.value < amountToPay) {
-    error(`Le montant reçu doit être au moins égal à ${form.down_payment_amount > 0 ? 'le reste à payer' : 'le montant total'}.`)
-    return
+  // Vérifier le montant reçu pour paiement en espèces (seulement si un montant est saisi)
+  if (form.payment_method === 'cash' && cashReceivedAmount.value > 0) {
+    const amountToPay = form.down_payment_amount > 0 ? remainingAmount.value : totalAmount.value
+    if (cashReceivedAmount.value < amountToPay) {
+      error(`Le montant reçu doit être au moins égal à ${form.down_payment_amount > 0 ? 'le reste à payer' : 'le montant total'}.`)
+      return
+    }
   }
 
   // Vérifier s'il y a des quantités qui dépassent le stock
