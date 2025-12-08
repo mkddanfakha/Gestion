@@ -228,8 +228,27 @@
               
               <!-- Champ Taxes -->
               <div class="mb-3">
-                <label class="form-label">Taxes (Fcfa)</label>
-                <div class="input-group">
+                <label class="form-label">Taxes</label>
+                <div class="btn-group w-100 mb-2" role="group">
+                  <input
+                    type="radio"
+                    class="btn-check"
+                    id="tax-mode-amount-edit"
+                    value="amount"
+                    v-model="taxMode"
+                  >
+                  <label class="btn btn-outline-primary" for="tax-mode-amount-edit">Montant (Fcfa)</label>
+                  
+                  <input
+                    type="radio"
+                    class="btn-check"
+                    id="tax-mode-percent-edit"
+                    value="percent"
+                    v-model="taxMode"
+                  >
+                  <label class="btn btn-outline-primary" for="tax-mode-percent-edit">Pourcentage (%)</label>
+                </div>
+                <div class="input-group" v-if="taxMode === 'amount'">
                   <input
                     type="number"
                     v-model.number="form.tax_amount"
@@ -241,14 +260,49 @@
                   >
                   <span class="input-group-text">Fcfa</span>
                 </div>
+                <div class="input-group" v-else>
+                  <input
+                    type="number"
+                    v-model.number="taxPercent"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    class="form-control"
+                    placeholder="0.00"
+                    @input="updateTaxFromPercent"
+                  >
+                  <span class="input-group-text">%</span>
+                </div>
+                <div v-if="taxMode === 'percent' && taxPercent > 0" class="small text-muted mt-1">
+                  = {{ formatCurrency(calculatedTaxAmount) }}
+                </div>
                 <div v-if="errors.tax_amount" class="invalid-feedback">{{ errors.tax_amount }}</div>
                 <div v-if="clientErrors.tax_amount" class="invalid-feedback">{{ clientErrors.tax_amount }}</div>
               </div>
 
               <!-- Champ Remise -->
               <div class="mb-3">
-                <label class="form-label">Remise (Fcfa)</label>
-                <div class="input-group">
+                <label class="form-label">Remise</label>
+                <div class="btn-group w-100 mb-2" role="group">
+                  <input
+                    type="radio"
+                    class="btn-check"
+                    id="discount-mode-amount-edit"
+                    value="amount"
+                    v-model="discountMode"
+                  >
+                  <label class="btn btn-outline-primary" for="discount-mode-amount-edit">Montant (Fcfa)</label>
+                  
+                  <input
+                    type="radio"
+                    class="btn-check"
+                    id="discount-mode-percent-edit"
+                    value="percent"
+                    v-model="discountMode"
+                  >
+                  <label class="btn btn-outline-primary" for="discount-mode-percent-edit">Pourcentage (%)</label>
+                </div>
+                <div class="input-group" v-if="discountMode === 'amount'">
                   <input
                     type="number"
                     v-model.number="form.discount_amount"
@@ -259,6 +313,22 @@
                     :class="{ 'is-invalid': errors.discount_amount || clientErrors.discount_amount }"
                   >
                   <span class="input-group-text">Fcfa</span>
+                </div>
+                <div class="input-group" v-else>
+                  <input
+                    type="number"
+                    v-model.number="discountPercent"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    class="form-control"
+                    placeholder="0.00"
+                    @input="updateDiscountFromPercent"
+                  >
+                  <span class="input-group-text">%</span>
+                </div>
+                <div v-if="discountMode === 'percent' && discountPercent > 0" class="small text-muted mt-1">
+                  = {{ formatCurrency(calculatedDiscountAmount) }}
                 </div>
                 <div v-if="errors.discount_amount" class="invalid-feedback">{{ errors.discount_amount }}</div>
                 <div v-if="clientErrors.discount_amount" class="invalid-feedback">{{ clientErrors.discount_amount }}</div>
@@ -424,6 +494,12 @@ const { success, error, confirmWithDetails } = useSweetAlert()
 // État des erreurs de validation côté client
 const clientErrors = ref<Record<string, string>>({})
 
+// Modes de saisie pour taxe et remise
+const taxMode = ref<'amount' | 'percent'>('amount')
+const discountMode = ref<'amount' | 'percent'>('amount')
+const taxPercent = ref<number>(0)
+const discountPercent = ref<number>(0)
+
 const form = useForm({
   customer_id: props.sale.customer_id || '',
   payment_method: props.sale.payment_method,
@@ -440,6 +516,19 @@ const form = useForm({
     total_price: parseFloat(String(item.total_price)) || 0
   })) : []
 })
+
+// Initialiser les pourcentages à partir des montants existants
+watch(() => form.tax_amount, (newAmount) => {
+  if (taxMode.value === 'amount' && subtotal.value > 0 && newAmount > 0) {
+    taxPercent.value = (newAmount / subtotal.value) * 100
+  }
+}, { immediate: true })
+
+watch(() => form.discount_amount, (newAmount) => {
+  if (discountMode.value === 'amount' && subtotal.value > 0 && newAmount > 0) {
+    discountPercent.value = (newAmount / subtotal.value) * 100
+  }
+}, { immediate: true })
 
 const addItem = () => {
   form.items.push({
@@ -609,12 +698,97 @@ const subtotal = computed(() => {
   return isNaN(total) ? 0 : total
 })
 
+// Calculer le montant de taxe à partir du pourcentage
+const calculatedTaxAmount = computed(() => {
+  if (taxMode.value === 'percent' && taxPercent.value > 0) {
+    return (subtotal.value * taxPercent.value) / 100
+  }
+  return parseFloat(String(form.tax_amount)) || 0
+})
+
+// Calculer le montant de remise à partir du pourcentage
+const calculatedDiscountAmount = computed(() => {
+  if (discountMode.value === 'percent' && discountPercent.value > 0) {
+    return (subtotal.value * discountPercent.value) / 100
+  }
+  return parseFloat(String(form.discount_amount)) || 0
+})
+
+// Mettre à jour le montant de taxe depuis le pourcentage
+const updateTaxFromPercent = () => {
+  if (taxMode.value === 'percent' && taxPercent.value > 0) {
+    form.tax_amount = (subtotal.value * taxPercent.value) / 100
+  } else if (taxMode.value === 'percent') {
+    form.tax_amount = 0
+  }
+}
+
+// Mettre à jour le montant de remise depuis le pourcentage
+const updateDiscountFromPercent = () => {
+  if (discountMode.value === 'percent' && discountPercent.value > 0) {
+    form.discount_amount = (subtotal.value * discountPercent.value) / 100
+  } else if (discountMode.value === 'percent') {
+    form.discount_amount = 0
+  }
+}
+
+// Mettre à jour le pourcentage de taxe depuis le montant
+const updateTaxPercentFromAmount = () => {
+  if (taxMode.value === 'amount' && subtotal.value > 0 && form.tax_amount > 0) {
+    taxPercent.value = (form.tax_amount / subtotal.value) * 100
+  } else if (taxMode.value === 'amount') {
+    taxPercent.value = 0
+  }
+}
+
+// Mettre à jour le pourcentage de remise depuis le montant
+const updateDiscountPercentFromAmount = () => {
+  if (discountMode.value === 'amount' && subtotal.value > 0 && form.discount_amount > 0) {
+    discountPercent.value = (form.discount_amount / subtotal.value) * 100
+  } else if (discountMode.value === 'amount') {
+    discountPercent.value = 0
+  }
+}
+
+// Surveiller les changements de mode pour recalculer
+watch(taxMode, (newMode) => {
+  if (newMode === 'percent') {
+    updateTaxFromPercent()
+  } else {
+    updateTaxPercentFromAmount()
+  }
+})
+
+watch(discountMode, (newMode) => {
+  if (newMode === 'percent') {
+    updateDiscountFromPercent()
+  } else {
+    updateDiscountPercentFromAmount()
+  }
+})
+
+// Surveiller le sous-total pour recalculer les pourcentages
+watch(subtotal, () => {
+  if (taxMode.value === 'percent') {
+    updateTaxFromPercent()
+  }
+  if (discountMode.value === 'percent') {
+    updateDiscountFromPercent()
+  }
+})
+
 const taxAmount = computed(() => {
+  if (taxMode.value === 'percent') {
+    return calculatedTaxAmount.value
+  }
   const value = parseFloat(String(form.tax_amount)) || 0
   return isNaN(value) ? 0 : value
 })
 
 const discountAmount = computed(() => {
+  if (discountMode.value === 'percent') {
+    return calculatedDiscountAmount.value
+  }
   const value = parseFloat(String(form.discount_amount)) || 0
   return isNaN(value) ? 0 : value
 })
@@ -744,6 +918,14 @@ const validateField = (fieldName: string, value: any) => {
 const submit = () => {
   // Effacer les erreurs précédentes
   clientErrors.value = {}
+  
+  // S'assurer que les montants sont à jour si on est en mode pourcentage
+  if (taxMode.value === 'percent') {
+    updateTaxFromPercent()
+  }
+  if (discountMode.value === 'percent') {
+    updateDiscountFromPercent()
+  }
   
   const validationErrors = validateForm()
   
