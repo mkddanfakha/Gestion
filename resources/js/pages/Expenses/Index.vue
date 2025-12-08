@@ -273,7 +273,7 @@ import { computed, ref, watch } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { debounce } from 'lodash-es'
-import { formatDate, formatTime } from '@/utils/dateFormatter'
+import { formatDate, formatTime, getCurrentMonthName } from '@/utils/dateFormatter'
 
 interface User {
   id: number
@@ -347,7 +347,7 @@ const weeklyExpenses = computed(() => {
 
 // Nom du mois en cours
 const currentMonthName = computed(() => {
-  const monthName = new Date().toLocaleDateString('fr-FR', { month: 'long' })
+  const monthName = getCurrentMonthName()
   return monthName.charAt(0).toUpperCase() + monthName.slice(1)
 })
 

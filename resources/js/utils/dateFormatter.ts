@@ -143,3 +143,14 @@ export const formatDateRelative = (date: string | Date): string => {
   return `il y a ${diffInYears} an${diffInYears > 1 ? 's' : ''}`
 }
 
+/**
+ * Obtenir le nom du mois actuel dans le fuseau horaire du Sénégal
+ */
+export const getCurrentMonthName = (): string => {
+  const now = getCurrentDate()
+  return new Intl.DateTimeFormat(LOCALE, {
+    timeZone: TIMEZONE,
+    month: 'long'
+  }).format(now)
+}
+
