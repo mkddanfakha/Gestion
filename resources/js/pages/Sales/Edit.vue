@@ -357,6 +357,26 @@
                 </div>
               </div>
 
+              <!-- Champ Montant reçu (uniquement pour paiement en espèces) -->
+              <div v-if="form.payment_method === 'cash'" class="mb-3">
+                <label class="form-label">Montant reçu (Fcfa) <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <input
+                    type="number"
+                    v-model.number="cashReceivedAmount"
+                    step="0.01"
+                    min="0"
+                    class="form-control"
+                    placeholder="0.00"
+                    :class="{ 'is-invalid': cashReceivedAmount < totalAmount }"
+                  >
+                  <span class="input-group-text">Fcfa</span>
+                </div>
+                <div v-if="cashReceivedAmount < totalAmount && cashReceivedAmount > 0" class="invalid-feedback d-block">
+                  Le montant reçu doit être au moins égal au montant total
+                </div>
+              </div>
+
               <hr>
               <div class="d-flex justify-content-between mb-2">
                 <span class="fw-bold">Total:</span>
@@ -368,9 +388,15 @@
                 <span class="fw-medium text-primary">{{ formatCurrency(form.down_payment_amount) }}</span>
               </div>
               
-              <div v-if="form.down_payment_amount > 0" class="d-flex justify-content-between mb-3">
+              <div v-if="form.down_payment_amount > 0" class="d-flex justify-content-between mb-2">
                 <span class="fw-bold">Reste à payer:</span>
                 <span class="fw-bold text-warning fs-5">{{ formatCurrency(remainingAmount) }}</span>
+              </div>
+
+              <!-- Monnaie à rendre (uniquement pour paiement en espèces) -->
+              <div v-if="form.payment_method === 'cash' && cashReceivedAmount >= totalAmount" class="d-flex justify-content-between mb-3 p-2 bg-light rounded">
+                <span class="fw-bold">Monnaie à rendre:</span>
+                <span class="fw-bold text-info fs-5">{{ formatCurrency(changeAmount) }}</span>
               </div>
 
               <div class="d-grid gap-2">
@@ -499,6 +525,9 @@ const taxMode = ref<'amount' | 'percent'>('amount')
 const discountMode = ref<'amount' | 'percent'>('amount')
 const taxPercent = ref<number>(0)
 const discountPercent = ref<number>(0)
+
+// Montant reçu en espèces et monnaie à rendre
+const cashReceivedAmount = ref<number>(0)
 
 const form = useForm({
   customer_id: props.sale.customer_id || '',
@@ -807,6 +836,14 @@ const remainingAmount = computed(() => {
   return totalAmount.value - (form.down_payment_amount || 0)
 })
 
+// Calculer la monnaie à rendre (uniquement pour paiement en espèces)
+const changeAmount = computed(() => {
+  if (form.payment_method === 'cash' && cashReceivedAmount.value >= totalAmount.value) {
+    return cashReceivedAmount.value - totalAmount.value
+  }
+  return 0
+})
+
 // Mettre à jour automatiquement le statut de paiement basé sur l'acompte
 watch([() => form.down_payment_amount, totalAmount], () => {
   const downPayment = form.down_payment_amount || 0
@@ -937,6 +974,12 @@ const submit = () => {
   
   if (form.items.length === 0) {
     error('Veuillez ajouter au moins un article.')
+    return
+  }
+
+  // Vérifier le montant reçu pour paiement en espèces
+  if (form.payment_method === 'cash' && cashReceivedAmount.value < totalAmount.value) {
+    error('Le montant reçu doit être au moins égal au montant total.')
     return
   }
 
