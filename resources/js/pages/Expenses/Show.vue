@@ -196,6 +196,7 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { formatDate, formatDateTime } from '@/utils/dateFormatter'
 
 interface User {
   id: number
@@ -232,24 +233,6 @@ const { success, error, confirm } = useSweetAlert()
 // Fonctions utilitaires
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
-
-const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString('fr-FR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-const formatDateTime = (date: string): string => {
-  return new Date(date).toLocaleString('fr-FR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 const deleteExpense = async () => {
