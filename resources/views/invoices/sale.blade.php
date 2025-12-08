@@ -138,8 +138,8 @@
         }
         
         .items-table thead {
-            background: #212529;
-            color: white;
+            background: #f8f9fa;
+            color: #6c757d;
         }
         
         .items-table th {
@@ -149,7 +149,7 @@
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-right: 1px solid #495057;
+            border-right: 1px solid #dee2e6;
         }
         
         .items-table th:last-child {
