@@ -230,15 +230,15 @@
         }
         
         .totals-table tr.grand-total {
-            background: #212529;
-            color: white;
+            background: #f8f9fa;
+            color: #495057;
         }
         
         .totals-table tr.grand-total td {
             padding: 8px;
             font-size: 11px;
             font-weight: bold;
-            color: white;
+            color: #495057;
             border: none;
         }
         
