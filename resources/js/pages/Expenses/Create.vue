@@ -288,6 +288,7 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { formatDateForInput } from '@/utils/dateFormatter'
 
 const { success, error } = useSweetAlert()
 
@@ -298,7 +299,7 @@ const form = useForm({
   amount: 0,
   category: '',
   payment_method: '',
-  expense_date: new Date().toISOString().split('T')[0], // Date du jour par défaut
+  expense_date: formatDateForInput(new Date()), // Date du jour par défaut (fuseau horaire du Sénégal)
   receipt_number: '',
   vendor: '',
   notes: ''
