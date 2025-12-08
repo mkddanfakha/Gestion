@@ -517,19 +517,6 @@ const form = useForm({
   })) : []
 })
 
-// Initialiser les pourcentages à partir des montants existants
-watch(() => form.tax_amount, (newAmount) => {
-  if (taxMode.value === 'amount' && subtotal.value > 0 && newAmount > 0) {
-    taxPercent.value = (newAmount / subtotal.value) * 100
-  }
-}, { immediate: true })
-
-watch(() => form.discount_amount, (newAmount) => {
-  if (discountMode.value === 'amount' && subtotal.value > 0 && newAmount > 0) {
-    discountPercent.value = (newAmount / subtotal.value) * 100
-  }
-}, { immediate: true })
-
 const addItem = () => {
   form.items.push({
     product_id: 0,
@@ -766,6 +753,19 @@ watch(discountMode, (newMode) => {
     updateDiscountPercentFromAmount()
   }
 })
+
+// Initialiser les pourcentages à partir des montants existants (après la déclaration de subtotal)
+watch(() => form.tax_amount, (newAmount) => {
+  if (taxMode.value === 'amount' && subtotal.value > 0 && newAmount > 0) {
+    taxPercent.value = (newAmount / subtotal.value) * 100
+  }
+}, { immediate: true })
+
+watch(() => form.discount_amount, (newAmount) => {
+  if (discountMode.value === 'amount' && subtotal.value > 0 && newAmount > 0) {
+    discountPercent.value = (newAmount / subtotal.value) * 100
+  }
+}, { immediate: true })
 
 // Surveiller le sous-total pour recalculer les pourcentages
 watch(subtotal, () => {
