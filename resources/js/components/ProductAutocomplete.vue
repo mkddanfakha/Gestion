@@ -109,6 +109,7 @@
           </div>
         </div>
       </div>
+      </div>
       <!-- Message si aucun résultat -->
       <div
         v-if="showDropdown && searchQuery && filteredProducts.length === 0"
