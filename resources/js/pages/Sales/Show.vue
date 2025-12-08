@@ -33,7 +33,7 @@
               
               <div class="col-md-6">
                 <label class="form-label text-muted">Date</label>
-                <p class="mb-0">{{ formatDate(sale.created_at) }}</p>
+                <p class="mb-0">{{ formatDateTime(sale.created_at) }}</p>
               </div>
               
               <div class="col-md-6">
@@ -286,6 +286,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { ref } from 'vue'
+import { formatDate, formatDateTime } from '@/utils/dateFormatter'
 
 const { success, error, confirm } = useSweetAlert()
 
@@ -352,16 +353,6 @@ const props = defineProps<Props>()
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('fr-FR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 const getPaymentMethodLabel = (method: string) => {
