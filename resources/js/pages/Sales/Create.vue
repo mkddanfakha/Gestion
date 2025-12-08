@@ -220,6 +220,10 @@
             </div>
             <div class="card-body">
               <div class="d-flex justify-content-between mb-2">
+                <span>Nombre d'articles:</span>
+                <span class="fw-medium">{{ itemsCount }}</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
                 <span>Sous-total:</span>
                 <span class="fw-medium">{{ formatCurrency(subtotal) }}</span>
               </div>
@@ -529,6 +533,10 @@ const getPriceFieldWidth = (price: number): string => {
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
 }
+
+const itemsCount = computed(() => {
+  return form.items.length
+})
 
 const subtotal = computed(() => {
   return form.items.reduce((total, item) => total + item.total_price, 0)
