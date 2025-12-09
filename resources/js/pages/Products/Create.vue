@@ -151,6 +151,25 @@
                 </div>
 
                 <div class="col-md-4">
+                  <label class="form-label">Prix de revient</label>
+                  <div class="input-group">
+                    <span class="input-group-text">Fcfa</span>
+                    <input
+                      v-model="form.cost_price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.cost_price || clientErrors.cost_price }"
+                      @blur="validateField('cost_price', form.cost_price)"
+                      @input="validateField('cost_price', form.cost_price)"
+                    />
+                  </div>
+                  <div v-if="errors.cost_price" class="invalid-feedback">{{ errors.cost_price }}</div>
+                  <div v-if="clientErrors.cost_price" class="invalid-feedback">{{ clientErrors.cost_price }}</div>
+                </div>
+
+                <div class="col-md-4">
                   <label class="form-label">
                     Stock initial <span class="text-danger">*</span>
                   </label>
