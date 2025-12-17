@@ -27,6 +27,13 @@
             padding: 15px;
         }
         
+        .invoice-document {
+            max-width: 100%;
+            margin: 0 auto;
+            border: 2px solid #212529;
+            padding: 15px;
+        }
+        
         /* En-tête avec ligne décorative */
         .document-header {
             border-bottom: 4px double #212529;
@@ -93,6 +100,27 @@
             margin-top: 2px;
         }
         
+        .invoice-meta {
+            text-align: right;
+            border: 2px solid #212529;
+            padding: 8px 12px;
+            background: #f8f9fa;
+        }
+        
+        .invoice-meta .label {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: #6c757d;
+            letter-spacing: 0.5px;
+        }
+        
+        .invoice-meta .value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #212529;
+            margin-top: 2px;
+        }
+        
         /* Informations en colonnes */
         .info-columns {
             display: flex;
@@ -138,8 +166,8 @@
         }
         
         .items-table thead {
-            background: #212529;
-            color: white;
+            background: #f8f9fa;
+            color: #6c757d;
         }
         
         .items-table th {
@@ -149,7 +177,7 @@
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-right: 1px solid #495057;
+            border-right: 1px solid #dee2e6;
         }
         
         .items-table th:last-child {
@@ -230,16 +258,20 @@
         }
         
         .totals-table tr.grand-total {
-            background: #212529;
-            color: white;
+            background: #f8f9fa;
+            color: #495057;
         }
         
         .totals-table tr.grand-total td {
             padding: 8px;
             font-size: 11px;
             font-weight: bold;
-            color: white;
+            color: #495057;
             border: none;
+        }
+        
+        .totals-table tr.warning td:last-child {
+            color: #fd7e14;
         }
         
         .totals-table tr.discount td:last-child {
@@ -321,7 +353,7 @@
     </style>
 </head>
 <body>
-    <div class="dn-document">
+    <div class="dn-document invoice-document">
         <!-- En-tête du document -->
         <div class="document-header">
             <div class="header-top">
@@ -365,7 +397,7 @@
                         @endif
                     </div>
                 </div>
-                <div class="dn-meta">
+                <div class="dn-meta invoice-meta">
                     <div class="label">Bon de livraison N°</div>
                     <div class="value">{{ $deliveryNote->delivery_number }}</div>
                     <div class="label" style="margin-top: 5px;">Date</div>

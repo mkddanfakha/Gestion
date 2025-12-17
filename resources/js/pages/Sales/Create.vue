@@ -370,6 +370,7 @@
                     min="0"
                     class="form-control"
                     placeholder="0.00"
+                    :disabled="form.down_payment_amount > 0"
                     :class="{ 'is-invalid': cashReceivedAmount < (form.down_payment_amount > 0 ? remainingAmount : totalAmount) }"
                   >
                   <span class="input-group-text">Fcfa</span>

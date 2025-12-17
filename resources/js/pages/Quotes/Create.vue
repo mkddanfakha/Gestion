@@ -285,6 +285,7 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 
 interface Customer {
   id: number

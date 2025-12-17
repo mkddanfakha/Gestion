@@ -1,7 +1,9 @@
 <template>
   <div class="d-flex min-vh-100 bg-light">
     <!-- Sidebar verticale -->
-    <div class="sidebar bg-primary text-white" :class="{ 'sidebar-dark': isDark }">
+    <!-- IMPORTANT: La sidebar doit TOUJOURS être en mode dark, peu importe le thème de l'application -->
+    <!-- Ne jamais ajouter bg-primary à cette div - utiliser uniquement sidebar-dark -->
+    <div class="sidebar text-white sidebar-dark">
       <!-- Logo et nom de l'application -->
       <div class="sidebar-header p-3 border-bottom border-white border-opacity-25">
         <Link :href="route('dashboard')" class="d-flex align-items-center text-white text-decoration-none">
@@ -362,6 +364,11 @@ const getRoleBadgeClass = (role?: string): string => {
   transition: background-color 0.3s ease;
 }
 
+/* Règle globale : la sidebar doit TOUJOURS être dark */
+.sidebar {
+  background-color: #1e293b !important;
+}
+
 :deep(.dark) .sidebar {
   background-color: #1e293b !important;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5);
@@ -569,9 +576,21 @@ const getRoleBadgeClass = (role?: string): string => {
   color: #e2e8f0 !important;
 }
 
+/* Règle robuste : sidebar-dark doit TOUJOURS avoir la priorité */
 .sidebar-dark {
   background-color: #1e293b !important;
   border-color: #334155;
+}
+
+/* Forcer la sidebar à être dark même si bg-primary est ajouté par erreur */
+.sidebar.sidebar-dark,
+.sidebar.bg-primary.sidebar-dark {
+  background-color: #1e293b !important;
+}
+
+/* Empêcher bg-primary d'être appliqué à la sidebar */
+.sidebar.bg-primary {
+  background-color: #1e293b !important;
 }
 
 .sidebar-dark .sidebar-header {

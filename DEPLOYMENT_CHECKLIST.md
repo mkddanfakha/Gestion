@@ -105,7 +105,22 @@ php artisan optimize
 ## Notes importantes
 
 - **Toujours** vider le cache après un `git pull` en production
+- **IMPORTANT** : Si vous avez modifié des templates Blade (`.blade.php`), vous DEVEZ exécuter `php artisan view:clear` pour que les changements soient pris en compte
 - Les commandes `optimize` créent des fichiers de cache pour améliorer les performances
 - Utilisez `--force` avec `migrate` en production pour éviter les confirmations interactives
 - Utilisez `--no-dev` avec `composer install` en production pour ne pas installer les dépendances de développement
+
+## Cas spécifique : Modification de templates (factures, devis, etc.)
+
+Si vous avez modifié un template Blade (par exemple `resources/views/quotes/quote.blade.php` ou `resources/views/invoices/sale.blade.php`), après le déploiement :
+
+```bash
+# Vider le cache des vues (OBLIGATOIRE)
+php artisan view:clear
+
+# Ou vider tous les caches
+php artisan optimize:clear
+```
+
+Sans cette étape, l'ancienne version du template sera toujours utilisée en production.
 

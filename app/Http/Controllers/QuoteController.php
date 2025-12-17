@@ -315,6 +315,7 @@ class QuoteController extends Controller
             $options->set('chroot', base_path());
 
             $dompdf = new Dompdf($options);
+            // Forcer le rechargement du template (désactiver le cache temporairement si nécessaire)
             $html = view('quotes.quote', compact('quote', 'company'))->render();
             $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
             $dompdf->loadHtml($html, 'UTF-8');
@@ -355,6 +356,7 @@ class QuoteController extends Controller
             $options->set('chroot', base_path());
 
             $dompdf = new Dompdf($options);
+            // Forcer le rechargement du template (désactiver le cache temporairement si nécessaire)
             $html = view('quotes.quote', compact('quote', 'company'))->render();
             $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
             $dompdf->loadHtml($html, 'UTF-8');

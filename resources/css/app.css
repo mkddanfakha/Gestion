@@ -300,32 +300,18 @@ body {
     color: #22d3ee !important;
 }
 
-/* Sidebar toujours en dark - même en mode light - FORCER avec spécificité maximale */
-.sidebar,
-.sidebar.bg-primary,
+/* Sidebar dark mode override - FORCE TOUJOURS DARK */
+/* Règle robuste : la sidebar doit TOUJOURS être dark, même si bg-primary est ajouté */
 .sidebar.sidebar-dark,
-div.sidebar,
-div.sidebar.bg-primary,
-div.sidebar.sidebar-dark {
-    background-color: #1e293b !important;
-    background: #1e293b !important;
-    background-image: none !important;
-}
-
-/* Forcer même si Bootstrap applique bg-primary */
-.bg-primary.sidebar,
+.sidebar.bg-primary.sidebar-dark,
+.dark .sidebar,
+.dark .sidebar.bg-primary,
 .sidebar.bg-primary {
     background-color: #1e293b !important;
-    background: #1e293b !important;
-    background-image: none !important;
 }
 
-/* Sidebar dark mode override */
-.dark .sidebar.bg-primary {
-    background-color: #1e293b !important;
-}
-
-.dark .sidebar .bg-primary {
+/* Empêcher bg-primary d'affecter la sidebar dans tous les cas */
+.sidebar .bg-primary {
     background-color: #1e293b !important;
 }
 
