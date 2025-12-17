@@ -10,11 +10,11 @@ use App\Models\Company;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Traits\GeneratesPdf;
 
 class DeliveryNoteController extends Controller
 {
+    use GeneratesPdf;
     /**
      * Display a listing of the resource.
      */
@@ -439,25 +439,9 @@ class DeliveryNoteController extends Controller
         $this->checkPermission($request, 'delivery-notes', 'download');
         
         try {
-            // Charger les relations nécessaires
-            $deliveryNote->load(['supplier', 'user', 'purchaseOrder', 'items.product']);
-            
-            // Générer le PDF
             $pdf = $this->generateDeliveryNotePdf($deliveryNote);
-            
-            // Nom du fichier
             $filename = 'Bon_de_livraison_' . $deliveryNote->delivery_number . '.pdf';
-            
-            // Générer le contenu PDF
-            $pdfContent = $pdf->output();
-            
-            // Télécharger le PDF
-            return response()->streamDownload(function () use ($pdfContent) {
-                echo $pdfContent;
-            }, $filename, [
-                'Content-Type' => 'application/pdf',
-                'Content-Length' => strlen($pdfContent),
-            ]);
+            return $this->pdfDownloadResponse($pdf, $filename);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la génération du bon de livraison PDF: ' . $e->getMessage());
             abort(500, 'Erreur lors de la génération du bon de livraison. Veuillez réessayer.');
@@ -472,27 +456,9 @@ class DeliveryNoteController extends Controller
         $this->checkPermission($request, 'delivery-notes', 'print');
         
         try {
-            // Charger les relations nécessaires
-            $deliveryNote->load(['supplier', 'user', 'purchaseOrder', 'items.product']);
-            
-            // Générer le PDF
             $pdf = $this->generateDeliveryNotePdf($deliveryNote);
-            
-            // Nom du fichier
             $filename = 'Bon_de_livraison_' . $deliveryNote->delivery_number . '.pdf';
-            
-            // Générer le contenu PDF
-            $pdfContent = $pdf->output();
-            
-            // Afficher le PDF dans le navigateur (inline)
-            return response($pdfContent, 200, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . addslashes($filename) . '"',
-                'Content-Length' => strlen($pdfContent),
-                'Cache-Control' => 'private, max-age=0, must-revalidate',
-                'Pragma' => 'public',
-                'Accept-Ranges' => 'bytes',
-            ]);
+            return $this->pdfInlineResponse($pdf, $filename);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la génération du bon de livraison PDF: ' . $e->getMessage());
             abort(500, 'Erreur lors de la génération du bon de livraison. Veuillez réessayer.');
@@ -504,35 +470,7 @@ class DeliveryNoteController extends Controller
      */
     private function generateDeliveryNotePdf(DeliveryNote $deliveryNote)
     {
-        // Options pour DomPDF
-        $options = new Options();
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', true);
-        $options->set('defaultFont', 'DejaVu Sans');
-        $options->set('isPhpEnabled', true);
-        $options->set('chroot', base_path());
-        
-        // Créer une instance de DomPDF
-        $dompdf = new Dompdf($options);
-        
-        // Récupérer les informations de l'entreprise
-        $company = Company::getInstance();
-        
-        // Rendre la vue Blade en HTML
-        $html = view('delivery-notes.delivery-note', compact('deliveryNote', 'company'))->render();
-        
-        // S'assurer que le HTML est en UTF-8
-        $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
-        
-        // Charger le HTML dans DomPDF avec encodage UTF-8
-        $dompdf->loadHtml($html, 'UTF-8');
-        
-        // Définir le format de papier (A4)
-        $dompdf->setPaper('A4', 'portrait');
-        
-        // Rendre le PDF
-        $dompdf->render();
-        
-        return $dompdf;
+        $deliveryNote->load(['supplier', 'user', 'purchaseOrder', 'items.product']);
+        return $this->generatePdfFromView('delivery-notes.delivery-note', ['deliveryNote' => $deliveryNote]);
     }
 }

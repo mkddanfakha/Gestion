@@ -9,11 +9,11 @@ use App\Models\Customer;
 use App\Models\Company;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Traits\GeneratesPdf;
 
 class QuoteController extends Controller
 {
+    use GeneratesPdf;
     /**
      * Display a listing of the resource.
      */
@@ -299,38 +299,26 @@ class QuoteController extends Controller
     /**
      * Download quote as PDF
      */
+    /**
+     * Générer le PDF du devis
+     */
+    private function generateQuotePdf(Quote $quote): Dompdf
+    {
+        $quote->load(['customer', 'quoteItems.product']);
+        return $this->generatePdfFromView('quotes.quote', ['quote' => $quote]);
+    }
+
+    /**
+     * Download quote as PDF
+     */
     public function downloadQuote(Request $request, Quote $quote)
     {
         $this->checkPermission($request, 'quotes', 'download');
         
         try {
-            $quote->load(['customer', 'quoteItems.product']);
-            $company = Company::getInstance();
-
-            $options = new Options();
-            $options->set('isHtml5ParserEnabled', true);
-            $options->set('isRemoteEnabled', true);
-            $options->set('defaultFont', 'DejaVu Sans');
-            $options->set('isPhpEnabled', true);
-            $options->set('chroot', base_path());
-
-            $dompdf = new Dompdf($options);
-            // Forcer le rechargement du template (désactiver le cache temporairement si nécessaire)
-            $html = view('quotes.quote', compact('quote', 'company'))->render();
-            $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
-            $dompdf->loadHtml($html, 'UTF-8');
-            $dompdf->setPaper('A4', 'portrait');
-            $dompdf->render();
-
-            $pdfContent = $dompdf->output();
+            $pdf = $this->generateQuotePdf($quote);
             $filename = 'devis_' . $quote->quote_number . '.pdf';
-
-            return response($pdfContent, 200)
-                ->header('Content-Type', 'application/pdf')
-                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
-                ->header('Content-Length', strlen($pdfContent))
-                ->header('Cache-Control', 'private, max-age=0, must-revalidate')
-                ->header('Pragma', 'public');
+            return $this->pdfDownloadResponse($pdf, $filename);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la génération du PDF du devis: ' . $e->getMessage());
             abort(500, 'Erreur lors de la génération du PDF du devis.');
@@ -345,33 +333,9 @@ class QuoteController extends Controller
         $this->checkPermission($request, 'quotes', 'print');
         
         try {
-            $quote->load(['customer', 'quoteItems.product']);
-            $company = Company::getInstance();
-
-            $options = new Options();
-            $options->set('isHtml5ParserEnabled', true);
-            $options->set('isRemoteEnabled', true);
-            $options->set('defaultFont', 'DejaVu Sans');
-            $options->set('isPhpEnabled', true);
-            $options->set('chroot', base_path());
-
-            $dompdf = new Dompdf($options);
-            // Forcer le rechargement du template (désactiver le cache temporairement si nécessaire)
-            $html = view('quotes.quote', compact('quote', 'company'))->render();
-            $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
-            $dompdf->loadHtml($html, 'UTF-8');
-            $dompdf->setPaper('A4', 'portrait');
-            $dompdf->render();
-
-            $pdfContent = $dompdf->output();
+            $pdf = $this->generateQuotePdf($quote);
             $filename = 'devis_' . $quote->quote_number . '.pdf';
-
-            return response($pdfContent, 200)
-                ->header('Content-Type', 'application/pdf')
-                ->header('Content-Disposition', 'inline; filename="' . $filename . '"')
-                ->header('Content-Length', strlen($pdfContent))
-                ->header('Cache-Control', 'private, max-age=0, must-revalidate')
-                ->header('Pragma', 'public');
+            return $this->pdfInlineResponse($pdf, $filename);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la génération du PDF du devis: ' . $e->getMessage());
             abort(500, 'Erreur lors de la génération du PDF du devis.');
