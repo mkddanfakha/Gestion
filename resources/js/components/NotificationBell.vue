@@ -625,6 +625,9 @@ if (typeof window !== 'undefined') {
   (window as any).testRealtimeNotification = testNotification
 }
 
+// Variable pour stocker le handler de mise à jour
+let updateHandler: ((event: Event) => void) | null = null
+
 onMounted(() => {
   // Bootstrap gère automatiquement le dropdown via data-bs-toggle
   // Démarrer l'écoute des notifications en temps réel
@@ -636,7 +639,7 @@ onMounted(() => {
   }
   
   // Écouter l'événement de mise à jour des notifications
-  const updateHandler = () => {
+  updateHandler = () => {
     // Attendre que le watch mette à jour notificationsRef, puis mettre à jour le compteur
     nextTick(() => {
       updateNotificationCount()
@@ -645,20 +648,18 @@ onMounted(() => {
   
   window.addEventListener('notification-received', notificationHandler)
   window.addEventListener('notifications-updated', updateHandler)
-  
-  onUnmounted(() => {
-    window.removeEventListener('notification-received', notificationHandler!)
-    window.removeEventListener('notifications-updated', updateHandler)
-  })
 })
 
 onUnmounted(() => {
   // Arrêter l'écoute des notifications
   stopListening()
   
-  // Nettoyer l'écouteur d'événement
+  // Nettoyer les écouteurs d'événements
   if (notificationHandler) {
     window.removeEventListener('notification-received', notificationHandler)
+  }
+  if (updateHandler) {
+    window.removeEventListener('notifications-updated', updateHandler)
   }
 })
 </script>
