@@ -36,17 +36,7 @@ echo.connector.pusher.connection.bind('error', (error: any) => {
     }
 });
 
-echo.connector.pusher.connection.bind('connected', () => {
-    console.log('Connexion Pusher établie avec succès')
-});
-
-echo.connector.pusher.connection.bind('disconnected', () => {
-    console.warn('Connexion Pusher perdue')
-});
-
-echo.connector.pusher.connection.bind('state_change', (states: any) => {
-    console.log('État de connexion Pusher:', states.previous, '->', states.current)
-});
+// Logs de connexion supprimés pour réduire le bruit dans la console
 
 export default echo;
 
