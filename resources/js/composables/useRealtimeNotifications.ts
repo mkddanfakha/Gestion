@@ -161,6 +161,14 @@ export const useRealtimeNotifications = () => {
       // Vérifier que Echo est disponible
       if (!echo) {
         console.error('Echo n\'est pas disponible. Vérifiez que Pusher est correctement configuré.')
+        console.error('Vérifiez que VITE_PUSHER_APP_KEY est défini dans .env et que les assets ont été recompilés avec npm run build')
+        return
+      }
+      
+      // Vérifier que la clé Pusher est définie
+      const pusherKey = (window as any).Echo?.connector?.pusher?.key
+      if (!pusherKey) {
+        console.error('La clé Pusher n\'est pas configurée. Vérifiez VITE_PUSHER_APP_KEY dans .env et recompilez les assets.')
         return
       }
       
@@ -174,6 +182,11 @@ export const useRealtimeNotifications = () => {
       
       channel.error((error: any) => {
         console.error('Erreur lors de la souscription au canal:', error)
+        if (error.status === 403) {
+          console.error('Accès refusé: Vérifiez les permissions dans routes/channels.php')
+        } else if (error.status === 404) {
+          console.error('Canal non trouvé: Vérifiez que la route /broadcasting/auth est accessible')
+        }
         isListening.value = false
       })
       
