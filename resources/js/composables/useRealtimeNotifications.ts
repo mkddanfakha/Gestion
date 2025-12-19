@@ -173,10 +173,13 @@ export const useRealtimeNotifications = () => {
       }
       
       // Écouter le canal privé de l'utilisateur
-      const channel = echo.private(`user.${userId}.notifications`)
+      const channelName = `user.${userId}.notifications`
+      console.log('Notifications: Tentative de souscription au canal', channelName)
+      const channel = echo.private(channelName)
       
       // Écouter les événements de connexion au canal
       channel.subscribed(() => {
+        console.log('Notifications: Canal souscrit avec succès:', channelName)
         isListening.value = true
       })
       
@@ -190,8 +193,16 @@ export const useRealtimeNotifications = () => {
         isListening.value = false
       })
       
-      // Écouter les notifications
+      // Écouter tous les événements sur le canal pour le diagnostic
+      channel.listenToAll((event: string, data: any) => {
+        console.log('Notifications: Événement reçu sur le canal', channelName, 'Event:', event, 'Data:', data)
+      })
+      
+      // Écouter les notifications avec le bon nom d'événement
+      // Laravel Echo ajoute automatiquement le préfixe du broadcaster
+      // Pour Pusher, l'événement 'notification.sent' devient '.notification.sent'
       channel.listen('.notification.sent', (data: any) => {
+        console.log('Notifications: Événement notification.sent reçu', data)
         // Mettre à jour les notifications
         if (data.notification) {
           // Jouer un son de notification immédiatement

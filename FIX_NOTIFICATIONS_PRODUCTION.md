@@ -135,6 +135,40 @@ window.Echo.connector.pusher.connection.state
 
 Devrait retourner `"connected"` ou `"connecting"`.
 
+### 3. Vérifier la souscription au canal
+
+Dans la console du navigateur, vous devriez voir :
+- `Notifications: Tentative de souscription au canal user.X.notifications`
+- `Notifications: Canal souscrit avec succès: user.X.notifications`
+
+Si vous ne voyez pas "Canal souscrit avec succès", vérifiez :
+- La route `/broadcasting/auth` (onglet Network dans les DevTools)
+- Les permissions dans `routes/channels.php`
+- Que vous êtes bien authentifié
+
+### 4. Vérifier la réception des événements
+
+Avec les nouveaux logs, vous devriez voir dans la console :
+- `Notifications: Événement reçu sur le canal user.X.notifications Event: ... Data: ...`
+
+Si vous voyez cette ligne mais pas "Événement notification.sent reçu", le nom de l'événement ne correspond pas.
+
+### 5. Tester l'envoi d'une notification
+
+Dans la console du navigateur :
+```javascript
+fetch('/notifications/test', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+        'Accept': 'application/json',
+    },
+})
+```
+
+Cela devrait déclencher une notification de test que vous devriez voir dans la console.
+
 ### 3. Vérifier les erreurs de connexion
 
 Regardez la console du navigateur pour les erreurs :

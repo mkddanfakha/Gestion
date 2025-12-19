@@ -39,42 +39,51 @@ class NotificationService
 
     /**
      * Envoyer une notification en temps réel pour un produit en stock faible
+     * Fonctionne comme notifySaleDueToday - utilise l'utilisateur actuel
      */
-    public static function notifyLowStock(Product $product): void
+    public static function notifyLowStock(Product $product, ?int $userId = null): void
     {
-        // Pour les produits en stock faible, on notifie tous les utilisateurs
-        // Dans un vrai système, vous pourriez avoir une liste d'utilisateurs à notifier
-        $users = \App\Models\User::all();
+        // Utiliser l'utilisateur actuel si aucun userId n'est fourni (comme notifySaleDueToday)
+        if ($userId === null) {
+            $userId = auth()->id();
+        }
+        
+        if (!$userId) {
+            return;
+        }
 
-        foreach ($users as $user) {
-            $isRead = NotificationRead::where('user_id', $user->id)
-                ->where('notification_type', 'low_stock')
-                ->where('notification_id', $product->id)
-                ->exists();
+        // Vérifier si la notification n'a pas déjà été lue
+        $isRead = NotificationRead::where('user_id', $userId)
+            ->where('notification_type', 'low_stock')
+            ->where('notification_id', $product->id)
+            ->exists();
 
-            if (!$isRead) {
-                $firstImage = $product->getFirstMedia('images');
-                $notification = [
-                    'type' => 'low_stock',
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'stock_quantity' => $product->stock_quantity,
-                    'unit' => $product->unit,
-                    'image_url' => $firstImage ? $firstImage->getUrl('thumb') : null,
-                    'category' => $product->category ? [
-                        'name' => $product->category->name,
-                    ] : null,
-                ];
+        if (!$isRead) {
+            $firstImage = $product->getFirstMedia('images');
+            $notification = [
+                'type' => 'low_stock',
+                'id' => $product->id,
+                'name' => $product->name,
+                'stock_quantity' => $product->stock_quantity,
+                'unit' => $product->unit,
+                'image_url' => $firstImage ? $firstImage->getUrl('thumb') : null,
+                'category' => $product->category ? [
+                    'name' => $product->category->name,
+                ] : null,
+            ];
 
-                event(new NotificationSent($notification, $user->id));
-            }
+            event(new NotificationSent($notification, $userId));
         }
     }
 
     /**
      * Envoyer une notification en temps réel pour un produit expiré ou proche de l'expiration
+     * Fonctionne comme notifySaleDueToday - utilise l'utilisateur actuel
+     * 
+     * @param Product $product Le produit expiré ou proche de l'expiration
+     * @param int|null $userId L'ID de l'utilisateur à notifier (null = utilisateur actuel)
      */
-    public static function notifyExpiringProduct(Product $product): void
+    public static function notifyExpiringProduct(Product $product, ?int $userId = null): void
     {
         $isExpired = $product->isExpired();
         $isExpiringSoon = $product->isExpiringSoon();
@@ -83,27 +92,33 @@ class NotificationService
             return;
         }
 
-        $users = \App\Models\User::all();
+        // Utiliser l'utilisateur actuel si aucun userId n'est fourni
+        if ($userId === null) {
+            $userId = auth()->id();
+        }
+        
+        if (!$userId) {
+            return;
+        }
 
-        foreach ($users as $user) {
-            $isRead = NotificationRead::where('user_id', $user->id)
-                ->where('notification_type', 'expiring_product')
-                ->where('notification_id', $product->id)
-                ->exists();
+        // Vérifier si la notification n'a pas déjà été lue
+        $isRead = NotificationRead::where('user_id', $userId)
+            ->where('notification_type', 'expiring_product')
+            ->where('notification_id', $product->id)
+            ->exists();
 
-            if (!$isRead) {
-                $firstImage = $product->getFirstMedia('images');
-                $notification = [
-                    'type' => 'expiring_product',
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'expiration_date' => $product->expiration_date->format('Y-m-d'),
-                    'days_until_expiration' => $product->days_until_expiration,
-                    'image_url' => $firstImage ? $firstImage->getUrl('thumb') : null,
-                ];
+        if (!$isRead) {
+            $firstImage = $product->getFirstMedia('images');
+            $notification = [
+                'type' => 'expiring_product',
+                'id' => $product->id,
+                'name' => $product->name,
+                'expiration_date' => $product->expiration_date->format('Y-m-d'),
+                'days_until_expiration' => $product->days_until_expiration,
+                'image_url' => $firstImage ? $firstImage->getUrl('thumb') : null,
+            ];
 
-                event(new NotificationSent($notification, $user->id));
-            }
+            event(new NotificationSent($notification, $userId));
         }
     }
 }
