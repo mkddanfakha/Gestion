@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use App\Models\Company;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Exports\SuppliersExport;
@@ -84,7 +85,9 @@ class SupplierController extends Controller
             'status' => 'required|in:active,inactive',
         ]);
 
-        Supplier::create($validated);
+        $supplier = Supplier::create($validated);
+
+        ActivityLogger::logCreate('Fournisseur', $supplier);
 
         return redirect()->route('suppliers.index')
             ->with('success', 'Fournisseur créé avec succès.');
@@ -140,6 +143,8 @@ class SupplierController extends Controller
 
         $supplier->update($validated);
 
+        ActivityLogger::logUpdate('Fournisseur', $supplier);
+
         return redirect()->route('suppliers.index')
             ->with('success', 'Fournisseur mis à jour avec succès.');
     }
@@ -150,6 +155,8 @@ class SupplierController extends Controller
     public function destroy(Request $request, Supplier $supplier)
     {
         $this->checkPermission($request, 'suppliers', 'delete');
+
+        ActivityLogger::logDelete('Fournisseur', $supplier);
         
         $supplier->delete();
 

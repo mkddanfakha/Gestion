@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Category;
 use App\Services\NotificationService;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -158,7 +159,9 @@ class ProductController extends Controller
             NotificationService::notifyExpiringProduct($product);
         }
 
-        return redirect()->route('products.index')
+        ActivityLogger::logCreate('Produit', $product);
+
+        return redirect()->route('products.show', $product)
             ->with('success', 'Produit créé avec succès.');
     }
 
@@ -306,19 +309,16 @@ class ProductController extends Controller
         }
 
         $product->update($validated);
+
+        ActivityLogger::logUpdate('Produit', $product);
+
         $product->refresh();
 
         // Gérer la suppression d'images si demandée (AVANT l'ajout de nouvelles)
-        // PROTECTION CRITIQUE : Ne supprimer les images que si :
-        // 1. Un nouveau fichier est ajouté (remplacement) OU
-        // 2. delete_images est explicitement envoyé ET qu'aucun nouveau fichier n'est ajouté (suppression manuelle)
         $hasNewImages = $request->hasFile('images');
-        $hasDeleteImages = $request->filled('delete_images') && is_array($request->delete_images) && !empty($request->delete_images);
-        
-        // PROTECTION : Si aucun nouveau fichier n'est ajouté, ne JAMAIS supprimer les images existantes
-        // même si delete_images est envoyé (c'est probablement une erreur du frontend)
-        if ($hasDeleteImages && $hasNewImages) {
-            // Nouveau fichier ajouté ET delete_images envoyé - c'est un remplacement, supprimer les anciennes images
+        $hasDeleteImages = $request->filled('delete_images') && is_array($request->delete_images) && ! empty($request->delete_images);
+
+        if ($hasDeleteImages) {
             foreach ($request->delete_images as $imageId) {
                 if ($imageId) {
                     $media = $product->media()->find($imageId);
@@ -328,7 +328,6 @@ class ProductController extends Controller
                 }
             }
         }
-        // Si delete_images est envoyé sans nouveau fichier, on ignore (protection de sécurité)
 
         // Gérer l'upload de nouvelles images
         if ($request->hasFile('images')) {
@@ -381,6 +380,8 @@ class ProductController extends Controller
             ]);
         }
 
+        ActivityLogger::logDelete('Produit', $product);
+
         $product->delete();
 
         return redirect()->route('products.index')
@@ -392,12 +393,19 @@ class ProductController extends Controller
      */
     public function uploadImage(Request $request)
     {
+        $file = $request->file('image') ?? $request->file('images');
+
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'images' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
 
-        $path = $request->file('image')->store('temp', 'public');
-        
+        if (! $file) {
+            return response()->json(['message' => 'Aucune image fournie.'], 422);
+        }
+
+        $path = $file->store('temp', 'public');
+
         return response()->json([
             'path' => $path,
             'url' => asset('storage/' . $path),

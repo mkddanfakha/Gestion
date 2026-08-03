@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -44,6 +45,8 @@ class CompanyController extends Controller
 
         $company = Company::getInstance();
         $company->update($validated);
+
+        ActivityLogger::logUpdate('Entreprise', $company);
 
         return redirect()->route('company.edit')
             ->with('success', 'Informations de l\'entreprise mises à jour avec succès.');

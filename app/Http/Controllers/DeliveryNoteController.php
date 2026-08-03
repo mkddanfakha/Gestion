@@ -7,6 +7,7 @@ use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Company;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -132,6 +133,11 @@ class DeliveryNoteController extends Controller
             $dn->validate();
         }
 
+        ActivityLogger::logCreate('Bon de livraison', $dn);
+        if ($validated['status'] === 'validated') {
+            ActivityLogger::logValidate('Bon de livraison', $dn);
+        }
+
         return redirect()->route('delivery-notes.index')
             ->with('success', 'Bon de livraison créé avec succès.');
     }
@@ -201,6 +207,8 @@ class DeliveryNoteController extends Controller
             return back()->withErrors(['message' => 'Un bon de livraison validé ne peut pas être modifié.']);
         }
 
+        $oldStatus = $deliveryNote->status;
+
         $validated = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'purchase_order_id' => 'required|exists:purchase_orders,id',
@@ -263,6 +271,16 @@ class DeliveryNoteController extends Controller
             $deliveryNote->save();
         });
 
+        $deliveryNote->refresh();
+
+        if ($validated['status'] === 'validated' && $oldStatus !== 'validated') {
+            ActivityLogger::logValidate('Bon de livraison', $deliveryNote);
+        } elseif ($validated['status'] === 'cancelled' && $oldStatus !== 'cancelled') {
+            ActivityLogger::logCancel('Bon de livraison', $deliveryNote);
+        } else {
+            ActivityLogger::logUpdate('Bon de livraison', $deliveryNote);
+        }
+
         return redirect()->route('delivery-notes.show', $deliveryNote)
             ->with('success', 'Bon de livraison modifié avec succès.');
     }
@@ -278,6 +296,8 @@ class DeliveryNoteController extends Controller
         if ($deliveryNote->status === 'validated') {
             return back()->withErrors(['message' => 'Un bon de livraison validé ne peut pas être supprimé.']);
         }
+
+        ActivityLogger::logDelete('Bon de livraison', $deliveryNote);
 
         $deliveryNote->delete();
 
@@ -299,6 +319,8 @@ class DeliveryNoteController extends Controller
         $success = $deliveryNote->validate();
 
         if ($success) {
+            ActivityLogger::logValidate('Bon de livraison', $deliveryNote);
+
             return redirect()->route('delivery-notes.show', $deliveryNote)
                 ->with('success', 'Bon de livraison validé et stock ajusté avec succès.');
         }
@@ -348,6 +370,8 @@ class DeliveryNoteController extends Controller
             'invoice_file_mime' => $file->getClientMimeType(),
             'invoice_file_size' => $file->getSize(),
         ]);
+
+        ActivityLogger::logUpdate('Bon de livraison', $deliveryNote);
 
         return back()->with('success', 'Fichier de facture/BL uploadé avec succès.');
     }
@@ -427,6 +451,8 @@ class DeliveryNoteController extends Controller
             'invoice_file_mime' => null,
             'invoice_file_size' => null,
         ]);
+
+        ActivityLogger::logUpdate('Bon de livraison', $deliveryNote);
 
         return back()->with('success', 'Fichier de facture/BL supprimé avec succès.');
     }

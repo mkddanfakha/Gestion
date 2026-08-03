@@ -363,6 +363,12 @@
       </div>
     </div>
 
+    <RecentActivities
+      v-if="recentActivities.length > 0 || activityStats.actions_today > 0"
+      :activities="recentActivities"
+      :stats="activityStats"
+    />
+
     <!-- Graphique des produits les plus vendus -->
     <div class="card mb-4">
       <div class="card-header">
@@ -496,6 +502,7 @@ import { Link, usePage } from '@inertiajs/vue3'
 import { formatDate, formatDateShort } from '@/utils/dateFormatter'
 import { route } from '@/lib/routes'
 import ProductSalesChart from '@/components/ProductSalesChart.vue'
+import RecentActivities from '@/components/RecentActivities.vue'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 
 interface Props {
@@ -581,11 +588,29 @@ interface Props {
     due_date: string
     payment_status: string
   }>
+  recentActivities?: Array<{
+    id: number
+    action: string
+    description: string
+    user_name: string
+    created_at: string
+  }>
+  activityStats?: {
+    actions_today: number
+    logins_today: number
+    deletions_today: number
+  }
 }
 
 const props = withDefaults(defineProps<Props>(), {
   expiringProducts: () => [],
-  salesDueToday: () => []
+  salesDueToday: () => [],
+  recentActivities: () => [],
+  activityStats: () => ({
+    actions_today: 0,
+    logins_today: 0,
+    deletions_today: 0,
+  }),
 })
 
 const { success, error } = useSweetAlert()

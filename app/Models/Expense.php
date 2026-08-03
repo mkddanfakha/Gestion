@@ -35,6 +35,18 @@ class Expense extends Model
     }
 
     /**
+     * Limiter la visibilité des dépenses selon le rôle de l'utilisateur.
+     */
+    public function scopeVisibleTo($query, ?User $user)
+    {
+        if ($user?->isGestionnaire()) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query;
+    }
+
+    /**
      * Générer automatiquement un numéro de dépense unique
      */
     public static function generateExpenseNumber(): string

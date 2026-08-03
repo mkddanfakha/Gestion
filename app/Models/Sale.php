@@ -57,6 +57,18 @@ class Sale extends Model
     }
 
     /**
+     * Limiter la visibilité des ventes selon le rôle de l'utilisateur.
+     */
+    public function scopeVisibleTo($query, ?User $user)
+    {
+        if ($user?->isVendeur()) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query;
+    }
+
+    /**
      * Relation avec les éléments de vente
      */
     public function saleItems(): HasMany

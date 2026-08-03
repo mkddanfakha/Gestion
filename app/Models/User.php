@@ -125,6 +125,11 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function activityLogs()
+    {
+        return $this->hasMany(ActivityLog::class);
+    }
+
     /**
      * Vérifier si l'utilisateur a une permission spécifique
      */

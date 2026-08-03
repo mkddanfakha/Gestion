@@ -2,11 +2,16 @@
 
 namespace App\Providers;
 
+use App\Models\ActivityLog;
+use App\Policies\ActivityLogPolicy;
+use App\Services\ActivityLogger;
+use App\Services\Audit\ChangeDetector;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Schema; // Import Schema
 use Illuminate\Support\Facades\Event;
-use Spatie\Backup\Events\BackupHasFailed;
-use Spatie\Backup\Events\BackupWasSuccessful;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Backup\Events\CleanupHasFailed;
 use Spatie\Backup\Events\CleanupWasSuccessful;
 use Spatie\Backup\Events\HealthyBackupWasFound;
@@ -14,36 +19,53 @@ use Spatie\Backup\Events\UnhealthyBackupWasFound;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        Schema::defaultStringLength(191); // Set a shorter default string length
-        
-        // Configurer le fuseau horaire du Sénégal globalement
-        // Le fuseau horaire est déjà configuré dans config/app.php ('timezone' => 'Africa/Dakar')
-        // Cette ligne est redondante mais garantit que PHP utilise aussi ce fuseau horaire
-        // Utilisation de @ pour supprimer les warnings si le fuseau horaire n'est pas disponible
+        Gate::policy(ActivityLog::class, ActivityLogPolicy::class);
+
+        $this->registerAuditListeners();
+
+        Event::listen(Logout::class, function (Logout $event) {
+            if ($event->user) {
+                ActivityLogger::logLogout($event->user, request());
+            }
+        });
+
+        Schema::defaultStringLength(191);
+
         @date_default_timezone_set('Africa/Dakar');
-        
-        // Ignorer silencieusement tous les événements de backup pour éviter les erreurs de notification
+
         Event::listen([
             CleanupHasFailed::class,
             CleanupWasSuccessful::class,
             HealthyBackupWasFound::class,
             UnhealthyBackupWasFound::class,
         ], function ($event) {
-            // Ignorer silencieusement
             return true;
         });
+    }
+
+    private function registerAuditListeners(): void
+    {
+        foreach (glob(app_path('Models/*.php')) as $modelFile) {
+            $modelClass = 'App\\Models\\' . basename($modelFile, '.php');
+
+            if (!class_exists($modelClass) || !is_subclass_of($modelClass, Model::class)) {
+                continue;
+            }
+
+            if ($modelClass === ActivityLog::class) {
+                continue;
+            }
+
+            $modelClass::updating(function (Model $model) {
+                ChangeDetector::rememberOriginal($model);
+            });
+        }
     }
 }

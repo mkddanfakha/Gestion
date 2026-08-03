@@ -414,6 +414,7 @@ import { ref, watch, nextTick } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import FilePondImageUpload from '@/components/FilePondImageUpload.vue'
+import { useCsrfToken } from '@/lib/csrf'
 
 interface Category {
   id: number
@@ -426,7 +427,8 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const { success, error } = useSweetAlert()
+const { error } = useSweetAlert()
+const { getCsrfToken } = useCsrfToken()
 
 // État des erreurs de validation côté client
 const clientErrors = ref<Record<string, string>>({})
@@ -700,13 +702,11 @@ const generateSku = async () => {
   isGeneratingSku.value = true
   
   try {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-    
     const response = await fetch(route('products.generate-sku'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': csrfToken || '',
+        'X-CSRF-TOKEN': getCsrfToken(),
         'Accept': 'application/json',
       },
       body: JSON.stringify({
@@ -762,15 +762,6 @@ const submit = () => {
   // Envoyer avec Inertia
   form.transform(() => formData).post(route('products.store'), {
     forceFormData: true,
-    onSuccess: () => {
-      success('Produit créé avec succès !')
-      form.reset()
-      clientErrors.value = {}
-      previewImageUrl.value = null
-      if (filePondRef.value) {
-        filePondRef.value.removeFiles()
-      }
-    },
     onError: () => {
       error('Erreur lors de la création du produit.')
     }

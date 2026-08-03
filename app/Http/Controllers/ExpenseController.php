@@ -5,17 +5,33 @@ namespace App\Http\Controllers;
 use App\Models\Expense;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Services\ActivityLogger;
 
 class ExpenseController extends Controller
 {
+    /**
+     * Empêcher un gestionnaire d'accéder aux dépenses des autres utilisateurs.
+     */
+    protected function authorizeExpenseAccess(Request $request, Expense $expense): void
+    {
+        $user = $request->user();
+
+        if ($user?->isGestionnaire() && $expense->user_id !== $user->id) {
+            abort(403, 'Accès refusé. Vous ne pouvez accéder qu\'à vos propres dépenses.');
+        }
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
         $this->checkPermission($request, 'expenses', 'view');
+
+        $query = Expense::query()->visibleTo($request->user());
         
-        $expenses = Expense::with('user')
+        $expenses = (clone $query)
+            ->with('user')
             ->orderBy('expense_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->paginate(15);
@@ -27,11 +43,12 @@ class ExpenseController extends Controller
             return $expense;
         });
 
-        // Calculer les statistiques sur toutes les dépenses (pas seulement la page actuelle)
+        // Calculer les statistiques sur les dépenses visibles
         $now = now();
         
         // Dépenses du mois en cours
-        $monthlyExpenses = Expense::whereYear('expense_date', $now->year)
+        $monthlyExpenses = (clone $query)
+            ->whereYear('expense_date', $now->year)
             ->whereMonth('expense_date', $now->month)
             ->sum('amount');
         
@@ -39,11 +56,12 @@ class ExpenseController extends Controller
         $startOfWeek = $now->copy()->startOfWeek(); // Lundi de la semaine
         $endOfWeek = $now->copy()->endOfWeek(); // Dimanche de la semaine
         
-        $weeklyExpenses = Expense::whereBetween('expense_date', [$startOfWeek->format('Y-m-d'), $endOfWeek->format('Y-m-d')])
+        $weeklyExpenses = (clone $query)
+            ->whereBetween('expense_date', [$startOfWeek->format('Y-m-d'), $endOfWeek->format('Y-m-d')])
             ->sum('amount');
         
-        // Total de toutes les dépenses
-        $totalExpenses = Expense::sum('amount');
+        // Total des dépenses visibles
+        $totalExpenses = (clone $query)->sum('amount');
 
         return Inertia::render('Expenses/Index', [
             'expenses' => $expenses,
@@ -88,7 +106,9 @@ class ExpenseController extends Controller
         $validated['expense_number'] = Expense::generateExpenseNumber();
         $validated['user_id'] = auth()->id();
 
-        Expense::create($validated);
+        $expense = Expense::create($validated);
+
+        ActivityLogger::logCreate('Dépense', $expense);
 
         return redirect()->route('expenses.index')
             ->with('success', 'Dépense créée avec succès.');
@@ -100,6 +120,7 @@ class ExpenseController extends Controller
     public function show(Request $request, Expense $expense)
     {
         $this->checkPermission($request, 'expenses', 'view');
+        $this->authorizeExpenseAccess($request, $expense);
         
         $expense->load('user');
 
@@ -118,6 +139,7 @@ class ExpenseController extends Controller
     public function edit(Request $request, Expense $expense)
     {
         $this->checkPermission($request, 'expenses', 'edit');
+        $this->authorizeExpenseAccess($request, $expense);
         
         return Inertia::render('Expenses/Edit', [
             'expense' => $expense,
@@ -130,6 +152,7 @@ class ExpenseController extends Controller
     public function update(Request $request, Expense $expense)
     {
         $this->checkPermission($request, 'expenses', 'update');
+        $this->authorizeExpenseAccess($request, $expense);
         
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -145,6 +168,8 @@ class ExpenseController extends Controller
 
         $expense->update($validated);
 
+        ActivityLogger::logUpdate('Dépense', $expense);
+
         return redirect()->route('expenses.index')
             ->with('success', 'Dépense modifiée avec succès.');
     }
@@ -155,6 +180,9 @@ class ExpenseController extends Controller
     public function destroy(Request $request, Expense $expense)
     {
         $this->checkPermission($request, 'expenses', 'delete');
+        $this->authorizeExpenseAccess($request, $expense);
+
+        ActivityLogger::logDelete('Dépense', $expense);
         
         $expense->delete();
 

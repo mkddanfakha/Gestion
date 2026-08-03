@@ -12,6 +12,7 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
 // Laravel Echo pour les notifications en temps réel avec Pusher
 import echo from './echo';
+import { updateCsrfMetaToken } from './lib/csrf';
 
 // Déclarer Echo comme global
 declare global {
@@ -76,6 +77,13 @@ createInertiaApp({
                 loadingState.isLoading = false;
                 window.dispatchEvent(new CustomEvent('loading-state-changed', { detail: false }));
             }, 300);
+        });
+
+        document.addEventListener('inertia:success', (event) => {
+            const token = (event as CustomEvent).detail?.page?.props?.csrf_token;
+            if (typeof token === 'string') {
+                updateCsrfMetaToken(token);
+            }
         });
         
         return app;

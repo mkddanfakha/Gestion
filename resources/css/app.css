@@ -106,6 +106,7 @@ body {
     background-color: #1e293b;
     border-color: #334155;
     color: #e2e8f0;
+    color-scheme: dark;
 }
 
 .dark .form-control:focus,
@@ -114,6 +115,27 @@ body {
     border-color: #3b82f6;
     color: #e2e8f0;
     box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+}
+
+.dark .form-control::placeholder,
+.dark .form-select::placeholder,
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+.dark .form-select option {
+    background-color: #1e293b;
+    color: #e2e8f0;
+}
+
+.dark .form-select option[value=""] {
+    color: #94a3b8;
+}
+
+.dark .form-select:not(:focus):has(option[value=""]:checked) {
+    color: #94a3b8 !important;
 }
 
 .dark .btn-outline-secondary {

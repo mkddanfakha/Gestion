@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Category;
 use App\Models\Expense;
 use App\Models\DeliveryNote;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -25,9 +26,9 @@ class DashboardController extends Controller
         $downPaymentsAmount = Sale::where('payment_status', '!=', 'paid')->sum('down_payment_amount') ?? 0;
         $totalRevenue = $paidSalesAmount + $downPaymentsAmount;
         
-        // Calculer les dépenses : BL validés + dépenses
+        // Calculer les dépenses : BL validés + dépenses visibles pour l'utilisateur
         $validatedDeliveryNotesAmount = DeliveryNote::where('status', 'validated')->sum('total_amount') ?? 0;
-        $totalExpensesAmount = Expense::sum('amount') ?? 0;
+        $totalExpensesAmount = Expense::query()->visibleTo($request->user())->sum('amount') ?? 0;
         $totalCosts = $validatedDeliveryNotesAmount + $totalExpensesAmount;
         
         // Calculer le bénéfice net
@@ -38,7 +39,7 @@ class DashboardController extends Controller
             'total_customers' => Customer::count(),
             'total_sales' => Sale::count(),
             'total_categories' => Category::count(),
-            'total_expenses' => Expense::count(),
+            'total_expenses' => Expense::query()->visibleTo($request->user())->count(),
             'low_stock_products' => Product::whereRaw('stock_quantity <= min_stock_level')->count(),
             'total_revenue' => $totalRevenue,
             'paid_sales_amount' => $paidSalesAmount,
@@ -103,7 +104,9 @@ class DashboardController extends Controller
             ->get();
 
         // Dépenses récentes (3 dernières)
-        $recentExpenses = Expense::with('user')
+        $recentExpenses = Expense::query()
+            ->visibleTo($request->user())
+            ->with('user')
             ->orderBy('created_at', 'desc')
             ->limit(3)
             ->get();
@@ -185,6 +188,41 @@ class DashboardController extends Controller
                 ];
             });
 
+        $recentActivities = [];
+        $activityStats = [
+            'actions_today' => 0,
+            'logins_today' => 0,
+            'deletions_today' => 0,
+        ];
+
+        if ($request->user()?->isAdmin()) {
+            $today = now()->toDateString();
+
+            $activityStats = [
+                'actions_today' => ActivityLog::whereDate('created_at', $today)->count(),
+                'logins_today' => ActivityLog::whereDate('created_at', $today)
+                    ->where('action', ActivityLog::ACTION_LOGIN)
+                    ->count(),
+                'deletions_today' => ActivityLog::whereDate('created_at', $today)
+                    ->where('action', ActivityLog::ACTION_DELETE)
+                    ->count(),
+            ];
+
+            $recentActivities = ActivityLog::with('user')
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get()
+                ->map(function (ActivityLog $log) {
+                    return [
+                        'id' => $log->id,
+                        'action' => $log->action,
+                        'description' => $log->description,
+                        'user_name' => $log->user?->name ?? 'Système',
+                        'created_at' => $log->created_at->format('d/m/Y H:i'),
+                    ];
+                });
+        }
+
         return Inertia::render('Dashboard', [
             'stats' => $stats,
             'lowStockProducts' => $lowStockProducts,
@@ -196,6 +234,8 @@ class DashboardController extends Controller
             'topProductsForChart' => $topProductsForChart,
             'topProducts' => $topProducts,
             'salesDueToday' => $salesDueToday,
+            'recentActivities' => $recentActivities,
+            'activityStats' => $activityStats,
         ]);
     }
 }

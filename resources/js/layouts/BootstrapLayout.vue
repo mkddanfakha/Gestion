@@ -115,6 +115,12 @@
               Sauvegardes
             </Link>
           </li>
+          <li v-if="isAdmin" class="nav-item mb-2">
+            <Link :href="route('admin.activity-logs.index')" class="nav-link" :class="{ active: $page.url.startsWith('/admin/activity-logs') }">
+              <i class="bi bi-journal-text me-2"></i>
+              Journal d'activité
+            </Link>
+          </li>
         </ul>
       </nav>
 

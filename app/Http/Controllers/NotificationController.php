@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\NotificationRead;
+use App\Models\Sale;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -71,7 +73,7 @@ class NotificationController extends Controller
     private function markAllOfTypeAsRead(int $userId, string $type)
     {
         // Récupérer les IDs des notifications actuelles selon le type
-        $notificationIds = $this->getCurrentNotificationIds($type);
+        $notificationIds = $this->getCurrentNotificationIds($type, $userId);
 
         if (empty($notificationIds)) {
             return;
@@ -98,11 +100,14 @@ class NotificationController extends Controller
     /**
      * Récupérer les IDs des notifications actuelles selon le type
      */
-    private function getCurrentNotificationIds(string $type): array
+    private function getCurrentNotificationIds(string $type, ?int $userId = null): array
     {
+        $user = $userId ? User::find($userId) : null;
+
         switch ($type) {
             case 'sale_due_today':
-                return \App\Models\Sale::whereNotNull('due_date')
+                return Sale::visibleTo($user)
+                    ->whereNotNull('due_date')
                     ->whereDate('due_date', now()->toDateString())
                     ->where('payment_status', '!=', 'paid')
                     ->pluck('id')

@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Company;
 use App\Services\NotificationService;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Traits\GeneratesPdf;
@@ -14,6 +15,19 @@ use App\Traits\GeneratesPdf;
 class SaleController extends Controller
 {
     use GeneratesPdf;
+
+    /**
+     * Empêcher un vendeur d'accéder aux ventes des autres utilisateurs.
+     */
+    protected function authorizeSaleAccess(Request $request, Sale $sale): void
+    {
+        $user = $request->user();
+
+        if ($user?->isVendeur() && $sale->user_id !== $user->id) {
+            abort(403, 'Accès refusé. Vous ne pouvez accéder qu\'à vos propres ventes.');
+        }
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -22,6 +36,7 @@ class SaleController extends Controller
         $this->checkPermission($request, 'sales', 'view');
         
         $query = Sale::with(['customer', 'user'])
+            ->visibleTo($request->user())
             ->withCount('saleItems as items_count');
 
         // Filtrage par date
@@ -219,6 +234,11 @@ class SaleController extends Controller
             NotificationService::notifySaleDueToday($sale);
         }
 
+        ActivityLogger::logCreate('Facture', $sale);
+        if ($paymentStatus === 'paid') {
+            ActivityLogger::logPayment($sale);
+        }
+
         return redirect()->route('sales.show', $sale->id)
             ->with('success', 'Vente créée avec succès.');
     }
@@ -229,6 +249,7 @@ class SaleController extends Controller
     public function show(Request $request, Sale $sale)
     {
         $this->checkPermission($request, 'sales', 'view');
+        $this->authorizeSaleAccess($request, $sale);
         
         // Charger les relations de base
         $sale->load(['customer', 'user']);
@@ -264,6 +285,7 @@ class SaleController extends Controller
     public function edit(Request $request, Sale $sale)
     {
         $this->checkPermission($request, 'sales', 'edit');
+        $this->authorizeSaleAccess($request, $sale);
         
         // Charger les articles séparément
         $saleItems = $sale->saleItems()->with('product.category')->get();
@@ -309,6 +331,9 @@ class SaleController extends Controller
     public function update(Request $request, Sale $sale)
     {
         $this->checkPermission($request, 'sales', 'update');
+        $this->authorizeSaleAccess($request, $sale);
+
+        $oldPaymentStatus = $sale->payment_status;
         
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
@@ -469,6 +494,12 @@ class SaleController extends Controller
         }
 
         // Recharger la vente pour avoir les dernières données
+        if ($paymentStatus === 'paid' && $oldPaymentStatus !== 'paid') {
+            ActivityLogger::logPayment($sale);
+        } else {
+            ActivityLogger::logUpdate('Facture', $sale);
+        }
+
         $sale->refresh();
 
         // Vérifier si la vente a une date d'échéance aujourd'hui et n'est pas payée
@@ -486,6 +517,7 @@ class SaleController extends Controller
     public function destroy(Request $request, Sale $sale)
     {
         $this->checkPermission($request, 'sales', 'delete');
+        $this->authorizeSaleAccess($request, $sale);
         
         // Restaurer le stock
         foreach ($sale->saleItems as $item) {
@@ -494,6 +526,8 @@ class SaleController extends Controller
                 $product->increment('stock_quantity', $item->quantity);
             }
         }
+
+        ActivityLogger::logCancel('Facture', $sale);
 
         $sale->delete();
 
@@ -507,6 +541,7 @@ class SaleController extends Controller
     public function downloadInvoice(Request $request, Sale $sale)
     {
         $this->checkPermission($request, 'sales', 'invoice');
+        $this->authorizeSaleAccess($request, $sale);
         
         try {
             // Charger les relations nécessaires
@@ -532,6 +567,7 @@ class SaleController extends Controller
     public function printInvoice(Request $request, Sale $sale)
     {
         $this->checkPermission($request, 'sales', 'invoice');
+        $this->authorizeSaleAccess($request, $sale);
         
         try {
             // Charger les relations nécessaires

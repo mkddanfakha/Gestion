@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Company;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Exports\CustomersExport;
@@ -69,7 +70,9 @@ class CustomerController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        Customer::create($validated);
+        $customer = Customer::create($validated);
+
+        ActivityLogger::logCreate('Client', $customer);
 
         return redirect()->route('customers.index')
             ->with('success', 'Client créé avec succès.');
@@ -125,6 +128,8 @@ class CustomerController extends Controller
 
         $customer->update($validated);
 
+        ActivityLogger::logUpdate('Client', $customer);
+
         return redirect()->route('customers.index')
             ->with('success', 'Client mis à jour avec succès.');
     }
@@ -135,6 +140,8 @@ class CustomerController extends Controller
     public function destroy(Request $request, Customer $customer)
     {
         $this->checkPermission($request, 'customers', 'delete');
+
+        ActivityLogger::logDelete('Client', $customer);
         
         $customer->delete();
 

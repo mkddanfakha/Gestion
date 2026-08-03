@@ -116,6 +116,8 @@ export function route(name: string, params: any = {}) {
         'admin.backups.download': '/admin/backups/{backup}/download',
         'admin.backups.restore': '/admin/backups/{backup}/restore',
         'admin.backups.import': '/admin/backups/import',
+        'admin.activity-logs.index': '/admin/activity-logs',
+        'admin.activity-logs.show': '/admin/activity-logs/{activityLog}',
     };
 
     let url = routes[name];

@@ -57,6 +57,7 @@ class HandleInertiaRequests extends Middleware
 
             // Ventes avec date d'échéance aujourd'hui
             $salesDueToday = Sale::with(['customer'])
+                ->visibleTo($request->user())
                 ->whereNotNull('due_date')
                 ->whereDate('due_date', now()->toDateString())
                 ->where('payment_status', '!=', 'paid')

@@ -6,6 +6,7 @@ use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\Company;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Traits\GeneratesPdf;
@@ -107,6 +108,13 @@ class PurchaseOrderController extends Controller
         $po->calculateTotal();
         $po->save();
 
+        ActivityLogger::logCreate('Bon de commande', $po);
+        if ($validated['status'] === 'confirmed') {
+            ActivityLogger::logValidate('Bon de commande', $po);
+        } elseif ($validated['status'] === 'cancelled') {
+            ActivityLogger::logCancel('Bon de commande', $po);
+        }
+
         return redirect()->route('purchase-orders.index')
             ->with('success', 'Bon de commande créé avec succès.');
     }
@@ -160,6 +168,8 @@ class PurchaseOrderController extends Controller
     public function update(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->checkPermission($request, 'purchase-orders', 'update');
+
+        $oldStatus = $purchaseOrder->status;
         
         $validated = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
@@ -192,6 +202,14 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->calculateTotal();
         $purchaseOrder->save();
 
+        if ($validated['status'] === 'confirmed' && $oldStatus !== 'confirmed') {
+            ActivityLogger::logValidate('Bon de commande', $purchaseOrder);
+        } elseif ($validated['status'] === 'cancelled' && $oldStatus !== 'cancelled') {
+            ActivityLogger::logCancel('Bon de commande', $purchaseOrder);
+        } else {
+            ActivityLogger::logUpdate('Bon de commande', $purchaseOrder);
+        }
+
         return redirect()->route('purchase-orders.index')
             ->with('success', 'Bon de commande modifié avec succès.');
     }
@@ -202,6 +220,8 @@ class PurchaseOrderController extends Controller
     public function destroy(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->checkPermission($request, 'purchase-orders', 'delete');
+
+        ActivityLogger::logDelete('Bon de commande', $purchaseOrder);
         
         $purchaseOrder->delete();
 

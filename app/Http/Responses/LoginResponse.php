@@ -2,6 +2,7 @@
 
 namespace App\Http\Responses;
 
+use App\Services\ActivityLogger;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Illuminate\Http\Request;
 
@@ -14,6 +15,8 @@ class LoginResponse implements LoginResponseContract
         $user = $request->user();
         if ($user) {
             $user->refresh();
+
+            ActivityLogger::logLogin($user, $request);
             
             // Rediriger les vendeurs vers la liste des ventes
             if ($user->hasRole('vendeur')) {

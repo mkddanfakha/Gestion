@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Permission;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
@@ -190,6 +191,8 @@ class UserController extends Controller
             $user->permissions()->attach($validated['permissions']);
         }
 
+        ActivityLogger::logCreate('Utilisateur', $user);
+
         return redirect()->route('admin.users.index')
             ->with('success', 'Utilisateur créé avec succès.');
     }
@@ -280,6 +283,8 @@ class UserController extends Controller
             $user->permissions()->sync([]);
         }
 
+        ActivityLogger::logUpdate('Utilisateur', $user);
+
         return redirect()->route('admin.users.index')
             ->with('success', 'Utilisateur mis à jour avec succès.');
     }
@@ -308,6 +313,8 @@ class UserController extends Controller
             return redirect()->route('admin.users.index')
                 ->with('error', 'Vous ne pouvez pas supprimer votre propre compte. Un autre administrateur doit le faire.');
         }
+
+        ActivityLogger::logDelete('Utilisateur', $user);
 
         $user->delete();
 
