@@ -92,10 +92,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/company', [CompanyController::class, 'edit'])->name('company.edit');
     Route::put('/company', [CompanyController::class, 'update'])->name('company.update');
     
-           // Notifications
-           Route::post('/notifications/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
-           Route::post('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
-           Route::post('/notifications/test', [NotificationController::class, 'testNotification'])->name('notifications.test');
+    // Notifications → app/Modules/NotificationCenter/Http/Routes/notifications.php
     
     // Administration - Routes protégées par le middleware admin
     Route::middleware([EnsureUserIsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
@@ -106,6 +103,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/backups/import', [\App\Http\Controllers\Admin\BackupController::class, 'import'])->name('backups.import');
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
         Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
+        Route::get('/settings/notifications', [\App\Http\Controllers\Admin\NotificationSettingsController::class, 'edit'])->name('settings.notifications');
     });
 });
 

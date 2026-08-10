@@ -355,7 +355,11 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
 }
 
-const getPaymentMethodLabel = (method: string) => {
+const getPaymentMethodLabel = (method?: string | null) => {
+  if (!method) {
+    return 'Non renseigné'
+  }
+
   const labels: Record<string, string> = {
     cash: 'Espèces',
     card: 'Carte',

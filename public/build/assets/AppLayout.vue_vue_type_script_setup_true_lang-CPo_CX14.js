@@ -1,1 +1,0 @@
-import{B as e}from"./BootstrapLayout-QA4yqgBv.js";import{d as t,c as o,w as s,K as c,o as u}from"./app-Qfs2OB8H.js";const n=t({__name:"AppLayout",props:{breadcrumbs:{default:()=>[]}},setup(r){return(a,m)=>(u(),o(e,{breadcrumbs:r.breadcrumbs},{default:s(()=>[c(a.$slots,"default")]),_:3},8,["breadcrumbs"]))}});export{n as _};

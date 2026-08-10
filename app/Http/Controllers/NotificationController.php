@@ -2,40 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\NotificationRead;
-use App\Models\Sale;
-use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class NotificationController extends Controller
 {
+    public function __construct(
+        protected NotificationService $notificationService
+    ) {}
+
     /**
      * Marquer une notification spécifique comme lue
      */
     public function markAsRead(Request $request)
     {
+        $legacyTypes = config('notifications.legacy_api_types', []);
+
         $request->validate([
-            'type' => 'required|string|in:sale_due_today,low_stock,expiring_product',
+            'type' => ['required', 'string', Rule::in($legacyTypes)],
             'id' => 'required|integer',
         ]);
 
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Non authentifié'], 401);
         }
 
-        NotificationRead::updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'notification_type' => $request->type,
-                'notification_id' => $request->id,
-            ],
-            [
-                'read_at' => now(),
-            ]
-        );
+        $this->notificationService->markAsRead($user, $request->type, (int) $request->id);
 
         return response()->json(['success' => true]);
     }
@@ -45,93 +40,20 @@ class NotificationController extends Controller
      */
     public function markAllAsRead(Request $request)
     {
+        $legacyTypes = [...config('notifications.legacy_api_types', []), 'all'];
+
         $request->validate([
-            'type' => 'required|string|in:sale_due_today,low_stock,expiring_product,all',
+            'type' => ['required', 'string', Rule::in($legacyTypes)],
         ]);
 
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Non authentifié'], 401);
         }
 
-        if ($request->type === 'all') {
-            // Marquer toutes les notifications comme lues
-            $types = ['sale_due_today', 'low_stock', 'expiring_product'];
-            foreach ($types as $type) {
-                $this->markAllOfTypeAsRead($user->id, $type);
-            }
-        } else {
-            $this->markAllOfTypeAsRead($user->id, $request->type);
-        }
+        $this->notificationService->markAllAsRead($user, $request->type);
 
         return response()->json(['success' => true]);
-    }
-
-    /**
-     * Marquer toutes les notifications d'un type spécifique comme lues
-     */
-    private function markAllOfTypeAsRead(int $userId, string $type)
-    {
-        // Récupérer les IDs des notifications actuelles selon le type
-        $notificationIds = $this->getCurrentNotificationIds($type, $userId);
-
-        if (empty($notificationIds)) {
-            return;
-        }
-
-        // Insérer en masse les notifications lues
-        $inserts = [];
-        foreach ($notificationIds as $id) {
-            $inserts[] = [
-                'user_id' => $userId,
-                'notification_type' => $type,
-                'notification_id' => $id,
-                'read_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-        }
-
-        if (!empty($inserts)) {
-            DB::table('notification_reads')->insertOrIgnore($inserts);
-        }
-    }
-
-    /**
-     * Récupérer les IDs des notifications actuelles selon le type
-     */
-    private function getCurrentNotificationIds(string $type, ?int $userId = null): array
-    {
-        $user = $userId ? User::find($userId) : null;
-
-        switch ($type) {
-            case 'sale_due_today':
-                return Sale::visibleTo($user)
-                    ->whereNotNull('due_date')
-                    ->whereDate('due_date', now()->toDateString())
-                    ->where('payment_status', '!=', 'paid')
-                    ->pluck('id')
-                    ->toArray();
-
-            case 'low_stock':
-                return \App\Models\Product::whereRaw('stock_quantity <= min_stock_level')
-                    ->where('is_active', true)
-                    ->pluck('id')
-                    ->toArray();
-
-            case 'expiring_product':
-                return \App\Models\Product::whereNotNull('expiration_date')
-                    ->where('is_active', true)
-                    ->get()
-                    ->filter(function ($product) {
-                        return $product->isExpired() || $product->isExpiringSoon();
-                    })
-                    ->pluck('id')
-                    ->toArray();
-
-            default:
-                return [];
-        }
     }
 
     /**
@@ -140,7 +62,7 @@ class NotificationController extends Controller
     public function testNotification(Request $request)
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Non authentifié'], 401);
         }
 

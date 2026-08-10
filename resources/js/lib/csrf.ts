@@ -1,5 +1,9 @@
 import { usePage } from '@inertiajs/vue3'
 
+export function getCsrfToken(): string {
+    return getCsrfTokenFromMeta()
+}
+
 export function getCsrfTokenFromMeta(): string {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
 }

@@ -6,9 +6,10 @@ use App\Models\Sale;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Company;
-use App\Services\NotificationService;
 use App\Services\ActivityLogger;
+use App\Services\SalePaymentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Traits\GeneratesPdf;
 
@@ -104,10 +105,14 @@ class SaleController extends Controller
     public function store(Request $request)
     {
         $this->checkPermission($request, 'sales', 'create');
+
+        if ($request->input('payment_method') === '') {
+            $request->merge(['payment_method' => null]);
+        }
         
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
-            'payment_method' => 'required|string|in:cash,card,bank_transfer,check,orange_money,wave',
+            'payment_method' => 'nullable|string|in:cash,card,bank_transfer,check,orange_money,wave',
             'notes' => 'nullable|string|max:1000',
             'tax_amount' => 'nullable|numeric|min:0',
             'discount_amount' => 'nullable|numeric|min:0',
@@ -121,7 +126,10 @@ class SaleController extends Controller
 
         // Vérifier le stock disponible pour chaque produit
         $stockErrors = [];
+        $expiredErrors = [];
         $productQuantities = [];
+        $expiredMessage = config('notifications.contextual_messages.product_expired');
+        $stockMessage = config('notifications.contextual_messages.insufficient_stock');
         
         // Calculer les quantités totales par produit
         foreach ($validated['items'] as $item) {
@@ -132,14 +140,21 @@ class SaleController extends Controller
             $productQuantities[$productId] += $item['quantity'];
         }
         
-        // Vérifier le stock pour chaque produit
+        // Vérifier péremption et stock pour chaque produit
+        foreach ($validated['items'] as $index => $item) {
+            $product = Product::find($item['product_id']);
+
+            if ($product && $product->isExpired()) {
+                $expiredErrors["items.{$index}.quantity"] = $expiredMessage;
+            }
+        }
+
         foreach ($productQuantities as $productId => $totalQuantity) {
             $product = Product::find($productId);
             if ($product && $product->stock_quantity < $totalQuantity) {
-                // Trouver tous les indices où ce produit est utilisé
                 foreach ($validated['items'] as $index => $item) {
                     if ($item['product_id'] == $productId) {
-                        $stockErrors["items.{$index}.quantity"] = "Stock insuffisant pour {$product->name}. Stock disponible: {$product->stock_quantity}, Quantité demandée: {$totalQuantity}";
+                        $stockErrors["items.{$index}.quantity"] = $stockMessage;
                     }
                 }
             }
@@ -159,9 +174,9 @@ class SaleController extends Controller
             return back()->withErrors($duplicateErrors)->withInput();
         }
 
-        // Si il y a des erreurs de stock, retourner les erreurs
-        if (!empty($stockErrors)) {
-            return back()->withErrors($stockErrors)->withInput();
+        // Si il y a des erreurs de péremption ou de stock, retourner les erreurs
+        if (! empty($expiredErrors) || ! empty($stockErrors)) {
+            return back()->withErrors([...$expiredErrors, ...$stockErrors])->withInput();
         }
 
         $subtotal = collect($validated['items'])->sum(function($item) {
@@ -172,70 +187,69 @@ class SaleController extends Controller
         $discountAmount = $validated['discount_amount'] ?? 0;
         $downPaymentAmount = $validated['down_payment_amount'] ?? 0;
         $totalAmount = $subtotal + $taxAmount - $discountAmount;
-        $remainingAmount = $totalAmount - $downPaymentAmount;
-        
-        // Déterminer le statut de paiement automatiquement basé sur les montants
-        if ($downPaymentAmount >= $totalAmount && $totalAmount > 0) {
-            // Acompte égal ou supérieur au total = payé
-            $paymentStatus = 'paid';
-            $downPaymentAmount = $totalAmount;
-            $remainingAmount = 0;
-        } elseif ($downPaymentAmount > 0 && $remainingAmount > 0) {
-            // Acompte partiel = paiement partiel
-            $paymentStatus = 'partial';
-        } elseif ($downPaymentAmount == 0 && $totalAmount > 0) {
-            // Aucun acompte = en attente
-            $paymentStatus = 'pending';
-        } else {
-            // Par défaut, payé
-            $paymentStatus = 'paid';
+
+        $paymentState = SalePaymentService::calculatePaymentState($totalAmount, $downPaymentAmount);
+
+        $paymentMethodError = SalePaymentService::paymentMethodValidationMessage(
+            $validated['payment_method'] ?? null,
+            $paymentState['down_payment_amount'],
+        );
+
+        if ($paymentMethodError) {
+            return back()->withErrors(['payment_method' => $paymentMethodError])->withInput();
         }
 
-        $sale = Sale::create([
-            'sale_number' => Sale::generateSaleNumber(),
-            'customer_id' => $validated['customer_id'],
-            'user_id' => auth()->id(),
-            'payment_method' => $validated['payment_method'],
-            'notes' => $validated['notes'],
-            'due_date' => $validated['due_date'] ?? null,
-            'subtotal' => $subtotal,
-            'tax_amount' => $taxAmount,
-            'discount_amount' => $discountAmount,
-            'down_payment_amount' => $downPaymentAmount,
-            'remaining_amount' => $remainingAmount,
-            'payment_status' => $paymentStatus,
-            'total_amount' => $totalAmount,
-            'status' => 'completed',
-        ]);
+        $paymentMethod = SalePaymentService::resolvePaymentMethod(
+            $validated['payment_method'] ?? null,
+            $paymentState['down_payment_amount'],
+        );
 
-        foreach ($validated['items'] as $item) {
-            $sale->saleItems()->create([
-                'product_id' => $item['product_id'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price'],
-                'total_price' => $item['quantity'] * $item['unit_price'],
+        $sale = DB::transaction(function () use (
+            $validated,
+            $subtotal,
+            $taxAmount,
+            $discountAmount,
+            $totalAmount,
+            $paymentState,
+            $paymentMethod,
+        ) {
+            $sale = Sale::create([
+                'sale_number' => Sale::generateSaleNumber(),
+                'customer_id' => $validated['customer_id'],
+                'user_id' => auth()->id(),
+                'payment_method' => $paymentMethod,
+                'notes' => $validated['notes'],
+                'due_date' => $validated['due_date'] ?? null,
+                'subtotal' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'discount_amount' => $discountAmount,
+                'down_payment_amount' => $paymentState['down_payment_amount'],
+                'remaining_amount' => $paymentState['remaining_amount'],
+                'payment_status' => $paymentState['payment_status'],
+                'total_amount' => $totalAmount,
+                'status' => 'completed',
             ]);
 
-            // Mettre à jour le stock
-            $product = Product::find($item['product_id']);
-            if ($product) {
-                $product->decrement('stock_quantity', $item['quantity']);
-                $product->refresh();
-                
-                // Vérifier si le produit est maintenant en stock faible
-                if ($product->stock_quantity <= $product->min_stock_level) {
-                    NotificationService::notifyLowStock($product);
+            foreach ($validated['items'] as $item) {
+                $sale->saleItems()->create([
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'total_price' => $item['quantity'] * $item['unit_price'],
+                ]);
+
+                $product = Product::find($item['product_id']);
+                if ($product) {
+                    $product->decrement('stock_quantity', $item['quantity']);
                 }
             }
-        }
 
-        // Vérifier si la vente a une date d'échéance aujourd'hui et n'est pas payée
-        if ($sale->due_date && $sale->due_date->isToday() && $sale->payment_status !== 'paid') {
-            NotificationService::notifySaleDueToday($sale);
-        }
+            return $sale;
+        });
 
         ActivityLogger::logCreate('Facture', $sale);
-        if ($paymentStatus === 'paid') {
+
+        if ($sale->down_payment_amount > 0) {
             ActivityLogger::logPayment($sale);
         }
 
@@ -333,16 +347,19 @@ class SaleController extends Controller
         $this->checkPermission($request, 'sales', 'update');
         $this->authorizeSaleAccess($request, $sale);
 
+        if ($request->input('payment_method') === '') {
+            $request->merge(['payment_method' => null]);
+        }
+
         $oldPaymentStatus = $sale->payment_status;
         
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
-            'payment_method' => 'required|string|in:cash,card,bank_transfer,check,orange_money,wave',
+            'payment_method' => 'nullable|string|in:cash,card,bank_transfer,check,orange_money,wave',
             'notes' => 'nullable|string|max:1000',
             'tax_amount' => 'nullable|numeric|min:0',
             'discount_amount' => 'nullable|numeric|min:0',
             'down_payment_amount' => 'nullable|numeric|min:0',
-            'payment_status' => 'nullable|string|in:paid,partial,pending',
             'due_date' => 'nullable|date',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
@@ -369,8 +386,19 @@ class SaleController extends Controller
 
         // Vérifier le stock disponible en tenant compte de l'ancienne quantité qui sera restaurée
         $stockErrors = [];
+        $expiredErrors = [];
         $productQuantities = [];
+        $expiredMessage = config('notifications.contextual_messages.product_expired');
+        $stockMessage = config('notifications.contextual_messages.insufficient_stock');
         
+        foreach ($validated['items'] as $index => $item) {
+            $product = Product::find($item['product_id']);
+
+            if ($product && $product->isExpired()) {
+                $expiredErrors["items.{$index}.quantity"] = $expiredMessage;
+            }
+        }
+
         // Calculer les quantités totales par produit pour les nouveaux items
         foreach ($validated['items'] as $item) {
             $productId = $item['product_id'];
@@ -384,7 +412,6 @@ class SaleController extends Controller
         foreach ($productQuantities as $productId => $totalQuantity) {
             $product = Product::find($productId);
             if ($product) {
-                // Calculer l'ancienne quantité pour ce produit
                 $oldQuantity = 0;
                 foreach ($oldItems as $oldItem) {
                     if ($oldItem->product_id == $productId) {
@@ -392,23 +419,20 @@ class SaleController extends Controller
                     }
                 }
                 
-                // Stock disponible = stock actuel + ancienne quantité qui sera restaurée
                 $availableStock = $product->stock_quantity + $oldQuantity;
                 
                 if ($availableStock < $totalQuantity) {
-                    // Trouver tous les indices où ce produit est utilisé
                     foreach ($validated['items'] as $index => $item) {
                         if ($item['product_id'] == $productId) {
-                            $stockErrors["items.{$index}.quantity"] = "Stock insuffisant pour {$product->name}. Stock disponible: {$availableStock} (incluant {$oldQuantity} de cette vente), Quantité demandée: {$totalQuantity}";
+                            $stockErrors["items.{$index}.quantity"] = $stockMessage;
                         }
                     }
                 }
             }
         }
 
-        // Si il y a des erreurs de stock, retourner les erreurs
-        if (!empty($stockErrors)) {
-            return back()->withErrors($stockErrors)->withInput();
+        if (! empty($expiredErrors) || ! empty($stockErrors)) {
+            return back()->withErrors([...$expiredErrors, ...$stockErrors])->withInput();
         }
 
         // Restaurer le stock des anciens items (ils avaient été déduits lors de la création)
@@ -430,81 +454,71 @@ class SaleController extends Controller
         $discountAmount = $validated['discount_amount'] ?? 0;
         $downPaymentAmount = $validated['down_payment_amount'] ?? 0;
         $totalAmount = $subtotal + $taxAmount - $discountAmount;
-        $remainingAmount = $totalAmount - $downPaymentAmount;
-        
-        // Déterminer le statut de paiement automatiquement basé sur les montants
-        // Si le statut est explicitement 'paid', ajuster les montants pour refléter le paiement complet
-        if (isset($validated['payment_status']) && $validated['payment_status'] === 'paid') {
-            $downPaymentAmount = $totalAmount;
-            $remainingAmount = 0;
-            $paymentStatus = 'paid';
-        } else {
-            // Calculer automatiquement le statut basé sur les montants
-            if ($downPaymentAmount >= $totalAmount && $totalAmount > 0) {
-                // Acompte égal ou supérieur au total = payé
-                $paymentStatus = 'paid';
-                $downPaymentAmount = $totalAmount;
-                $remainingAmount = 0;
-            } elseif ($downPaymentAmount > 0 && $remainingAmount > 0) {
-                // Acompte partiel = paiement partiel
-                $paymentStatus = 'partial';
-            } elseif ($downPaymentAmount == 0 && $totalAmount > 0) {
-                // Aucun acompte = en attente
-                $paymentStatus = 'pending';
-            } else {
-                // Par défaut, utiliser le statut fourni ou 'pending'
-                $paymentStatus = $validated['payment_status'] ?? 'pending';
-            }
+
+        $paymentState = SalePaymentService::calculatePaymentState(
+            $totalAmount,
+            $downPaymentAmount,
+        );
+
+        $paymentMethodError = SalePaymentService::paymentMethodValidationMessage(
+            $validated['payment_method'] ?? null,
+            $paymentState['down_payment_amount'],
+        );
+
+        if ($paymentMethodError) {
+            return back()->withErrors(['payment_method' => $paymentMethodError])->withInput();
         }
 
-        // Mettre à jour la vente
-        $sale->update([
-            'customer_id' => $validated['customer_id'],
-            'payment_method' => $validated['payment_method'],
-            'notes' => $validated['notes'],
-            'due_date' => $validated['due_date'] ?? null,
-            'subtotal' => $subtotal,
-            'tax_amount' => $taxAmount,
-            'discount_amount' => $discountAmount,
-            'down_payment_amount' => $downPaymentAmount,
-            'remaining_amount' => $remainingAmount,
-            'payment_status' => $paymentStatus,
-            'total_amount' => $totalAmount,
-        ]);
+        $paymentMethod = SalePaymentService::resolvePaymentMethod(
+            $validated['payment_method'] ?? null,
+            $paymentState['down_payment_amount'],
+        );
 
-        // Créer les nouveaux items et déduire du stock (comme pour une nouvelle vente)
-        foreach ($validated['items'] as $item) {
-            $sale->saleItems()->create([
-                'product_id' => $item['product_id'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price'],
-                'total_price' => $item['quantity'] * $item['unit_price'],
+        DB::transaction(function () use (
+            $sale,
+            $validated,
+            $subtotal,
+            $taxAmount,
+            $discountAmount,
+            $totalAmount,
+            $paymentState,
+            $paymentMethod,
+        ) {
+            $sale->update([
+                'customer_id' => $validated['customer_id'],
+                'payment_method' => $paymentMethod,
+                'notes' => $validated['notes'],
+                'due_date' => $validated['due_date'] ?? null,
+                'subtotal' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'discount_amount' => $discountAmount,
+                'down_payment_amount' => $paymentState['down_payment_amount'],
+                'remaining_amount' => $paymentState['remaining_amount'],
+                'payment_status' => $paymentState['payment_status'],
+                'total_amount' => $totalAmount,
             ]);
 
-            $product = Product::find($item['product_id']);
-            if ($product) {
-                $product->decrement('stock_quantity', $item['quantity']);
-                $product->refresh();
-                
-                // Vérifier si le produit est maintenant en stock faible
-                if ($product->stock_quantity <= $product->min_stock_level) {
-                    NotificationService::notifyLowStock($product);
+            foreach ($validated['items'] as $item) {
+                $sale->saleItems()->create([
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'total_price' => $item['quantity'] * $item['unit_price'],
+                ]);
+
+                $product = Product::find($item['product_id']);
+                if ($product) {
+                    $product->decrement('stock_quantity', $item['quantity']);
                 }
             }
-        }
-
-        // Recharger la vente pour avoir les dernières données
-        if ($paymentStatus === 'paid' && $oldPaymentStatus !== 'paid') {
-            ActivityLogger::logPayment($sale);
-        } else {
-            ActivityLogger::logUpdate('Facture', $sale);
-        }
+        });
 
         $sale->refresh();
 
-        // Vérifier si la vente a une date d'échéance aujourd'hui et n'est pas payée
-        if ($sale->due_date && $sale->due_date->isToday() && $sale->payment_status !== 'paid') {
-            NotificationService::notifySaleDueToday($sale);
+        if ($paymentState['payment_status'] === SalePaymentService::STATUS_PAID && $oldPaymentStatus !== SalePaymentService::STATUS_PAID) {
+            ActivityLogger::logPayment($sale);
+        } else {
+            ActivityLogger::logUpdate('Facture', $sale);
         }
 
         return redirect()->route('sales.show', $sale->id)

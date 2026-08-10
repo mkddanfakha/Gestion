@@ -1,0 +1,61 @@
+export function formatDashboardCurrency(amount: number): string {
+  const value = Number(amount)
+  if (!Number.isFinite(value)) {
+    return '0 Fcfa'
+  }
+
+  if (Math.abs(value) >= 1_000_000) {
+    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(value / 1_000_000)} M Fcfa`
+  }
+
+  if (Math.abs(value) >= 1_000) {
+    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value / 1_000)} K Fcfa`
+  }
+
+  return `${new Intl.NumberFormat('fr-FR').format(value)} Fcfa`
+}
+
+export function formatDashboardNumber(value: number): string {
+  return new Intl.NumberFormat('fr-FR').format(value)
+}
+
+export function formatKpiValue(value: number, format: 'currency' | 'number'): string {
+  return format === 'currency' ? formatDashboardCurrency(value) : formatDashboardNumber(value)
+}
+
+export const dashboardPeriodOptions = [
+  { value: 'today', label: "Aujourd'hui" },
+  { value: 'week', label: 'Cette semaine' },
+  { value: 'month', label: 'Ce mois' },
+  { value: 'quarter', label: 'Ce trimestre' },
+  { value: 'year', label: 'Cette année' },
+] as const
+
+export function getActionIcon(action: string): string {
+  const icons: Record<string, string> = {
+    create: 'bi-plus-circle',
+    update: 'bi-pencil-square',
+    delete: 'bi-trash',
+    validate: 'bi-check-circle',
+    cancel: 'bi-x-circle',
+    payment: 'bi-cash-coin',
+    login: 'bi-box-arrow-in-right',
+    logout: 'bi-box-arrow-right',
+  }
+
+  return icons[action] || 'bi-dot'
+}
+
+export function getPaymentMethodLabel(method?: string | null): string {
+  const labels: Record<string, string> = {
+    cash: 'Espèces',
+    card: 'Carte',
+    bank_transfer: 'Virement',
+    check: 'Chèque',
+    orange_money: 'Orange Money',
+    wave: 'Wave',
+  }
+
+  if (!method) return 'Non renseigné'
+  return labels[method] ?? method
+}

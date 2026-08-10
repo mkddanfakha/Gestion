@@ -28,6 +28,11 @@ const sidebarNavItems: NavItem[] = [
         href: editAppearance(),
         icon: 'bi-palette',
     },
+    {
+        title: 'Notifications',
+        href: '/settings/notifications',
+        icon: 'bi-bell',
+    },
 ];
 
 const page = usePage();

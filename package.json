@@ -5,6 +5,7 @@
         "build": "vite build",
         "build:ssr": "vite build && vite build --ssr",
         "dev": "vite",
+        "serve:lan": "php artisan serve --host=0.0.0.0 --port=8000",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
         "lint": "eslint . --fix"
@@ -31,6 +32,7 @@
     "dependencies": {
         "@inertiajs/vue3": "^2.1.0",
         "@popperjs/core": "^2.11.8",
+        "@tanstack/vue-virtual": "^3.13.35",
         "@vee-validate/rules": "^4.15.1",
         "@vueuse/core": "^12.8.2",
         "bootstrap": "^5.3.8",
@@ -46,6 +48,7 @@
         "laravel-echo": "^2.2.6",
         "laravel-vite-plugin": "^2.0.0",
         "lucide-vue-next": "^0.468.0",
+        "pinia": "^4.0.2",
         "pusher-js": "^8.4.0",
         "reka-ui": "^2.4.1",
         "sweetalert2": "^11.26.3",

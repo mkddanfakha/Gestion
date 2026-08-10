@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Category;
-use App\Services\NotificationService;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -147,16 +146,6 @@ class ProductController extends Controller
                 $product->addMedia($image)
                     ->toMediaCollection('images', 'media');
             }
-        }
-
-        // Vérifier si le produit est en stock faible
-        if ($product->stock_quantity <= $product->min_stock_level) {
-            NotificationService::notifyLowStock($product);
-        }
-
-        // Vérifier si le produit expire bientôt ou est expiré
-        if ($product->expiration_date && ($product->isExpired() || $product->isExpiringSoon())) {
-            NotificationService::notifyExpiringProduct($product);
         }
 
         ActivityLogger::logCreate('Produit', $product);
@@ -347,15 +336,7 @@ class ProductController extends Controller
         // Vérifier que les médias sont bien chargés (pour debug)
         // \Log::info('Médias après mise à jour:', ['count' => $product->getMedia('images')->count(), 'product_id' => $product->id]);
 
-        // Vérifier si le produit est en stock faible
-        if ($product->stock_quantity <= $product->min_stock_level) {
-            NotificationService::notifyLowStock($product);
-        }
-
-        // Vérifier si le produit expire bientôt ou est expiré
-        if ($product->expiration_date && ($product->isExpired() || $product->isExpiringSoon())) {
-            NotificationService::notifyExpiringProduct($product);
-        }
+        // Les alertes stock / expiration sont gérées par ProductObserver
 
         // Si la requête vient d'Inertia, rediriger vers la page show
         if ($request->header('X-Inertia')) {

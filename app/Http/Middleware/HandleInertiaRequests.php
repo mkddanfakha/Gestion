@@ -2,9 +2,11 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\NotificationRead;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Repositories\NotificationRepository;
+use App\Modules\NotificationCenter\Services\NotificationSettingsService;
+use App\Services\Notifications\NotificationAudienceResolver;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -47,16 +49,17 @@ class HandleInertiaRequests extends Middleware
             $userId = $request->user()->id;
             
             // Récupérer les IDs des notifications déjà lues
-            $readNotificationIds = NotificationRead::where('user_id', $userId)
-                ->get()
-                ->groupBy('notification_type')
-                ->map(function ($reads, $type) {
-                    return $reads->pluck('notification_id')->toArray();
-                })
-                ->toArray();
+            $readNotificationIds = app(NotificationRepository::class)
+                ->getLegacyReadIdsByType($userId);
+
+            $audienceResolver = app(NotificationAudienceResolver::class);
+            $canSeeInventoryAlerts = $audienceResolver->canReceiveInventoryAlerts($request->user());
+            $canSeeInvoiceAlerts = $audienceResolver->canReceiveInvoiceAlerts($request->user());
 
             // Ventes avec date d'échéance aujourd'hui
-            $salesDueToday = Sale::with(['customer'])
+            $salesDueToday = collect();
+            if ($canSeeInvoiceAlerts) {
+                $salesDueToday = Sale::with(['customer'])
                 ->visibleTo($request->user())
                 ->whereNotNull('due_date')
                 ->whereDate('due_date', now()->toDateString())
@@ -76,8 +79,12 @@ class HandleInertiaRequests extends Middleware
                     ];
                 })
                 ->values();
+            }
 
-            // Produits en stock faible (limité à 10 pour l'affichage, mais on compte le total réel)
+            // Produits en stock faible
+            $lowStockProducts = collect();
+            $totalLowStockProducts = 0;
+            if ($canSeeInventoryAlerts) {
             $allLowStockProducts = Product::with('category')
                 ->whereRaw('stock_quantity <= min_stock_level')
                 ->where('is_active', true)
@@ -109,9 +116,12 @@ class HandleInertiaRequests extends Middleware
                     ];
                 })
                 ->values();
+            }
 
-            // Produits expirés ou proches de l'expiration (limité à 10 pour l'affichage, mais on compte le total)
-            // On récupère d'abord les produits expirés, puis ceux qui expirent bientôt
+            // Produits expirés ou proches de l'expiration
+            $expiringProducts = collect();
+            $totalExpiringProducts = 0;
+            if ($canSeeInventoryAlerts) {
             $allProductsWithExpiration = Product::with('category')
                 ->whereNotNull('expiration_date')
                 ->where('is_active', true)
@@ -155,6 +165,7 @@ class HandleInertiaRequests extends Middleware
                     ];
                 })
                 ->values();
+            }
             
             $notifications = [
                 'salesDueToday' => $salesDueToday,
@@ -196,6 +207,9 @@ class HandleInertiaRequests extends Middleware
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'notifications' => $notifications,
+            'notificationPreferences' => $request->user()
+                ? app(NotificationSettingsService::class)->getPreferencesPayload($request->user()->id)
+                : null,
         ];
     }
 }

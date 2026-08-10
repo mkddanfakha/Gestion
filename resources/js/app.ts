@@ -4,6 +4,7 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
+import { createPinia } from 'pinia';
 import { initializeTheme } from './composables/useAppearance';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
@@ -62,33 +63,33 @@ createInertiaApp({
         return resolvePage(name);
     },
     setup({ el, App, props, plugin }) {
-        const app = createApp({ render: () => h(App, props) })
-            .use(plugin)
-            .mount(el);
-        
-        // Écouter les événements Inertia pour notifier les composants
-        document.addEventListener('inertia:start', () => {
-            loadingState.isLoading = true;
-            window.dispatchEvent(new CustomEvent('loading-state-changed', { detail: true }));
-        });
-        
-        document.addEventListener('inertia:finish', () => {
-            setTimeout(() => {
-                loadingState.isLoading = false;
-                window.dispatchEvent(new CustomEvent('loading-state-changed', { detail: false }));
-            }, 300);
-        });
+        const pinia = createPinia();
 
-        document.addEventListener('inertia:success', (event) => {
-            const token = (event as CustomEvent).detail?.page?.props?.csrf_token;
-            if (typeof token === 'string') {
-                updateCsrfMetaToken(token);
-            }
-        });
-        
-        return app;
+        createApp({ render: () => h(App, props) })
+            .use(plugin)
+            .use(pinia)
+            .mount(el);
     },
-    progress: false, // Désactiver la barre de progression par défaut
+    progress: false,
+});
+
+document.addEventListener('inertia:start', () => {
+    loadingState.isLoading = true;
+    window.dispatchEvent(new CustomEvent('loading-state-changed', { detail: true }));
+});
+
+document.addEventListener('inertia:finish', () => {
+    setTimeout(() => {
+        loadingState.isLoading = false;
+        window.dispatchEvent(new CustomEvent('loading-state-changed', { detail: false }));
+    }, 300);
+});
+
+document.addEventListener('inertia:success', (event) => {
+    const token = (event as CustomEvent).detail?.page?.props?.csrf_token;
+    if (typeof token === 'string') {
+        updateCsrfMetaToken(token);
+    }
 });
 
 // This will set light / dark mode on page load...

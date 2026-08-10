@@ -2,27 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
-class NotificationRead extends Model
+/**
+ * Alias de compatibilité pour le système legacy.
+ *
+ * @deprecated Utiliser {@see Notification} à la place.
+ */
+class NotificationRead extends Notification
 {
-    protected $fillable = [
-        'user_id',
-        'notification_type',
-        'notification_id',
-        'read_at',
-    ];
-
-    protected $casts = [
-        'read_at' => 'datetime',
-    ];
-
-    /**
-     * Relation avec l'utilisateur
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
 }

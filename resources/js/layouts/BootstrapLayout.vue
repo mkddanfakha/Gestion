@@ -121,6 +121,12 @@
               Journal d'activité
             </Link>
           </li>
+          <li v-if="isAdmin" class="nav-item mb-2">
+            <Link :href="route('admin.settings.notifications')" class="nav-link" :class="{ active: $page.url.startsWith('/admin/settings/notifications') }">
+              <i class="bi bi-bell me-2"></i>
+              Notifications
+            </Link>
+          </li>
         </ul>
       </nav>
 
@@ -165,7 +171,7 @@
           
           <!-- Notifications, bouton toggle theme et menu utilisateur -->
           <div class="d-flex align-items-center gap-2 ms-auto">
-            <NotificationBell :notifications="notifications" />
+            <NotificationBell />
             <button 
               @click="toggleTheme" 
               class="btn btn-sm btn-outline-primary"
@@ -276,17 +282,6 @@ onMounted(() => {
       }
     }
   }, 100)
-})
-
-// Notifications depuis les props partagées
-const notifications = computed(() => {
-  const notifs = (page.props.notifications as any) || {
-    salesDueToday: [],
-    lowStockProducts: [],
-    expiringProducts: []
-  }
-  
-  return notifs
 })
 
 // Gestion du thème
