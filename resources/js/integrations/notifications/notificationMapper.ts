@@ -6,6 +6,7 @@ import { route } from '@/lib/routes'
 import type { Notification, NotificationPriority } from '@/modules/NotificationCenter/types'
 import type { NotificationProduct } from '@/modules/NotificationCenter/types/NotificationCounts'
 import { diffCalendarDays } from '@/modules/NotificationCenter/utils/expirationStatus'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 /** Payload legacy partagé via Inertia (HandleInertiaRequests). */
 export interface LegacyNotificationsPayload {
@@ -90,10 +91,6 @@ const nowIso = () => new Date().toISOString()
 
 function itemId(legacyType: string, entityId: number): string {
     return `${legacyType}:${entityId}`
-}
-
-function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
 }
 
 function normalizeProducts(value: unknown): NotificationProduct[] {

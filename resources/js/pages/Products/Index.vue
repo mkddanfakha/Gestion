@@ -276,6 +276,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCurrency, formatPrice } from '@/utils/currencyFormatter'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
@@ -341,19 +342,11 @@ const props = defineProps<Props>()
 
 const { success, error, confirm } = useSweetAlert()
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('fr-FR').format(price) + ' Fcfa'
-}
-
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')
 }
 
 const filters = ref({ ...props.filters })
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const getStockClass = (stockQuantity: number, minStockLevel: number) => {
   if (stockQuantity === 0) {

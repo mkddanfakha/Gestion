@@ -79,27 +79,6 @@
                   <div v-if="clientErrors.phone" class="invalid-feedback">{{ clientErrors.phone }}</div>
                 </div>
 
-                <div class="col-md-6">
-                  <label class="form-label">
-                    Limite de crédit <span class="text-danger">*</span>
-                  </label>
-                  <div class="input-group">
-                    <input
-                      v-model.number="form.credit_limit"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      required
-                      class="form-control"
-                      :class="{ 'is-invalid': errors.credit_limit || clientErrors.credit_limit }"
-                      @blur="validateField('credit_limit', form.credit_limit)"
-                      @input="validateField('credit_limit', form.credit_limit)"
-                    />
-                    <span class="input-group-text">Fcfa</span>
-                  </div>
-                  <div v-if="errors.credit_limit" class="invalid-feedback">{{ errors.credit_limit }}</div>
-                  <div v-if="clientErrors.credit_limit" class="invalid-feedback">{{ clientErrors.credit_limit }}</div>
-                </div>
               </div>
             </div>
           </div>
@@ -222,7 +201,6 @@ interface Customer {
   city?: string
   postal_code?: string
   country?: string
-  credit_limit: number
   is_active: boolean
 }
 
@@ -251,10 +229,6 @@ const validateForm = () => {
   
   if (form.phone && !/^[\+]?[0-9\s\-\(\)]{8,}$/.test(form.phone)) {
     errors.phone = 'Numéro de téléphone invalide'
-  }
-  
-  if (form.credit_limit < 0) {
-    errors.credit_limit = 'La limite de crédit ne peut pas être négative'
   }
   
   return Object.keys(errors).length === 0 ? null : errors
@@ -287,12 +261,6 @@ const validateField = (fieldName: string, value: any) => {
         errorMessage = 'Numéro de téléphone invalide'
       }
       break
-      
-    case 'credit_limit':
-      if (value < 0) {
-        errorMessage = 'La limite de crédit ne peut pas être négative'
-      }
-      break
   }
   
   // Ajouter l'erreur si elle existe
@@ -309,7 +277,6 @@ const form = useForm({
   city: props.customer.city || '',
   postal_code: props.customer.postal_code || '',
   country: props.customer.country || '',
-  credit_limit: props.customer.credit_limit,
   is_active: props.customer.is_active,
 })
 

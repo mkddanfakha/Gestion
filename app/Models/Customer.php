@@ -18,17 +18,11 @@ class Customer extends Model
         'city',
         'postal_code',
         'country',
-        'credit_limit',
         'is_active',
     ];
 
     protected $casts = [
-        'credit_limit' => 'decimal:2',
         'is_active' => 'boolean',
-    ];
-
-    protected $attributes = [
-        'credit_limit' => 0.01,
     ];
 
     /**

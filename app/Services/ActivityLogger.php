@@ -174,6 +174,36 @@ class ActivityLogger
         );
     }
 
+    public static function logCompanyLogoAdd(Model $company): ActivityLog
+    {
+        return self::log(
+            ActivityLog::ACTION_UPDATE,
+            'Entreprise',
+            'a ajouté le logo de l\'entreprise',
+            $company,
+        );
+    }
+
+    public static function logCompanyLogoReplace(Model $company): ActivityLog
+    {
+        return self::log(
+            ActivityLog::ACTION_UPDATE,
+            'Entreprise',
+            'a remplacé le logo de l\'entreprise',
+            $company,
+        );
+    }
+
+    public static function logCompanyLogoDelete(Model $company): ActivityLog
+    {
+        return self::log(
+            ActivityLog::ACTION_UPDATE,
+            'Entreprise',
+            'a supprimé le logo de l\'entreprise',
+            $company,
+        );
+    }
+
     private static function subjectTypePhrase(string $module, string $context = 'default'): string
     {
         return match ($module) {

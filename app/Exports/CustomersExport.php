@@ -52,7 +52,6 @@ class CustomersExport implements FromCollection, WithHeadings, WithMapping, Shou
             'Ville',
             'Code postal',
             'Pays',
-            'Limite de crédit',
             'Statut',
             'Nombre de ventes',
         ];
@@ -73,7 +72,6 @@ class CustomersExport implements FromCollection, WithHeadings, WithMapping, Shou
             $customer->city ?? '',
             $customer->postal_code ?? '',
             $customer->country ?? '',
-            number_format($customer->credit_limit, 2, ',', ' ') . ' FCFA',
             $customer->is_active ? 'Actif' : 'Inactif',
             $customer->sales_count ?? 0,
         ];

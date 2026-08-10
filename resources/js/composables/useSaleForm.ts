@@ -1,3 +1,4 @@
+import { formatCurrency } from '@/utils/currencyFormatter'
 import { useForm } from '@inertiajs/vue3'
 import { computed, ref, watch, type Ref } from 'vue'
 import { route } from '@/lib/routes'
@@ -277,16 +278,7 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     return product ? product.unit : ''
   }
 
-  const formatCurrency = (amount: number | null | undefined) => {
-    const value = Number(amount)
-    if (!Number.isFinite(value)) {
-      return '0 Fcfa'
-    }
-
-    return `${new Intl.NumberFormat('fr-FR').format(value)} Fcfa`
-  }
-
-  const itemsCount = computed(() => form.items.length)
+    const itemsCount = computed(() => form.items.length)
 
   const subtotal = computed(() => form.items.reduce((total, item) => total + item.total_price, 0))
 

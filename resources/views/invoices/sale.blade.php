@@ -26,56 +26,12 @@
 <body>
     <div class="invoice-document">
         <!-- En-tête du document -->
-        <div class="document-header">
-            <div class="header-top">
-                <div class="logo-section">
-                    <h1>{{ $company->name }}</h1>
-                    @if($company->tagline)
-                        <div class="tagline">{{ $company->tagline }}</div>
-                    @endif
-                    <div class="company-details">
-                        @if($company->address)
-                            <p><strong>Adresse:</strong> {{ $company->address }}</p>
-                        @endif
-                        @php
-                            $phones = array_filter([$company->phone1, $company->phone2, $company->phone3]);
-                        @endphp
-                        @if(!empty($phones) || $company->email)
-                            <p>
-                                @if(!empty($phones))
-                                    <strong>Téléphone{{ count($phones) > 1 ? 's' : '' }}:</strong> {{ implode(' | ', $phones) }}
-                                @endif
-                                @if(!empty($phones) && $company->email)
-                                    | 
-                                @endif
-                                @if($company->email)
-                                    <strong>Email:</strong> {{ $company->email }}
-                                @endif
-                            </p>
-                        @endif
-                        @if($company->rc_number || $company->ncc_number)
-                            <p>
-                                @if($company->rc_number)
-                                    <strong>RC:</strong> {{ $company->rc_number }}
-                                @endif
-                                @if($company->rc_number && $company->ncc_number)
-                                    | 
-                                @endif
-                                @if($company->ncc_number)
-                                    <strong>NCC:</strong> {{ $company->ncc_number }}
-                                @endif
-                            </p>
-                        @endif
-                    </div>
-                </div>
-                <div class="invoice-meta">
-                    <div class="label">Facture N°</div>
-                    <div class="value">{{ $sale->sale_number }}</div>
-                    <div class="label" style="margin-top: 5px;">Date</div>
-                    <div class="value">{{ $sale->created_at->format('d/m/Y') }}</div>
-                </div>
-            </div>
-        </div>
+        @include('partials.document-header', [
+            'documentNumber' => $sale->sale_number,
+            'documentDate' => $sale->created_at,
+            'documentLabel' => 'Facture',
+            'metaClass' => 'invoice-meta',
+        ])
         
         <!-- Informations client et vente -->
         <div class="info-columns">
@@ -167,8 +123,8 @@
                         @endif
                     </td>
                     <td class="text-center">{{ $item->quantity }} {{ $item->product->unit ?? 'pce' }}</td>
-                    <td class="text-right">{{ number_format($item->unit_price, 0, ',', ' ') }} F</td>
-                    <td class="text-right"><strong>{{ number_format($item->total_price, 0, ',', ' ') }} F</strong></td>
+                    <td class="text-right">{{ format_currency($item->unit_price) }}</td>
+                    <td class="text-right"><strong>{{ format_currency($item->total_price) }}</strong></td>
                 </tr>
                 @endforeach
             </tbody>
@@ -179,35 +135,35 @@
             <table class="totals-table">
                 <tr>
                     <td>Sous-total HT</td>
-                    <td>{{ number_format($sale->subtotal ?? $sale->total_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($sale->subtotal ?? $sale->total_amount) }}</td>
                 </tr>
                 @if(($sale->tax_amount ?? 0) > 0)
                 <tr>
                     <td>Taxes</td>
-                    <td>{{ number_format($sale->tax_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($sale->tax_amount) }}</td>
                 </tr>
                 @endif
                 @if(($sale->discount_amount ?? 0) > 0)
                 <tr class="discount">
                     <td>Remise</td>
-                    <td>-{{ number_format($sale->discount_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>-{{ format_currency($sale->discount_amount) }}</td>
                 </tr>
                 @endif
                 @if(($sale->down_payment_amount ?? 0) > 0)
                 <tr>
                     <td>Acompte versé</td>
-                    <td>{{ number_format($sale->down_payment_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($sale->down_payment_amount) }}</td>
                 </tr>
                 @endif
                 @if(($sale->remaining_amount ?? 0) > 0)
                 <tr class="warning">
                     <td>Reste à payer</td>
-                    <td>{{ number_format($sale->remaining_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($sale->remaining_amount) }}</td>
                 </tr>
                 @endif
                 <tr class="grand-total">
                     <td>TOTAL TTC</td>
-                    <td>{{ number_format($sale->total_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($sale->total_amount) }}</td>
                 </tr>
             </table>
         </div>
@@ -226,10 +182,10 @@
                 <div class="info-box-title">Paiement</div>
                 <div class="info-box-content">
                     @if(($sale->down_payment_amount ?? 0) > 0)
-                        <p>Acompte: <strong>{{ number_format($sale->down_payment_amount, 0, ',', ' ') }} F</strong></p>
+                        <p>Acompte: <strong>{{ format_currency($sale->down_payment_amount) }}</strong></p>
                     @endif
                     @if(($sale->remaining_amount ?? 0) > 0)
-                        <p>Reste: <strong>{{ number_format($sale->remaining_amount, 0, ',', ' ') }} F</strong></p>
+                        <p>Reste: <strong>{{ format_currency($sale->remaining_amount) }}</strong></p>
                     @endif
                 </div>
             </div>

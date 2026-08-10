@@ -197,6 +197,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { formatDate, formatDateTime } from '@/utils/dateFormatter'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 interface User {
   id: number
@@ -231,10 +232,6 @@ const props = defineProps<Props>()
 const { success, error, confirm } = useSweetAlert()
 
 // Fonctions utilitaires
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
-
 const deleteExpense = async () => {
   const confirmed = await confirm(`Êtes-vous sûr de vouloir supprimer la dépense "${props.expense.title}" ?`)
 

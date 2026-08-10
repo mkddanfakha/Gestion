@@ -37,6 +37,32 @@
     
     .logo-section {
         flex: 1;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .company-logo-wrap {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        max-width: 120px;
+        max-height: 60px;
+    }
+
+    .company-logo {
+        max-height: 60px;
+        max-width: 120px;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        display: block;
+    }
+
+    .company-identity {
+        flex: 1;
+        min-width: 0;
     }
     
     .logo-section h1 {

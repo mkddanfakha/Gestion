@@ -43,56 +43,12 @@
 <body>
     <div class="quote-document invoice-document">
         <!-- En-tête du document -->
-        <div class="document-header">
-            <div class="header-top">
-                <div class="logo-section">
-                    <h1>{{ $company->name }}</h1>
-                    @if($company->tagline)
-                        <div class="tagline">{{ $company->tagline }}</div>
-                    @endif
-                    <div class="company-details">
-                        @if($company->address)
-                            <p><strong>Adresse:</strong> {{ $company->address }}</p>
-                        @endif
-                        @php
-                            $phones = array_filter([$company->phone1, $company->phone2, $company->phone3]);
-                        @endphp
-                        @if(!empty($phones) || $company->email)
-                            <p>
-                                @if(!empty($phones))
-                                    <strong>Téléphone{{ count($phones) > 1 ? 's' : '' }}:</strong> {{ implode(' | ', $phones) }}
-                                @endif
-                                @if(!empty($phones) && $company->email)
-                                    | 
-                                @endif
-                                @if($company->email)
-                                    <strong>Email:</strong> {{ $company->email }}
-                                @endif
-                            </p>
-                        @endif
-                        @if($company->rc_number || $company->ncc_number)
-                            <p>
-                                @if($company->rc_number)
-                                    <strong>RC:</strong> {{ $company->rc_number }}
-                                @endif
-                                @if($company->rc_number && $company->ncc_number)
-                                    | 
-                                @endif
-                                @if($company->ncc_number)
-                                    <strong>NCC:</strong> {{ $company->ncc_number }}
-                                @endif
-                            </p>
-                        @endif
-                    </div>
-                </div>
-                <div class="quote-meta invoice-meta">
-                    <div class="label">Devis N°</div>
-                    <div class="value">{{ $quote->quote_number }}</div>
-                    <div class="label" style="margin-top: 5px;">Date</div>
-                    <div class="value">{{ $quote->created_at->format('d/m/Y') }}</div>
-                </div>
-            </div>
-        </div>
+        @include('partials.document-header', [
+            'documentNumber' => $quote->quote_number,
+            'documentDate' => $quote->created_at,
+            'documentLabel' => 'Devis',
+            'metaClass' => 'quote-meta invoice-meta',
+        ])
         
         <!-- Informations client et devis -->
         <div class="info-columns">
@@ -175,8 +131,8 @@
                         @endif
                     </td>
                     <td class="text-center">{{ $item->quantity }} {{ $item->product->unit ?? 'pce' }}</td>
-                    <td class="text-right">{{ number_format($item->unit_price, 0, ',', ' ') }} F</td>
-                    <td class="text-right"><strong>{{ number_format($item->total_price, 0, ',', ' ') }} F</strong></td>
+                    <td class="text-right">{{ format_currency($item->unit_price) }}</td>
+                    <td class="text-right"><strong>{{ format_currency($item->total_price) }}</strong></td>
                 </tr>
                 @endforeach
             </tbody>
@@ -187,23 +143,23 @@
             <table class="totals-table">
                 <tr>
                     <td>Sous-total HT</td>
-                    <td>{{ number_format($quote->subtotal ?? $quote->total_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($quote->subtotal ?? $quote->total_amount) }}</td>
                 </tr>
                 @if(($quote->tax_amount ?? 0) > 0)
                 <tr>
                     <td>Taxes</td>
-                    <td>{{ number_format($quote->tax_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($quote->tax_amount) }}</td>
                 </tr>
                 @endif
                 @if(($quote->discount_amount ?? 0) > 0)
                 <tr class="discount">
                     <td>Remise</td>
-                    <td>-{{ number_format($quote->discount_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>-{{ format_currency($quote->discount_amount) }}</td>
                 </tr>
                 @endif
                 <tr class="grand-total">
                     <td>TOTAL TTC</td>
-                    <td>{{ number_format($quote->total_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($quote->total_amount) }}</td>
                 </tr>
             </table>
         </div>

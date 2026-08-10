@@ -288,6 +288,7 @@ import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { ref, computed } from 'vue'
 import { formatDate } from '@/utils/dateFormatter'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 const { success, error, confirm } = useSweetAlert()
 
@@ -359,10 +360,6 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const getStatusLabel = (status: string) => {
   const labels: Record<string, string> = {

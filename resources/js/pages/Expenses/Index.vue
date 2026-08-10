@@ -274,6 +274,7 @@ import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { debounce } from 'lodash-es'
 import { formatDate, formatTime, getCurrentMonthName } from '@/utils/dateFormatter'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 interface User {
   id: number
@@ -389,10 +390,6 @@ const filteredExpenses = computed(() => {
 })
 
 // Fonctions utilitaires
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
-
 const truncateText = (text: string, maxLength: number): string => {
   return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
 }

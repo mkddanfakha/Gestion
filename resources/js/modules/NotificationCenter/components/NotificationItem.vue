@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCurrency } from '@/utils/currencyFormatter'
 import NotificationIcon from './NotificationIcon.vue'
 import NotificationPriorityBadge from './NotificationPriorityBadge.vue'
 import { useNotifications } from '../composables/useNotifications'
@@ -102,10 +103,6 @@ const invoiceTitleLine = computed(() => {
 
     return null
 })
-
-function formatCurrency(amount: number): string {
-    return `${new Intl.NumberFormat('fr-FR').format(amount)} Fcfa`
-}
 
 const invoiceDetails = computed(() => {
     if (!isInvoiceDue.value) {

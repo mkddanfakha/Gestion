@@ -166,7 +166,6 @@
                 <th style="width: 10%;">Ville</th>
                 <th style="width: 8%;">Code postal</th>
                 <th style="width: 10%;">Pays</th>
-                <th class="text-right" style="width: 10%;">Limite crédit</th>
                 <th class="text-center" style="width: 5%;">Statut</th>
                 <th class="text-center" style="width: 5%;">Ventes</th>
             </tr>
@@ -182,7 +181,6 @@
                     <td>{{ $customer->city ?? '-' }}</td>
                     <td>{{ $customer->postal_code ?? '-' }}</td>
                     <td>{{ $customer->country ?? '-' }}</td>
-                    <td class="text-right">{{ number_format($customer->credit_limit, 0, ',', ' ') }} FCFA</td>
                     <td class="text-center">
                         <span class="badge {{ $customer->is_active ? 'badge-success' : 'badge-danger' }}">
                             {{ $customer->is_active ? 'Actif' : 'Inactif' }}
@@ -192,7 +190,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="11" class="text-center">Aucun client trouvé</td>
+                    <td colspan="10" class="text-center">Aucun client trouvé</td>
                 </tr>
             @endforelse
         </tbody>

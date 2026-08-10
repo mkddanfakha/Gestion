@@ -155,7 +155,7 @@
                         class="form-control"
                         @input="updateItemTotal(index)"
                       />
-                      <span class="input-group-text">Fcfa</span>
+                      <span class="input-group-text">FCFA</span>
                     </div>
                   </td>
                   <td>
@@ -274,7 +274,7 @@
                       :class="{ 'is-invalid': errors.down_payment_amount || clientErrors.down_payment_amount }"
                       @input="onDownPaymentInput"
                     />
-                    <span class="input-group-text">Fcfa</span>
+                    <span class="input-group-text">FCFA</span>
                   </div>
                   <div v-if="errors.down_payment_amount" class="invalid-feedback d-block">{{ errors.down_payment_amount }}</div>
                   <div v-if="clientErrors.down_payment_amount" class="invalid-feedback d-block">{{ clientErrors.down_payment_amount }}</div>
@@ -323,7 +323,7 @@
 
               <div v-if="form.payment_method === 'cash'" class="border rounded p-3 bg-light mb-3">
                 <div class="mb-2">
-                  <label class="form-label mb-1">Montant reçu (Fcfa)</label>
+                  <label class="form-label mb-1">Montant reçu (FCFA)</label>
                   <div class="input-group">
                     <input
                       v-model.number="cashReceivedAmount"
@@ -334,7 +334,7 @@
                       placeholder="0.00"
                       :class="{ 'is-invalid': cashReceivedAmount > 0 && cashReceivedAmount < cashAmountExpected }"
                     />
-                    <span class="input-group-text">Fcfa</span>
+                    <span class="input-group-text">FCFA</span>
                   </div>
                   <div
                     v-if="cashReceivedAmount > 0 && cashReceivedAmount < cashAmountExpected"
@@ -417,7 +417,7 @@
                       placeholder="0"
                       :class="{ 'is-invalid': errors.tax_amount || clientErrors.tax_amount }"
                     />
-                    <span class="input-group-text">Fcfa</span>
+                    <span class="input-group-text">FCFA</span>
                   </div>
                   <div v-else class="input-group input-group-sm">
                     <input
@@ -473,7 +473,7 @@
                       placeholder="0"
                       :class="{ 'is-invalid': errors.discount_amount || clientErrors.discount_amount }"
                     />
-                    <span class="input-group-text">Fcfa</span>
+                    <span class="input-group-text">FCFA</span>
                   </div>
                   <div v-else class="input-group input-group-sm">
                     <input

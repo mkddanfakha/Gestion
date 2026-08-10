@@ -48,56 +48,12 @@
 <body>
     <div class="po-document invoice-document">
         <!-- En-tête du document -->
-        <div class="document-header">
-            <div class="header-top">
-                <div class="logo-section">
-                    <h1>{{ $company->name }}</h1>
-                    @if($company->tagline)
-                        <div class="tagline">{{ $company->tagline }}</div>
-                    @endif
-                    <div class="company-details">
-                        @if($company->address)
-                            <p><strong>Adresse:</strong> {{ $company->address }}</p>
-                        @endif
-                        @php
-                            $phones = array_filter([$company->phone1, $company->phone2, $company->phone3]);
-                        @endphp
-                        @if(!empty($phones) || $company->email)
-                            <p>
-                                @if(!empty($phones))
-                                    <strong>Téléphone{{ count($phones) > 1 ? 's' : '' }}:</strong> {{ implode(' | ', $phones) }}
-                                @endif
-                                @if(!empty($phones) && $company->email)
-                                    | 
-                                @endif
-                                @if($company->email)
-                                    <strong>Email:</strong> {{ $company->email }}
-                                @endif
-                            </p>
-                        @endif
-                        @if($company->rc_number || $company->ncc_number)
-                            <p>
-                                @if($company->rc_number)
-                                    <strong>RC:</strong> {{ $company->rc_number }}
-                                @endif
-                                @if($company->rc_number && $company->ncc_number)
-                                    | 
-                                @endif
-                                @if($company->ncc_number)
-                                    <strong>NCC:</strong> {{ $company->ncc_number }}
-                                @endif
-                            </p>
-                        @endif
-                    </div>
-                </div>
-                <div class="po-meta invoice-meta">
-                    <div class="label">Bon de commande N°</div>
-                    <div class="value">{{ $purchaseOrder->po_number }}</div>
-                    <div class="label" style="margin-top: 5px;">Date</div>
-                    <div class="value">{{ $purchaseOrder->order_date->format('d/m/Y') }}</div>
-                </div>
-            </div>
-        </div>
+        @include('partials.document-header', [
+            'documentNumber' => $purchaseOrder->po_number,
+            'documentDate' => $purchaseOrder->order_date,
+            'documentLabel' => 'Bon de commande',
+            'metaClass' => 'po-meta invoice-meta',
+        ])
         
         <!-- Informations fournisseur et commande -->
         <div class="info-columns">
@@ -182,8 +138,8 @@
                         @endif
                     </td>
                     <td class="text-center">{{ $item->quantity }}</td>
-                    <td class="text-right">{{ number_format($item->unit_price, 0, ',', ' ') }} F</td>
-                    <td class="text-right"><strong>{{ number_format($item->total_price, 0, ',', ' ') }} F</strong></td>
+                    <td class="text-right">{{ format_currency($item->unit_price) }}</td>
+                    <td class="text-right"><strong>{{ format_currency($item->total_price) }}</strong></td>
                 </tr>
                 @endforeach
             </tbody>
@@ -194,23 +150,23 @@
             <table class="totals-table">
                 <tr>
                     <td>Sous-total</td>
-                    <td>{{ number_format($purchaseOrder->subtotal, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($purchaseOrder->subtotal) }}</td>
                 </tr>
                 @if($purchaseOrder->tax_amount > 0)
                 <tr>
                     <td>Taxes</td>
-                    <td>{{ number_format($purchaseOrder->tax_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($purchaseOrder->tax_amount) }}</td>
                 </tr>
                 @endif
                 @if($purchaseOrder->discount_amount > 0)
                 <tr class="discount">
                     <td>Remise</td>
-                    <td>-{{ number_format($purchaseOrder->discount_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>-{{ format_currency($purchaseOrder->discount_amount) }}</td>
                 </tr>
                 @endif
                 <tr class="grand-total">
                     <td>TOTAL</td>
-                    <td>{{ number_format($purchaseOrder->total_amount, 0, ',', ' ') }} Fcfa</td>
+                    <td>{{ format_currency($purchaseOrder->total_amount) }}</td>
                 </tr>
             </table>
         </div>

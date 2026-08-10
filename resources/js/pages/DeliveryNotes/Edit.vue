@@ -350,6 +350,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCurrency } from '@/utils/currencyFormatter'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
@@ -558,10 +559,6 @@ const totalAmount = computed(() => {
   const discountAmount = Number(form.discount_amount) || 0
   return subtotalValue + taxAmount - discountAmount
 })
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 // Validation côté client
 const clientErrors = ref<Record<string, string>>({})

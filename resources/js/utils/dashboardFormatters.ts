@@ -1,22 +1,11 @@
+import { formatCurrency, formatCurrencyNumber } from '@/utils/currencyFormatter'
+
 export function formatDashboardCurrency(amount: number): string {
-  const value = Number(amount)
-  if (!Number.isFinite(value)) {
-    return '0 Fcfa'
-  }
-
-  if (Math.abs(value) >= 1_000_000) {
-    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(value / 1_000_000)} M Fcfa`
-  }
-
-  if (Math.abs(value) >= 1_000) {
-    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value / 1_000)} K Fcfa`
-  }
-
-  return `${new Intl.NumberFormat('fr-FR').format(value)} Fcfa`
+  return formatCurrency(amount)
 }
 
 export function formatDashboardNumber(value: number): string {
-  return new Intl.NumberFormat('fr-FR').format(value)
+  return formatCurrencyNumber(value)
 }
 
 export function formatKpiValue(value: number, format: 'currency' | 'number'): string {

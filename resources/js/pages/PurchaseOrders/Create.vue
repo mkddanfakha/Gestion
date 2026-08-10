@@ -301,6 +301,7 @@ import { computed, ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 const { success, error } = useSweetAlert()
 
@@ -522,10 +523,6 @@ const subtotal = computed(() => {
 const totalAmount = computed(() => {
   return subtotal.value + form.tax_amount - form.discount_amount
 })
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const submit = () => {
   // Valider le formulaire avant soumission

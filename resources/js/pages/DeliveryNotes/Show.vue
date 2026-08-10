@@ -311,6 +311,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCurrency } from '@/utils/currencyFormatter'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
@@ -378,10 +379,6 @@ const { success, error, confirm } = useSweetAlert()
 
 const isDownloading = ref(false)
 const isPrinting = ref(false)
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')

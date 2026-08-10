@@ -22,7 +22,6 @@ class CustomerSeeder extends Seeder
                 'city' => 'Paris',
                 'postal_code' => '75001',
                 'country' => 'France',
-                'credit_limit' => 1000.00,
                 'is_active' => true,
             ],
             [
@@ -33,7 +32,6 @@ class CustomerSeeder extends Seeder
                 'city' => 'Lyon',
                 'postal_code' => '69001',
                 'country' => 'France',
-                'credit_limit' => 1500.00,
                 'is_active' => true,
             ],
             [
@@ -44,7 +42,6 @@ class CustomerSeeder extends Seeder
                 'city' => 'Marseille',
                 'postal_code' => '13001',
                 'country' => 'France',
-                'credit_limit' => 2000.00,
                 'is_active' => true,
             ],
             [
@@ -55,7 +52,6 @@ class CustomerSeeder extends Seeder
                 'city' => 'Toulouse',
                 'postal_code' => '31000',
                 'country' => 'France',
-                'credit_limit' => 800.00,
                 'is_active' => true,
             ],
             [
@@ -66,7 +62,6 @@ class CustomerSeeder extends Seeder
                 'city' => null,
                 'postal_code' => null,
                 'country' => null,
-                'credit_limit' => 0.00,
                 'is_active' => true,
             ],
         ];

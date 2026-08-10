@@ -149,7 +149,7 @@
                       @blur="validateField('price', form.price)"
                       @input="validateField('price', form.price)"
                     />
-                    <span class="input-group-text">Fcfa</span>
+                    <span class="input-group-text">FCFA</span>
                   </div>
                   <div v-if="errors.price" class="invalid-feedback">{{ errors.price }}</div>
                   <div v-if="clientErrors.price" class="invalid-feedback">{{ clientErrors.price }}</div>
@@ -166,7 +166,7 @@
                       class="form-control"
                       :class="{ 'is-invalid': errors.cost_price }"
                     />
-                    <span class="input-group-text">Fcfa</span>
+                    <span class="input-group-text">FCFA</span>
                   </div>
                   <div v-if="errors.cost_price" class="invalid-feedback">{{ errors.cost_price }}</div>
                 </div>

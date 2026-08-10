@@ -64,7 +64,7 @@
                   @input="validateField('amount')"
                   @blur="validateField('amount')"
                 />
-                <span class="input-group-text">Fcfa</span>
+                <span class="input-group-text">FCFA</span>
               </div>
               <div v-if="errors.amount" class="invalid-feedback">
                 {{ errors.amount }}

@@ -309,6 +309,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCurrency, formatPrice } from '@/utils/currencyFormatter'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { watch } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
@@ -389,14 +390,6 @@ watch(() => (page.props as any)?.flash, (flash: any) => {
     error(flash.error)
   }
 }, { immediate: true, deep: true })
-
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('fr-FR').format(price) + ' Fcfa'
-}
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR', {

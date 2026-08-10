@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Company extends Model
 {
@@ -19,6 +21,49 @@ class Company extends Model
         'ncc_number',
         'logo_path',
     ];
+
+    protected $appends = [
+        'logo_url',
+    ];
+
+    protected function logoUrl(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            if (! $this->logo_path) {
+                return null;
+            }
+
+            if (Storage::disk('media')->exists($this->logo_path)) {
+                return '/storage/' . ltrim($this->logo_path, '/');
+            }
+
+            if (Storage::disk('public')->exists($this->logo_path)) {
+                return Storage::disk('public')->url($this->logo_path);
+            }
+
+            return null;
+        });
+    }
+
+    /**
+     * Chemin absolu du logo pour DomPDF (chroot = base_path()).
+     */
+    public function getLogoAbsolutePathAttribute(): ?string
+    {
+        if (! $this->logo_path) {
+            return null;
+        }
+
+        if (Storage::disk('media')->exists($this->logo_path)) {
+            return Storage::disk('media')->path($this->logo_path);
+        }
+
+        if (Storage::disk('public')->exists($this->logo_path)) {
+            return Storage::disk('public')->path($this->logo_path);
+        }
+
+        return null;
+    }
 
     /**
      * Récupérer l'instance unique de l'entreprise (singleton)

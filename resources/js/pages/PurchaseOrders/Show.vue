@@ -284,6 +284,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { ref } from 'vue'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 interface Category {
   id: number
@@ -334,10 +335,6 @@ const { success, error, confirm } = useSweetAlert()
 
 const isDownloading = ref(false)
 const isPrinting = ref(false)
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')

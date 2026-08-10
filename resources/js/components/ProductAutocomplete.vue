@@ -132,6 +132,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 interface Category {
   id: number
@@ -284,10 +285,6 @@ const clearSelection = () => {
 }
 
 // Formater la devise
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
-
 // Synchroniser avec la valeur externe
 watch(() => props.modelValue, (newValue) => {
   if (newValue && newValue > 0) {

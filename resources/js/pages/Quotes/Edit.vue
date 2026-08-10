@@ -163,7 +163,7 @@
                           :style="{ width: getPriceFieldWidth(item.unit_price) }"
                           @input="updateItemTotal(index)"
                         />
-                        <span class="input-group-text">Fcfa</span>
+                        <span class="input-group-text">FCFA</span>
                       </div>
                     </div>
 
@@ -178,7 +178,7 @@
                           class="form-control"
                           :style="{ width: getPriceFieldWidth(item.total_price) }"
                         />
-                        <span class="input-group-text">Fcfa</span>
+                        <span class="input-group-text">FCFA</span>
                       </div>
                     </div>
 
@@ -216,7 +216,7 @@
               
               <!-- Champ Taxes -->
               <div class="mb-3">
-                <label class="form-label">Taxes (Fcfa)</label>
+                <label class="form-label">Taxes (FCFA)</label>
                 <div class="input-group">
                   <input
                     type="number"
@@ -227,14 +227,14 @@
                     placeholder="0.00"
                     :class="{ 'is-invalid': errors.tax_amount }"
                   >
-                  <span class="input-group-text">Fcfa</span>
+                  <span class="input-group-text">FCFA</span>
                 </div>
                 <div v-if="errors.tax_amount" class="invalid-feedback">{{ errors.tax_amount }}</div>
               </div>
 
               <!-- Champ Remise -->
               <div class="mb-3">
-                <label class="form-label">Remise (Fcfa)</label>
+                <label class="form-label">Remise (FCFA)</label>
                 <div class="input-group">
                   <input
                     type="number"
@@ -245,7 +245,7 @@
                     placeholder="0.00"
                     :class="{ 'is-invalid': errors.discount_amount }"
                   >
-                  <span class="input-group-text">Fcfa</span>
+                  <span class="input-group-text">FCFA</span>
                 </div>
                 <div v-if="errors.discount_amount" class="invalid-feedback">{{ errors.discount_amount }}</div>
               </div>
@@ -289,6 +289,7 @@ import { computed, ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 interface Customer {
   id: number
@@ -452,19 +453,6 @@ const getPriceFieldWidth = (price: number): string => {
   const finalWidth = Math.max(minWidth, Math.min(maxWidth, calculatedWidth))
   
   return `${finalWidth}px`
-}
-
-const formatCurrency = (amount: number | string | null | undefined) => {
-  if (amount === null || amount === undefined) {
-    return '0 Fcfa'
-  }
-  
-  const value = parseFloat(String(amount))
-  if (isNaN(value)) {
-    return '0 Fcfa'
-  }
-  
-  return new Intl.NumberFormat('fr-FR').format(value) + ' Fcfa'
 }
 
 const itemsCount = computed(() => {

@@ -66,7 +66,6 @@ class CustomerController extends Controller
             'city' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:10',
             'country' => 'nullable|string|max:100',
-            'credit_limit' => 'required|numeric|min:0.01',
             'is_active' => 'boolean',
         ]);
 
@@ -122,7 +121,6 @@ class CustomerController extends Controller
             'city' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:10',
             'country' => 'nullable|string|max:100',
-            'credit_limit' => 'required|numeric|min:0.01',
             'is_active' => 'boolean',
         ]);
 

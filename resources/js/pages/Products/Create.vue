@@ -133,7 +133,7 @@
                     Prix de vente <span class="text-danger">*</span>
                   </label>
                   <div class="input-group">
-                    <span class="input-group-text">Fcfa</span>
+                    <span class="input-group-text">FCFA</span>
                     <input
                       v-model="form.price"
                       type="number"
@@ -153,7 +153,7 @@
                 <div class="col-md-4">
                   <label class="form-label">Prix de revient</label>
                   <div class="input-group">
-                    <span class="input-group-text">Fcfa</span>
+                    <span class="input-group-text">FCFA</span>
                     <input
                       v-model="form.cost_price"
                       type="number"
@@ -408,6 +408,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCurrency, formatPrice } from '@/utils/currencyFormatter'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { ref, watch, nextTick } from 'vue'
@@ -563,10 +564,6 @@ const validateField = (fieldName: string, value: any) => {
   if (errorMessage) {
     clientErrors.value[fieldName] = errorMessage
   }
-}
-
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('fr-FR').format(price) + ' Fcfa'
 }
 
 const form = useForm({

@@ -184,6 +184,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { ref } from 'vue'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 interface PurchaseOrder {
   id: number
@@ -224,10 +225,6 @@ const props = defineProps<Props>()
 const { success, error, confirm } = useSweetAlert()
 
 const filters = ref({ ...props.filters })
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')

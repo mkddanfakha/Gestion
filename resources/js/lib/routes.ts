@@ -87,6 +87,8 @@ export function route(name: string, params: any = {}) {
         'delivery-notes.invoice.delete': '/delivery-notes/{deliveryNote}/invoice',
         'company.edit': '/company',
         'company.update': '/company',
+        'company.logo.upload': '/company/logo',
+        'company.logo.delete': '/company/logo',
         'profile.edit': '/settings/profile',
         'profile.update': '/settings/profile',
         'profile.destroy': '/settings/profile',

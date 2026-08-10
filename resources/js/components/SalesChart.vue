@@ -6,6 +6,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 interface MonthlyData {
   month: string
@@ -19,10 +20,6 @@ interface Props {
 const props = defineProps<Props>()
 const chartCanvas = ref<HTMLCanvasElement | null>(null)
 let chartInstance: any = null
-
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const formatMonth = (monthString: string): string => {
   const [year, month] = monthString.split('-')
@@ -145,7 +142,7 @@ const createChart = async () => {
             display: true,
             title: {
               display: true,
-              text: 'Montant (Fcfa)',
+              text: 'Montant (FCFA)',
               font: {
                 size: 14,
                 weight: '600'

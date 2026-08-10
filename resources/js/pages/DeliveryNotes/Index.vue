@@ -245,6 +245,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { ref, computed } from 'vue'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 interface DeliveryNote {
   id: number
@@ -294,10 +295,6 @@ const filters = ref({ ...props.filters })
 const validatedCount = computed(() => {
   return props.deliveryNotes.data.filter(dn => dn.status === 'validated').length
 })
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')

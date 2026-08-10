@@ -17,9 +17,20 @@
       </div>
     </div>
 
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <!-- Logo de l'entreprise -->
+        <CompanyLogoSection
+          :logo-url="company.logo_url"
+          :can-manage="canUpdateCompany"
+        />
+      </div>
+    </div>
+
     <form @submit.prevent="submit">
       <div class="row justify-content-center">
         <div class="col-lg-10">
+          <fieldset :disabled="!canUpdateCompany">
           <!-- Informations générales -->
           <div class="card mb-4">
             <div class="card-header">
@@ -173,8 +184,10 @@
             </div>
           </div>
 
+          </fieldset>
+
           <!-- Actions -->
-          <div class="card">
+          <div v-if="canUpdateCompany" class="card">
             <div class="card-body">
               <div class="d-flex justify-content-end gap-2">
                 <Link
@@ -186,7 +199,7 @@
                 <button
                   type="submit"
                   class="btn btn-primary"
-                  :disabled="form.processing"
+                  :disabled="form.processing || !canUpdateCompany"
                 >
                   <span v-if="form.processing" class="spinner-border spinner-border-sm me-1"></span>
                   <i v-else class="bi bi-check-circle me-1"></i>
@@ -204,9 +217,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
+import CompanyLogoSection from '@/components/company/CompanyLogoSection.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { usePermissions } from '@/composables/usePermissions'
 
 interface Company {
   id: number
@@ -220,6 +235,7 @@ interface Company {
   website?: string
   rc_number?: string
   ncc_number?: string
+  logo_url?: string | null
 }
 
 interface Props {
@@ -229,6 +245,9 @@ interface Props {
 const props = defineProps<Props>()
 
 const { success, error } = useSweetAlert()
+const { canUpdate } = usePermissions()
+
+const canUpdateCompany = computed(() => canUpdate('company'))
 
 const form = useForm({
   name: props.company.name || '',

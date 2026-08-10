@@ -3,6 +3,7 @@
 namespace App\Services\Audit;
 
 use App\Models\ActivityLog;
+use App\Support\CurrencyFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
@@ -38,7 +39,7 @@ class AuditFieldTranslator
         }
 
         if (is_numeric($value) && self::isMoneyField($field)) {
-            return number_format((float) $value, 0, ',', ' ') . ' Fcfa';
+            return CurrencyFormatter::format($value);
         }
 
         return (string) $value;

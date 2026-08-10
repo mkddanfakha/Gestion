@@ -91,6 +91,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Informations de l'entreprise
     Route::get('/company', [CompanyController::class, 'edit'])->name('company.edit');
     Route::put('/company', [CompanyController::class, 'update'])->name('company.update');
+    Route::post('/company/logo', [CompanyController::class, 'uploadLogo'])->name('company.logo.upload');
+    Route::delete('/company/logo', [CompanyController::class, 'deleteLogo'])->name('company.logo.delete');
     
     // Notifications → app/Modules/NotificationCenter/Http/Routes/notifications.php
     

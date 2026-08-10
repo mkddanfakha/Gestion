@@ -287,6 +287,7 @@ import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { ref } from 'vue'
 import { formatDate, formatDateTime } from '@/utils/dateFormatter'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 const { success, error, confirm } = useSweetAlert()
 
@@ -350,10 +351,6 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const getPaymentMethodLabel = (method?: string | null) => {
   if (!method) {

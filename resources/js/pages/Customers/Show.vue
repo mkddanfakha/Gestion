@@ -90,17 +90,10 @@
 
         <div class="card">
           <div class="card-header">
-            <h5 class="card-title mb-0">Paramètres commerciaux</h5>
+            <h5 class="card-title mb-0">Activité</h5>
           </div>
           <div class="card-body">
             <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label text-muted">Limite de crédit</label>
-                <p class="mb-0">
-                  {{ customer.credit_limit ? formatCurrency(customer.credit_limit) : 'Non définie' }}
-                </p>
-              </div>
-              
               <div class="col-md-6">
                 <label class="form-label text-muted">Nombre de ventes</label>
                 <p class="mb-0">{{ customer.sales_count || 0 }} vente(s)</p>
@@ -186,6 +179,7 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { formatCurrency } from '@/utils/currencyFormatter'
 
 interface Sale {
   id: number
@@ -204,7 +198,6 @@ interface Customer {
   city?: string
   postal_code?: string
   country?: string
-  credit_limit?: number
   is_active: boolean
   sales_count?: number
   sales?: Sale[]
@@ -217,10 +210,6 @@ interface Props {
 const props = defineProps<Props>()
 
 const { success, error, confirm } = useSweetAlert()
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa'
-}
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')
