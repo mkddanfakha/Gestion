@@ -423,7 +423,6 @@ const getRoleBadgeClass = (role?: string): string => {
 }
 
 .main-content {
-  overflow-x: hidden;
   margin-left: 250px;
   width: calc(100% - 250px);
 }

@@ -49,7 +49,6 @@ class ProductController extends Controller
                     return $product->isExpired() || $product->isExpiringSoon();
                 })
                 ->map(function ($product) {
-                    $firstImage = $product->getFirstMedia('images');
                     return [
                         'id' => $product->id,
                         'name' => $product->name,
@@ -62,7 +61,7 @@ class ProductController extends Controller
                         'expiration_date' => $product->expiration_date ? $product->expiration_date->format('Y-m-d') : null,
                         'days_until_expiration' => $product->days_until_expiration,
                         'category' => $product->category,
-                        'image_url' => Product::getMediaUrl($firstImage, 'thumb'),
+                        'image_url' => $product->getThumbImageUrl(),
                     ];
                 });
             
@@ -87,8 +86,7 @@ class ProductController extends Controller
                 if ($product->expiration_date) {
                     $product->expiration_date = $product->expiration_date->format('Y-m-d');
                 }
-                $firstImage = $product->getFirstMedia('images');
-                $product->image_url = Product::getMediaUrl($firstImage, 'thumb');
+                $product->image_url = $product->getThumbImageUrl();
                 return $product;
             });
         }

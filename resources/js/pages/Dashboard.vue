@@ -11,14 +11,7 @@
         @update:period="changePeriod"
       />
 
-      <div class="dashboard-kpi-grid">
-        <DashboardKpiCard
-          v-for="kpi in kpis"
-          :key="kpi.key"
-          :kpi="kpi"
-          :period-label="filters.label"
-        />
-      </div>
+      <DashboardKpiGrouped :kpis="kpis" :period-label="filters.label" />
 
       <div class="dashboard-grid dashboard-grid--main">
         <DashboardPanel class="dashboard-grid__span-2" title="Évolution des ventes">
@@ -86,7 +79,7 @@ import { computed, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 import DashboardHeader from '@/components/dashboard/DashboardHeader.vue'
-import DashboardKpiCard from '@/components/dashboard/DashboardKpiCard.vue'
+import DashboardKpiGrouped from '@/components/dashboard/DashboardKpiGrouped.vue'
 import DashboardPanel from '@/components/dashboard/DashboardPanel.vue'
 import DashboardSalesChart from '@/components/dashboard/DashboardSalesChart.vue'
 import DashboardPaymentChart from '@/components/dashboard/DashboardPaymentChart.vue'
@@ -172,12 +165,6 @@ watch(
   gap: 1.25rem;
 }
 
-.dashboard-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
-}
-
 .dashboard-grid {
   display: grid;
   gap: 1rem;
@@ -208,19 +195,8 @@ watch(
 }
 
 @media (min-width: 768px) {
-  .dashboard-kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-  }
-
   .dashboard-grid--split {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1200px) {
-  .dashboard-kpi-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 </style>

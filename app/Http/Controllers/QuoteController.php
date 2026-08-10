@@ -164,8 +164,7 @@ class QuoteController extends Controller
         // Ajouter l'URL de la première image pour chaque produit
         $quoteItems->transform(function ($item) {
             if ($item->product) {
-                $firstImage = $item->product->getFirstMedia('images');
-                $item->product->image_url = $firstImage ? $firstImage->getUrl('thumb') : null;
+                $item->product->image_url = $item->product->getThumbImageUrl();
             }
             return $item;
         });

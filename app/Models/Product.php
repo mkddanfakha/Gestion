@@ -236,6 +236,44 @@ class Product extends Model implements HasMedia
     }
 
     /**
+     * URL miniature relative (compatible mobile / LAN, sans localhost).
+     */
+    public function getThumbImageUrl(): ?string
+    {
+        $firstImage = $this->getFirstMedia('images');
+        if ($firstImage) {
+            return static::getMediaUrl($firstImage, 'thumb');
+        }
+
+        if ($this->image) {
+            return static::normalizeStorageUrl($this->image);
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalise un chemin stockage en URL relative (/storage/...).
+     */
+    public static function normalizeStorageUrl(?string $url): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        if (str_starts_with($url, 'http')) {
+            $parsedUrl = parse_url($url);
+            $url = $parsedUrl['path'] ?? $url;
+        }
+
+        if (! str_starts_with($url, '/')) {
+            $url = '/storage/'.ltrim($url, '/');
+        }
+
+        return $url;
+    }
+
+    /**
      * Obtenir l'URL relative d'un média pour éviter les problèmes CORS
      */
     public static function getMediaUrl($media, string $conversion = ''): ?string

@@ -387,15 +387,13 @@ class DashboardService
                 return null;
             }
 
-            $firstImage = $product->getFirstMedia('images');
-
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'price' => (float) $product->price,
                 'sales_count' => (int) $row->sales_count,
                 'total_quantity' => (int) $row->total_quantity,
-                'image_url' => $firstImage ? $firstImage->getUrl('thumb') : null,
+                'image_url' => $product->getThumbImageUrl(),
                 'category' => $product->category ? [
                     'name' => $product->category->name,
                     'color' => $product->category->color,
@@ -433,8 +431,6 @@ class DashboardService
 
     protected function mapStockAlert(Product $product, string $severity): array
     {
-        $firstImage = $product->getFirstMedia('images');
-
         return [
             'id' => $product->id,
             'name' => $product->name,
@@ -443,7 +439,7 @@ class DashboardService
             'stock_quantity' => (int) $product->stock_quantity,
             'min_stock_level' => (int) $product->min_stock_level,
             'unit' => $product->unit,
-            'image_url' => $firstImage ? $firstImage->getUrl('thumb') : null,
+            'image_url' => $product->getThumbImageUrl(),
             'category' => $product->category?->name,
             'message' => $product->stock_quantity === 0 ? 'Rupture de stock' : 'Stock faible',
         ];
@@ -451,7 +447,6 @@ class DashboardService
 
     protected function mapExpiringAlert(Product $product): array
     {
-        $firstImage = $product->getFirstMedia('images');
         $expired = $product->isExpired();
 
         return [
@@ -461,7 +456,7 @@ class DashboardService
             'type' => 'expiration',
             'expiration_date' => $product->expiration_date->format('Y-m-d'),
             'days_until_expiration' => $product->days_until_expiration,
-            'image_url' => $firstImage ? $firstImage->getUrl('thumb') : null,
+            'image_url' => $product->getThumbImageUrl(),
             'category' => $product->category?->name,
             'message' => $expired
                 ? 'Expiré depuis '.abs((int) $product->days_until_expiration).' jour(s)'

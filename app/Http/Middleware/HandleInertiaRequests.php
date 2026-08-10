@@ -105,14 +105,13 @@ class HandleInertiaRequests extends Middleware
             $lowStockProducts = $filteredLowStockProducts
                 ->take(10)
                 ->map(function ($product) {
-                    $firstImage = $product->getFirstMedia('images');
                     return [
                         'id' => $product->id,
                         'name' => $product->name,
                         'stock_quantity' => $product->stock_quantity,
                         'unit' => $product->unit,
                         'category' => $product->category,
-                        'image_url' => $firstImage ? $firstImage->getUrl('thumb') : null,
+                        'image_url' => $product->getThumbImageUrl(),
                     ];
                 })
                 ->values();
@@ -155,13 +154,12 @@ class HandleInertiaRequests extends Middleware
             $expiringProducts = $filteredProducts
                 ->take(10) // Limiter à 10 après le filtre
                 ->map(function ($product) {
-                    $firstImage = $product->getFirstMedia('images');
                     return [
                         'id' => $product->id,
                         'name' => $product->name,
                         'expiration_date' => $product->expiration_date->format('Y-m-d'),
                         'days_until_expiration' => $product->days_until_expiration,
-                        'image_url' => $firstImage ? $firstImage->getUrl('thumb') : null,
+                        'image_url' => $product->getThumbImageUrl(),
                     ];
                 })
                 ->values();

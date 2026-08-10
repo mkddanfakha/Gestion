@@ -86,8 +86,7 @@ class SaleController extends Controller
         
         // Ajouter l'URL de la première image pour chaque produit
         $products->transform(function ($product) {
-            $firstImage = $product->getFirstMedia('images');
-            $product->image_url = $firstImage ? $firstImage->getUrl('thumb') : null;
+            $product->image_url = $product->getThumbImageUrl();
             return $product;
         });
         
@@ -274,8 +273,7 @@ class SaleController extends Controller
         // Ajouter l'URL de la première image pour chaque produit
         $saleItems->transform(function ($item) {
             if ($item->product) {
-                $firstImage = $item->product->getFirstMedia('images');
-                $item->product->image_url = $firstImage ? $firstImage->getUrl('thumb') : null;
+                $item->product->image_url = $item->product->getThumbImageUrl();
             }
             return $item;
         });
@@ -309,8 +307,7 @@ class SaleController extends Controller
         
         // Ajouter l'URL de la première image pour chaque produit
         $products->transform(function ($product) {
-            $firstImage = $product->getFirstMedia('images');
-            $product->image_url = $firstImage ? $firstImage->getUrl('thumb') : null;
+            $product->image_url = $product->getThumbImageUrl();
             return $product;
         });
         

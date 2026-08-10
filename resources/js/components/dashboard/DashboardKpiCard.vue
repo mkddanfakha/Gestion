@@ -56,6 +56,22 @@ const href = computed(() => {
   background: #fff;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.dashboard-kpi:hover,
+.dashboard-kpi:focus,
+.dashboard-kpi:focus-visible,
+.dashboard-kpi:visited {
+  text-decoration: none;
+  color: inherit;
+}
+
+.dashboard-kpi__label,
+.dashboard-kpi__value,
+.dashboard-kpi__change {
+  text-decoration: none;
 }
 
 .dashboard-kpi--link:hover {

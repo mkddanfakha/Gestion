@@ -120,8 +120,6 @@ class GestionGroupedPreviewProvider implements GroupedPreviewProviderInterface
      */
     protected function mapProductPreview(Product $product, string $type): array
     {
-        $image = $product->getFirstMedia('images');
-
         return [
             'id' => $product->id,
             'name' => $product->name,
@@ -132,7 +130,7 @@ class GestionGroupedPreviewProvider implements GroupedPreviewProviderInterface
             'minimum_stock' => $product->min_stock_level,
             'min_stock_level' => $product->min_stock_level,
             'unit' => $product->unit,
-            'image_url' => $image ? $image->getUrl('thumb') : null,
+            'image_url' => $product->getThumbImageUrl(),
             'category' => $product->category?->name,
             'expiration_date' => $product->expiration_date?->format('Y-m-d'),
             'days_until_expiration' => $product->days_until_expiration,

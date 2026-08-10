@@ -65,8 +65,7 @@ class CategoryController extends Controller
         
         // Ajouter l'URL de la première image pour chaque produit
         $category->products->transform(function ($product) {
-            $firstImage = $product->getFirstMedia('images');
-            $product->image_url = $firstImage ? $firstImage->getUrl('thumb') : null;
+            $product->image_url = $product->getThumbImageUrl();
             return $product;
         });
         
