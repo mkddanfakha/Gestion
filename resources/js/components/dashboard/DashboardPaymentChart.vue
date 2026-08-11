@@ -24,6 +24,52 @@ let chart: Chart | null = null
 
 const palette = ['#059669', '#2563eb', '#d97706', '#7c3aed', '#0891b2', '#64748b']
 
+function formatSegmentPercentage(value: number): string {
+  const rounded = Math.round(value)
+  return `${Number.isInteger(value) || value === rounded ? rounded : value.toFixed(1)} %`
+}
+
+const percentageLabelsPlugin = {
+  id: 'paymentPercentageLabels',
+  afterDraw(chartInstance: Chart) {
+    const meta = chartInstance.getDatasetMeta(0)
+    if (!meta?.data?.length) return
+
+    const { ctx } = chartInstance
+    ctx.save()
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.font = 'bold 13px system-ui, -apple-system, sans-serif'
+
+    meta.data.forEach((arc, index) => {
+      const item = props.data[index]
+      if (!item || item.percentage <= 0) return
+
+      const element = arc as unknown as {
+        x: number
+        y: number
+        innerRadius: number
+        outerRadius: number
+        startAngle: number
+        endAngle: number
+      }
+
+      const angle = (element.startAngle + element.endAngle) / 2
+      const radius = (element.innerRadius + element.outerRadius) / 2
+      const x = element.x + Math.cos(angle) * radius
+      const y = element.y + Math.sin(angle) * radius
+      const label = formatSegmentPercentage(item.percentage)
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+      ctx.shadowColor = 'rgba(15, 23, 42, 0.35)'
+      ctx.shadowBlur = 4
+      ctx.fillText(label, x, y)
+    })
+
+    ctx.restore()
+  },
+}
+
 function buildChart() {
   if (!canvasRef.value) return
   chart?.destroy()
@@ -59,6 +105,7 @@ function buildChart() {
         },
       },
     },
+    plugins: [percentageLabelsPlugin],
   })
 }
 
