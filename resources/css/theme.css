@@ -62,6 +62,33 @@
     --nav-icon-admin-bg: rgba(100, 116, 139, 0.14);
     --nav-icon-admin-fg: #64748b;
 
+    /* Interaction & links */
+    --color-link: var(--color-accent);
+    --color-link-hover: #1d4ed8;
+    --color-table-row-hover: rgba(15, 23, 42, 0.04);
+    --color-table-row-hover-text: var(--color-text-primary);
+    --color-table-link-hover: var(--color-accent);
+    --color-dropdown-hover: rgba(15, 23, 42, 0.05);
+    --color-dropdown-active-bg: var(--color-accent);
+    --color-dropdown-active-text: #ffffff;
+    --color-input-disabled-bg: #f1f5f9;
+    --color-input-disabled-text: var(--color-text-muted);
+    --color-pagination-bg: var(--color-surface-elevated);
+    --color-pagination-hover: var(--color-surface-hover);
+    --color-pagination-active-bg: var(--color-accent);
+    --color-pagination-active-text: #ffffff;
+    --color-modal-overlay: rgba(15, 23, 42, 0.45);
+
+    /* Sale form semantic surfaces */
+    --color-sale-accent-bg: #f0fdf4;
+    --color-sale-accent-border: #bbf7d0;
+    --color-sale-total-bg: #ecfdf5;
+    --color-sale-total-border: #6ee7b7;
+    --color-sale-panel-bg: #f8fafc;
+    --color-sale-status-pending-bg: #fef2f2;
+    --color-sale-status-partial-bg: #fffbeb;
+    --color-sale-status-paid-bg: #ecfdf5;
+
     /* Bootstrap bridge */
     --bs-body-bg: var(--color-background);
     --bs-body-color: var(--color-text-primary);
@@ -105,6 +132,31 @@
     --nav-icon-company-fg: #c4b5fd;
     --nav-icon-admin-bg: rgba(100, 116, 139, 0.25);
     --nav-icon-admin-fg: #cbd5e1;
+
+    --color-link: #60a5fa;
+    --color-link-hover: #93c5fd;
+    --color-table-row-hover: rgba(255, 255, 255, 0.06);
+    --color-table-row-hover-text: var(--color-text-primary);
+    --color-table-link-hover: #93c5fd;
+    --color-dropdown-hover: rgba(255, 255, 255, 0.08);
+    --color-dropdown-active-bg: var(--color-accent);
+    --color-dropdown-active-text: #ffffff;
+    --color-input-disabled-bg: rgba(255, 255, 255, 0.04);
+    --color-input-disabled-text: var(--color-text-muted);
+    --color-pagination-bg: var(--color-surface-elevated);
+    --color-pagination-hover: var(--color-surface-hover);
+    --color-pagination-active-bg: var(--color-accent);
+    --color-pagination-active-text: #ffffff;
+    --color-modal-overlay: rgba(0, 0, 0, 0.55);
+
+    --color-sale-accent-bg: rgba(5, 150, 105, 0.12);
+    --color-sale-accent-border: rgba(5, 150, 105, 0.3);
+    --color-sale-total-bg: rgba(5, 150, 105, 0.15);
+    --color-sale-total-border: rgba(5, 150, 105, 0.35);
+    --color-sale-panel-bg: rgba(255, 255, 255, 0.04);
+    --color-sale-status-pending-bg: rgba(220, 38, 38, 0.15);
+    --color-sale-status-partial-bg: rgba(217, 119, 6, 0.15);
+    --color-sale-status-paid-bg: rgba(5, 150, 105, 0.15);
 
     --bs-body-bg: var(--color-background);
     --bs-body-color: var(--color-text-primary);

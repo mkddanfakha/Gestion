@@ -422,25 +422,3 @@ const deleteSale = async (sale: Sale) => {
 }
 </script>
 
-<style scoped>
-/* Visibilité du placeholder */
-.dark ::placeholder {
-  color: #94a3b8 !important;
-  opacity: 1 !important;
-}
-
-.dark input::placeholder {
-  color: #94a3b8 !important;
-  opacity: 1 !important;
-}
-
-input::placeholder {
-  color: #6c757d !important;
-  opacity: 1 !important;
-}
-
-.form-control::placeholder {
-  color: #6c757d !important;
-  opacity: 1 !important;
-}
-</style>

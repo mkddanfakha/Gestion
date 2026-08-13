@@ -400,27 +400,3 @@ const exportExcel = async () => {
 }
 </script>
 
-<style scoped>
-/* Assurer la visibilité du placeholder en dark mode */
-.dark ::placeholder {
-  color: #94a3b8 !important;
-  opacity: 1 !important;
-}
-
-.dark input::placeholder {
-  color: #94a3b8 !important;
-  opacity: 1 !important;
-}
-
-/* Assurer la visibilité du placeholder en light mode */
-input::placeholder {
-  color: #6c757d !important;
-  opacity: 1 !important;
-}
-
-.form-control::placeholder {
-  color: #6c757d !important;
-  opacity: 1 !important;
-}
-</style>
-

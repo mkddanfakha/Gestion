@@ -1,6 +1,6 @@
 import { formatCurrency } from '@/utils/currencyFormatter'
 import { useForm } from '@inertiajs/vue3'
-import { computed, ref, watch, type Ref } from 'vue'
+import { computed, onMounted, ref, watch, type Ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import {
@@ -78,6 +78,15 @@ function normalizePercent(value: unknown): number {
   return Math.round(Math.min(100, Math.max(0, parsed)) * 100) / 100
 }
 
+function getItemLineTotal(item: SaleFormItem): number {
+  const storedTotal = toNumber(item.total_price)
+  if (storedTotal > 0) {
+    return storedTotal
+  }
+
+  return toNumber(item.quantity) * toNumber(item.unit_price)
+}
+
 function mapSaleItems(items?: SaleFormItem[]): SaleFormItem[] {
   if (!items?.length) {
     return []
@@ -125,6 +134,8 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
   const discountMode = ref<'amount' | 'percent'>('amount')
   const taxPercent = ref(0)
   const discountPercent = ref(0)
+  const taxPercentUserEdited = ref(false)
+  const discountPercentUserEdited = ref(false)
   const taxEnabled = ref(mode === 'edit' ? toNumber(sale?.tax_amount) > 0 : true)
   const discountEnabled = ref(mode === 'edit' ? toNumber(sale?.discount_amount) > 0 : true)
   const cashReceivedAmount = ref(0)
@@ -280,117 +291,159 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
 
     const itemsCount = computed(() => form.items.length)
 
-  const subtotal = computed(() => form.items.reduce((total, item) => total + item.total_price, 0))
+  const subtotal = computed(() => form.items.reduce((total, item) => total + getItemLineTotal(item), 0))
 
-  if (mode === 'edit') {
-    watch(
-      () => form.tax_amount,
-      (newAmount) => {
-        if (taxMode.value === 'amount' && subtotal.value > 0 && newAmount > 0) {
-          taxPercent.value = normalizePercent((newAmount / subtotal.value) * 100)
-        }
-      },
-      { immediate: true },
-    )
-
-    watch(
-      () => form.discount_amount,
-      (newAmount) => {
-        if (discountMode.value === 'amount' && subtotal.value > 0 && newAmount > 0) {
-          discountPercent.value = normalizePercent((newAmount / subtotal.value) * 100)
-        }
-      },
-      { immediate: true },
-    )
-  }
-
-  const calculatedTaxAmount = computed(() => {
-    if (!taxEnabled.value) return 0
-    if (taxMode.value === 'percent' && taxPercent.value > 0) {
-      return (subtotal.value * taxPercent.value) / 100
-    }
-    return form.tax_amount || 0
-  })
-
-  const calculatedDiscountAmount = computed(() => {
-    if (!discountEnabled.value) return 0
-    if (discountMode.value === 'percent' && discountPercent.value > 0) {
-      return (subtotal.value * discountPercent.value) / 100
-    }
-    return form.discount_amount || 0
-  })
-
-  const updateTaxFromPercent = () => {
-    if (!taxEnabled.value) return
-    taxPercent.value = normalizePercent(taxPercent.value)
-
-    if (taxMode.value === 'percent' && taxPercent.value > 0) {
-      form.tax_amount = (subtotal.value * taxPercent.value) / 100
-    } else if (taxMode.value === 'percent') {
-      form.tax_amount = 0
-    }
-  }
-
-  const updateDiscountFromPercent = () => {
-    if (!discountEnabled.value) return
-    discountPercent.value = normalizePercent(discountPercent.value)
-
-    if (discountMode.value === 'percent' && discountPercent.value > 0) {
-      form.discount_amount = (subtotal.value * discountPercent.value) / 100
-    } else if (discountMode.value === 'percent') {
-      form.discount_amount = 0
-    }
-  }
-
-  const onTaxPercentInput = () => {
-    updateTaxFromPercent()
-    validateField('tax_percent', taxPercent.value)
-  }
-
-  const onDiscountPercentInput = () => {
-    updateDiscountFromPercent()
-    validateField('discount_percent', discountPercent.value)
-  }
-
-  const updateTaxPercentFromAmount = () => {
-    if (taxMode.value === 'amount' && subtotal.value > 0 && form.tax_amount > 0) {
-      taxPercent.value = normalizePercent((form.tax_amount / subtotal.value) * 100)
-    } else if (taxMode.value === 'amount') {
+  const syncTaxPercentFromAmount = () => {
+    const amount = toNumber(form.tax_amount)
+    if (subtotal.value > 0 && amount > 0) {
+      taxPercent.value = normalizePercent((amount / subtotal.value) * 100)
+    } else if (amount <= 0) {
       taxPercent.value = 0
     }
   }
 
-  const updateDiscountPercentFromAmount = () => {
-    if (discountMode.value === 'amount' && subtotal.value > 0 && form.discount_amount > 0) {
-      discountPercent.value = normalizePercent((form.discount_amount / subtotal.value) * 100)
-    } else if (discountMode.value === 'amount') {
+  const syncDiscountPercentFromAmount = () => {
+    const amount = toNumber(form.discount_amount)
+    if (subtotal.value > 0 && amount > 0) {
+      discountPercent.value = normalizePercent((amount / subtotal.value) * 100)
+    } else if (amount <= 0) {
       discountPercent.value = 0
     }
   }
 
-  watch(taxMode, (newMode) => {
-    if (newMode === 'percent') {
-      updateTaxFromPercent()
-    } else {
-      updateTaxPercentFromAmount()
+  watch(
+    () => form.tax_amount,
+    () => {
+      if (taxMode.value === 'amount') {
+        syncTaxPercentFromAmount()
+      }
+    },
+  )
+
+  watch(
+    () => form.discount_amount,
+    () => {
+      if (discountMode.value === 'amount') {
+        syncDiscountPercentFromAmount()
+      }
+    },
+  )
+
+  const calculatedTaxAmount = computed(() => {
+    if (!taxEnabled.value) return 0
+    const amount = toNumber(form.tax_amount)
+    if (taxMode.value === 'percent' && taxPercentUserEdited.value && taxPercent.value > 0) {
+      return (subtotal.value * taxPercent.value) / 100
     }
+    return amount
+  })
+
+  const calculatedDiscountAmount = computed(() => {
+    if (!discountEnabled.value) return 0
+    const amount = toNumber(form.discount_amount)
+    if (discountMode.value === 'percent' && discountPercentUserEdited.value && discountPercent.value > 0) {
+      return (subtotal.value * discountPercent.value) / 100
+    }
+    return amount
+  })
+
+  const updateTaxFromPercent = () => {
+    if (!taxEnabled.value || taxMode.value !== 'percent') return
+    if (subtotal.value <= 0) return
+
+    taxPercent.value = normalizePercent(taxPercent.value)
+
+    if (taxPercent.value > 0) {
+      form.tax_amount = (subtotal.value * taxPercent.value) / 100
+    }
+  }
+
+  const updateDiscountFromPercent = () => {
+    if (!discountEnabled.value || discountMode.value !== 'percent') return
+    if (subtotal.value <= 0) return
+
+    discountPercent.value = normalizePercent(discountPercent.value)
+
+    if (discountPercent.value > 0) {
+      form.discount_amount = (subtotal.value * discountPercent.value) / 100
+    }
+  }
+
+  const onTaxPercentInput = () => {
+    if (!taxEnabled.value) return
+
+    taxPercentUserEdited.value = true
+
+    if (toNumber(taxPercent.value) <= 0) {
+      taxPercent.value = 0
+      form.tax_amount = 0
+    } else {
+      updateTaxFromPercent()
+    }
+
+    validateField('tax_percent', taxPercent.value)
+  }
+
+  const onDiscountPercentInput = () => {
+    if (!discountEnabled.value) return
+
+    discountPercentUserEdited.value = true
+
+    if (toNumber(discountPercent.value) <= 0) {
+      discountPercent.value = 0
+      form.discount_amount = 0
+    } else {
+      updateDiscountFromPercent()
+    }
+
+    validateField('discount_percent', discountPercent.value)
+  }
+
+  const updateTaxPercentFromAmount = () => {
+    if (taxMode.value !== 'amount') return
+    syncTaxPercentFromAmount()
+  }
+
+  const updateDiscountPercentFromAmount = () => {
+    if (discountMode.value !== 'amount') return
+    syncDiscountPercentFromAmount()
+  }
+
+  watch(taxMode, (newMode) => {
+    taxPercentUserEdited.value = false
+    syncTaxPercentFromAmount()
   })
 
   watch(discountMode, (newMode) => {
-    if (newMode === 'percent') {
-      updateDiscountFromPercent()
-    } else {
-      updateDiscountPercentFromAmount()
-    }
+    discountPercentUserEdited.value = false
+    syncDiscountPercentFromAmount()
   })
 
   watch(subtotal, () => {
     if (taxMode.value === 'percent') {
-      updateTaxFromPercent()
+      if (taxPercentUserEdited.value) {
+        updateTaxFromPercent()
+      } else {
+        syncTaxPercentFromAmount()
+      }
+    } else {
+      syncTaxPercentFromAmount()
     }
+
     if (discountMode.value === 'percent') {
-      updateDiscountFromPercent()
+      if (discountPercentUserEdited.value) {
+        updateDiscountFromPercent()
+      } else {
+        syncDiscountPercentFromAmount()
+      }
+    } else {
+      syncDiscountPercentFromAmount()
     }
+  })
+
+  onMounted(() => {
+    syncTaxPercentFromAmount()
+    syncDiscountPercentFromAmount()
   })
 
   const taxAmount = computed(() => {
@@ -578,13 +631,13 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
   const prepareSubmit = () => {
     clientErrors.value = {}
 
-    if (taxEnabled.value && taxMode.value === 'percent') {
+    if (taxEnabled.value && taxMode.value === 'percent' && taxPercentUserEdited.value) {
       updateTaxFromPercent()
     } else if (!taxEnabled.value) {
       form.tax_amount = 0
     }
 
-    if (discountEnabled.value && discountMode.value === 'percent') {
+    if (discountEnabled.value && discountMode.value === 'percent' && discountPercentUserEdited.value) {
       updateDiscountFromPercent()
     } else if (!discountEnabled.value) {
       form.discount_amount = 0

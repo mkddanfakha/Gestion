@@ -49,7 +49,7 @@
 
     <!-- Général -->
     <div v-show="activeTab === 'general'" class="card shadow-sm">
-      <div class="card-header bg-white">
+      <div class="card-header">
         <h2 class="h5 mb-0">Notifications générales</h2>
       </div>
       <div class="card-body">
@@ -77,7 +77,7 @@
 
     <!-- Canaux -->
     <div v-show="activeTab === 'channels'" class="card shadow-sm">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div class="card-header d-flex justify-content-between align-items-center">
         <div>
           <h2 class="h5 mb-0">Canaux de diffusion</h2>
           <small class="text-muted">Seule l'application est active aujourd'hui — les autres canaux sont prêts pour extension.</small>
@@ -118,7 +118,7 @@
 
     <!-- Destinataires -->
     <div v-show="activeTab === 'recipients'" class="card shadow-sm">
-      <div class="card-header bg-white">
+      <div class="card-header">
         <h2 class="h5 mb-0">Destinataires par type</h2>
         <small class="text-muted">Cochez les rôles qui doivent recevoir chaque notification.</small>
       </div>
@@ -148,7 +148,7 @@
 
     <!-- Priorités -->
     <div v-show="activeTab === 'priorities'" class="card shadow-sm">
-      <div class="card-header bg-white">
+      <div class="card-header">
         <h2 class="h5 mb-0">Priorités</h2>
       </div>
       <div class="card-body">
@@ -167,7 +167,7 @@
 
     <!-- Sons -->
     <div v-show="activeTab === 'sounds'" class="card shadow-sm">
-      <div class="card-header bg-white">
+      <div class="card-header">
         <h2 class="h5 mb-0">Sons de notification</h2>
         <small class="text-muted">Profils disponibles — extensible sans modification du code métier.</small>
       </div>
@@ -200,7 +200,7 @@
     <div v-show="activeTab === 'realtime'" class="row g-4">
       <div class="col-lg-7">
         <div class="card shadow-sm h-100">
-          <div class="card-header bg-white">
+          <div class="card-header">
             <h2 class="h5 mb-0">État Pusher / temps réel</h2>
           </div>
           <div class="card-body">
@@ -229,7 +229,7 @@
       </div>
       <div class="col-lg-5">
         <div class="card shadow-sm h-100">
-          <div class="card-header bg-white">
+          <div class="card-header">
             <h2 class="h5 mb-0">Test de démonstration</h2>
           </div>
           <div class="card-body d-flex flex-column">
@@ -269,7 +269,7 @@
       </div>
       <div class="col-lg-6">
         <div class="card shadow-sm h-100">
-          <div class="card-header bg-white"><h3 class="h6 mb-0">Métriques d'envoi</h3></div>
+          <div class="card-header"><h3 class="h6 mb-0">Métriques d'envoi</h3></div>
           <div class="card-body">
             <dl class="row mb-0 small">
               <dt class="col-sm-6">Dernière notification</dt>
@@ -288,7 +288,7 @@
       </div>
       <div class="col-lg-6">
         <div class="card shadow-sm h-100">
-          <div class="card-header bg-white"><h3 class="h6 mb-0">État Pusher</h3></div>
+          <div class="card-header"><h3 class="h6 mb-0">État Pusher</h3></div>
           <div class="card-body">
             <dl class="row mb-0 small">
               <dt class="col-sm-5">Configuré</dt>
@@ -311,7 +311,7 @@
 
     <!-- Health Check -->
     <div v-show="activeTab === 'health'" class="card shadow-sm">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Health Check</h2>
         <button class="btn btn-outline-secondary btn-sm" :disabled="healthLoading" @click="loadHealth">
           <span v-if="healthLoading" class="spinner-border spinner-border-sm me-1" />
@@ -360,7 +360,7 @@
       </div>
       <div class="col-lg-8">
         <div class="card shadow-sm">
-          <div class="card-header bg-white">
+          <div class="card-header">
             <h2 class="h5 mb-0">Actions de maintenance</h2>
           </div>
           <div class="card-body d-flex flex-column gap-3">

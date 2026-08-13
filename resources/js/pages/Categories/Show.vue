@@ -2,7 +2,7 @@
   <AppLayout>
     <div class="min-vh-100 bg-light">
       <!-- Header -->
-      <div class="bg-white shadow-sm">
+      <div class="surface-panel">
         <div class="container-fluid">
             <div class="d-flex justify-content-between align-items-center py-4">
             <div>

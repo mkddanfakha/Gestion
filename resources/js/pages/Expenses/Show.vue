@@ -256,49 +256,7 @@ const deleteExpense = async () => {
   font-size: 18px;
 }
 
-.form-control-plaintext {
-  padding: 0.375rem 0;
-  margin-bottom: 0;
-  line-height: 1.5;
-  color: #212529;
-  background-color: transparent;
-  border: solid transparent;
-  border-width: 1px 0;
-}
-
 .badge {
   font-size: 0.875em;
-}
-
-/* Dark mode styles */
-:deep(.dark) .form-control-plaintext {
-  color: #e2e8f0 !important;
-}
-
-:deep(.dark) .text-dark-emphasis {
-  color: #e2e8f0 !important;
-}
-
-:deep(.dark) .card-body .form-control-plaintext {
-  color: #e2e8f0 !important;
-}
-
-:deep(.dark) code {
-  background-color: #334155 !important;
-  color: #60a5fa !important;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-}
-
-:deep(.dark) .text-muted {
-  color: #94a3b8 !important;
-}
-
-:deep(.dark) .fw-medium {
-  color: #e2e8f0 !important;
-}
-
-:deep(.dark) .card-body p {
-  color: #e2e8f0 !important;
 }
 </style>

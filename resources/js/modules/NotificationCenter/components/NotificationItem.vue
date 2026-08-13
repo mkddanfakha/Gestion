@@ -291,33 +291,3 @@ function openNotification() {
         </div>
     </article>
 </template>
-
-<style scoped>
-.nc-item__ref,
-.nc-item__hint {
-    margin: 0.15rem 0 0;
-    font-size: 0.72rem;
-    color: #64748b;
-}
-
-.nc-item__hint {
-    font-weight: 600;
-}
-
-.nc-item__hint--expired {
-    color: #dc2626;
-}
-
-.nc-item__hint--warning {
-    color: #d97706;
-}
-
-.nc-item__product--expiration {
-    font-weight: 600;
-}
-
-.nc-item__category {
-    font-size: 0.68rem;
-    color: #94a3b8;
-}
-</style>

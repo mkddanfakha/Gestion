@@ -782,59 +782,7 @@ const handleClickOutside = (event: MouseEvent) => {
   padding: 0.5rem 0;
 }
 
-.dropdown-item {
-  cursor: pointer;
-  padding: 0.5rem 1rem;
-  color: #212529;
-  background-color: white;
-  transition: background-color 0.15s ease-in-out;
-}
-
-.dropdown-item:hover {
-  background-color: #e9ecef;
-  color: #212529;
-}
-
 .form-control {
   z-index: 1;
-}
-
-/* Dark mode support */
-:deep(.dark) .dropdown-menu {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
-}
-
-:deep(.dark) .dropdown-item {
-  color: #e2e8f0 !important;
-  background-color: #1e293b !important;
-}
-
-:deep(.dark) .dropdown-item:hover {
-  background-color: #334155 !important;
-  color: white !important;
-}
-
-/* Visibilité du placeholder */
-.dark ::placeholder {
-  color: #94a3b8 !important;
-  opacity: 1 !important;
-}
-
-.dark input::placeholder,
-.dark textarea::placeholder {
-  color: #94a3b8 !important;
-  opacity: 1 !important;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: #6c757d !important;
-  opacity: 1 !important;
-}
-
-.form-control::placeholder {
-  color: #6c757d !important;
-  opacity: 1 !important;
 }
 </style>

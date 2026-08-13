@@ -433,7 +433,7 @@ const deleteExpense = async (expense: Expense) => {
 .table th {
   border-top: none;
   font-weight: 600;
-  color: #495057;
+  color: var(--color-text-muted);
 }
 
 .btn-group .btn {
@@ -448,26 +448,5 @@ const deleteExpense = async (expense: Expense) => {
 .btn-group .btn:last-child {
   border-top-right-radius: 0.375rem;
   border-bottom-right-radius: 0.375rem;
-}
-
-/* Visibilité du placeholder */
-.dark ::placeholder {
-  color: #94a3b8 !important;
-  opacity: 1 !important;
-}
-
-.dark input::placeholder {
-  color: #94a3b8 !important;
-  opacity: 1 !important;
-}
-
-input::placeholder {
-  color: #6c757d !important;
-  opacity: 1 !important;
-}
-
-.form-control::placeholder {
-  color: #6c757d !important;
-  opacity: 1 !important;
 }
 </style>

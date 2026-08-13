@@ -22,6 +22,10 @@ const props = withDefaults(defineProps<{
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let chart: Chart | null = null
 
+function isDarkMode(): boolean {
+  return document.documentElement.classList.contains('dark')
+}
+
 const palette = ['#059669', '#2563eb', '#d97706', '#7c3aed', '#0891b2', '#64748b']
 
 function formatSegmentPercentage(value: number): string {
@@ -74,6 +78,9 @@ function buildChart() {
   if (!canvasRef.value) return
   chart?.destroy()
 
+  const dark = isDarkMode()
+  const legendColor = dark ? '#cbd5e1' : '#64748b'
+
   chart = new Chart(canvasRef.value, {
     type: 'doughnut',
     data: {
@@ -93,7 +100,7 @@ function buildChart() {
       plugins: {
         legend: {
           position: 'bottom',
-          labels: { boxWidth: 12, padding: 14 },
+          labels: { boxWidth: 12, padding: 14, color: legendColor },
         },
         tooltip: {
           callbacks: {
@@ -109,9 +116,15 @@ function buildChart() {
   })
 }
 
-onMounted(buildChart)
+onMounted(() => {
+  buildChart()
+  window.addEventListener('mkd-theme-changed', buildChart)
+})
 watch(() => props.data, buildChart, { deep: true })
-onUnmounted(() => chart?.destroy())
+onUnmounted(() => {
+  window.removeEventListener('mkd-theme-changed', buildChart)
+  chart?.destroy()
+})
 </script>
 
 <style scoped>

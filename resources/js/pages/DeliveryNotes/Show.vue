@@ -267,7 +267,7 @@
           <div class="card-body">
             <div class="mb-3">
               <label class="form-label">Choisir un fichier (PDF ou image)</label>
-              <input class="form-control bg-white" type="file" accept=".pdf,image/*" @change="onFileChange" />
+              <input class="form-control" type="file" accept=".pdf,image/*" @change="onFileChange" />
               <div v-if="selectedFile" class="mt-2">
                 <small class="text-success">
                   <i class="bi bi-check-circle me-1"></i>

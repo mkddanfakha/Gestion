@@ -1,0 +1,646 @@
+/* MKD-Pro Gestion — Shared UI components (theme-aware) */
+
+/* --------------------------------------------------------------------------
+   Typography & plain text
+   -------------------------------------------------------------------------- */
+.form-control-plaintext {
+    color: var(--color-text-primary);
+    background-color: transparent;
+}
+
+.text-dark-emphasis {
+    color: var(--color-text-primary) !important;
+}
+
+.card-header {
+    background-color: var(--color-surface-elevated);
+    border-bottom-color: var(--color-border-subtle);
+    color: var(--color-text-primary);
+}
+
+.card-title {
+    color: var(--color-text-primary);
+}
+
+code {
+    color: var(--color-accent);
+}
+
+.dark code {
+    background-color: var(--color-surface-hover);
+    color: var(--color-link);
+}
+
+/* --------------------------------------------------------------------------
+   Bootstrap utility bridges (tables, badges, surfaces)
+   -------------------------------------------------------------------------- */
+.bg-light {
+    background-color: var(--color-surface-hover) !important;
+    color: var(--color-text-secondary);
+}
+
+.badge.bg-light,
+.badge.text-bg-light {
+    background-color: var(--color-surface-hover) !important;
+    color: var(--color-text-secondary) !important;
+    border: 1px solid var(--color-border-subtle);
+}
+
+code.text-dark,
+.text-dark code,
+.table code {
+    color: var(--color-accent);
+}
+
+.form-control.bg-light,
+.form-control.bg-light[readonly] {
+    background-color: var(--color-input-disabled-bg) !important;
+    color: var(--color-input-disabled-text) !important;
+    border-color: var(--color-border) !important;
+}
+
+.surface-muted {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+/* Table row interactions — keep controls readable on hover (dark priority) */
+.table-hover tbody tr:hover .btn-outline-secondary {
+    color: var(--color-text-secondary);
+    border-color: var(--color-border);
+    background-color: transparent;
+}
+
+.table-hover tbody tr:hover .btn-outline-secondary:hover,
+.table-hover tbody tr:hover .btn-outline-secondary:focus-visible {
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+}
+
+.table-hover tbody tr:hover .btn-outline-primary {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.table-hover tbody tr:hover .btn-outline-primary:hover,
+.table-hover tbody tr:hover .btn-outline-primary:focus-visible {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-text-inverse);
+}
+
+.table-hover tbody tr:hover .btn-outline-danger {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+}
+
+.table-hover tbody tr:hover .btn-outline-danger:hover,
+.table-hover tbody tr:hover .btn-outline-danger:focus-visible {
+    background-color: var(--color-danger);
+    border-color: var(--color-danger);
+    color: #fff;
+}
+
+.table-hover tbody tr:hover .btn-outline-success {
+    color: var(--color-success);
+    border-color: var(--color-success);
+}
+
+.table-hover tbody tr:hover .btn-outline-success:hover,
+.table-hover tbody tr:hover .btn-outline-success:focus-visible {
+    background-color: var(--color-success);
+    border-color: var(--color-success);
+    color: #fff;
+}
+
+/* Dropdown menus teleported to body */
+.dropdown-menu .dropdown-item:hover:not(.disabled):not(.active),
+.dropdown-menu .dropdown-item:focus:not(.disabled):not(.active) {
+    background-color: var(--color-dropdown-hover);
+    color: var(--color-text-primary);
+}
+
+.dropdown-menu .dropdown-item.active,
+.dropdown-menu .dropdown-item:active {
+    background-color: var(--color-dropdown-active-bg);
+    color: var(--color-dropdown-active-text);
+}
+
+/* Focus visibility */
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.page-link:focus-visible,
+.dropdown-item:focus-visible,
+.nc-filters__tab:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* Disabled states */
+.btn:disabled,
+.btn.disabled,
+.form-control:disabled,
+.form-select:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Placeholders (global — replaces per-page scoped blocks)
+   -------------------------------------------------------------------------- */
+input::placeholder,
+textarea::placeholder,
+.form-control::placeholder,
+.form-select::placeholder {
+    color: var(--color-text-muted) !important;
+    opacity: 1 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Tables
+   -------------------------------------------------------------------------- */
+.table {
+    --bs-table-bg: var(--color-surface-elevated);
+    --bs-table-color: var(--color-text-primary);
+    --bs-table-border-color: var(--color-border);
+}
+
+.table thead th {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-muted);
+    border-bottom-color: var(--color-border);
+    font-weight: 600;
+}
+
+.table tbody td,
+.table tbody th {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-subtle);
+    vertical-align: middle;
+}
+
+.table tbody .fw-medium,
+.table tbody .fw-semibold,
+.table tbody strong:not(.badge) {
+    color: var(--color-text-primary);
+}
+
+.table-hover tbody tr {
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--color-table-row-hover) !important;
+    color: var(--color-table-row-hover-text) !important;
+}
+
+.table-hover tbody tr:hover td,
+.table-hover tbody tr:hover th {
+    color: var(--color-table-row-hover-text) !important;
+}
+
+.table-hover tbody tr:hover a:not(.btn) {
+    color: var(--color-table-link-hover) !important;
+}
+
+.table-hover tbody tr:hover .text-muted {
+    color: var(--color-text-muted) !important;
+}
+
+.table-hover tbody tr:hover .text-success {
+    color: var(--color-success) !important;
+}
+
+.table-hover tbody tr:hover .text-danger {
+    color: var(--color-danger) !important;
+}
+
+.table-hover tbody tr:hover .text-warning {
+    color: var(--color-warning) !important;
+}
+
+.table-hover tbody tr:hover .text-primary {
+    color: var(--color-link) !important;
+}
+
+.table .btn-group .btn,
+.table .btn-sm {
+    transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+/* --------------------------------------------------------------------------
+   Pagination
+   -------------------------------------------------------------------------- */
+.pagination {
+    --bs-pagination-bg: var(--color-pagination-bg);
+    --bs-pagination-border-color: var(--color-border);
+    --bs-pagination-color: var(--color-text-secondary);
+    --bs-pagination-hover-bg: var(--color-pagination-hover);
+    --bs-pagination-hover-border-color: var(--color-border);
+    --bs-pagination-hover-color: var(--color-text-primary);
+    --bs-pagination-focus-bg: var(--color-pagination-hover);
+    --bs-pagination-focus-color: var(--color-text-primary);
+    --bs-pagination-disabled-bg: var(--color-surface);
+    --bs-pagination-disabled-border-color: var(--color-border);
+    --bs-pagination-disabled-color: var(--color-text-muted);
+    --bs-pagination-active-bg: var(--color-pagination-active-bg);
+    --bs-pagination-active-border-color: var(--color-pagination-active-bg);
+    --bs-pagination-active-color: var(--color-pagination-active-text);
+}
+
+.page-link {
+    background-color: var(--color-pagination-bg);
+    border-color: var(--color-border);
+    color: var(--color-text-secondary);
+    transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.page-link:hover {
+    background-color: var(--color-pagination-hover);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+}
+
+.page-item.active .page-link {
+    background-color: var(--color-pagination-active-bg);
+    border-color: var(--color-pagination-active-bg);
+    color: var(--color-pagination-active-text);
+}
+
+.page-item.disabled .page-link {
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Dropdowns & autocompletes
+   -------------------------------------------------------------------------- */
+.dropdown-menu {
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-md);
+}
+
+.dropdown-item {
+    color: var(--color-text-primary);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.dropdown-item:hover:not(.disabled):not(.active),
+.dropdown-item:focus:not(.disabled):not(.active) {
+    background-color: var(--color-dropdown-hover);
+    color: var(--color-text-primary);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+    background-color: var(--color-dropdown-active-bg);
+    color: var(--color-dropdown-active-text);
+}
+
+.dropdown-item.disabled,
+.dropdown-item:disabled {
+    color: var(--color-text-muted);
+    opacity: 0.65;
+}
+
+.dropdown-item.disabled:hover,
+.dropdown-item:disabled:hover {
+    background-color: transparent;
+    color: var(--color-text-muted);
+}
+
+.product-dropdown-menu,
+.customer-dropdown-menu {
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+}
+
+.product-dropdown-menu .dropdown-item,
+.customer-dropdown-menu .dropdown-item {
+    cursor: pointer;
+    padding: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons — outline variants (theme-safe hover)
+   -------------------------------------------------------------------------- */
+.btn-outline-secondary {
+    color: var(--color-text-secondary);
+    border-color: var(--color-border);
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus-visible {
+    background-color: var(--color-surface-hover);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+}
+
+.btn-outline-primary {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus-visible {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-text-inverse);
+}
+
+.btn-outline-success {
+    color: var(--color-success);
+    border-color: var(--color-success);
+}
+
+.btn-outline-success:hover,
+.btn-outline-success:focus-visible {
+    background-color: var(--color-success);
+    border-color: var(--color-success);
+    color: #ffffff;
+}
+
+.btn-outline-danger {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+}
+
+.btn-outline-danger:hover,
+.btn-outline-danger:focus-visible {
+    background-color: var(--color-danger);
+    border-color: var(--color-danger);
+    color: #ffffff;
+}
+
+.btn-outline-warning {
+    color: var(--color-warning);
+    border-color: var(--color-warning);
+}
+
+.btn-outline-warning:hover,
+.btn-outline-warning:focus-visible {
+    background-color: var(--color-warning);
+    border-color: var(--color-warning);
+    color: #ffffff;
+}
+
+.btn-ghost,
+.btn-link {
+    color: var(--color-link);
+}
+
+.btn-link:hover,
+.btn-link:focus-visible {
+    color: var(--color-link-hover);
+}
+
+/* --------------------------------------------------------------------------
+   Form controls
+   -------------------------------------------------------------------------- */
+.form-control,
+.form-select {
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+    transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.form-control:hover:not(:disabled):not([readonly]),
+.form-select:hover:not(:disabled) {
+    border-color: var(--color-text-muted);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-accent);
+    color: var(--color-text-primary);
+    box-shadow: 0 0 0 0.25rem var(--color-accent-soft);
+}
+
+.form-control:disabled,
+.form-select:disabled,
+.form-control[readonly] {
+    background-color: var(--color-input-disabled-bg);
+    color: var(--color-input-disabled-text);
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+.form-select option {
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+}
+
+.form-select option[value=""] {
+    color: var(--color-text-muted);
+}
+
+.input-group-text {
+    background-color: var(--color-surface-hover);
+    border-color: var(--color-border);
+    color: var(--color-text-secondary);
+}
+
+.form-label,
+.fw-medium {
+    color: var(--color-text-secondary);
+}
+
+.form-check-input:checked {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.invalid-feedback {
+    color: var(--color-danger) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Links & breadcrumbs
+   -------------------------------------------------------------------------- */
+a:not(.btn):not(.nav-link):not(.page-link):not(.dropdown-item) {
+    color: var(--color-link);
+    transition: color var(--transition-fast);
+}
+
+a:not(.btn):not(.nav-link):not(.page-link):not(.dropdown-item):hover,
+a:not(.btn):not(.nav-link):not(.page-link):not(.dropdown-item):focus-visible {
+    color: var(--color-link-hover);
+}
+
+.breadcrumb-item a {
+    color: var(--color-link);
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    color: var(--color-link-hover);
+}
+
+.breadcrumb-item.active {
+    color: var(--color-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Modals
+   -------------------------------------------------------------------------- */
+.modal-content {
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--color-border-subtle);
+}
+
+.modal-backdrop.show {
+    opacity: 1;
+    background-color: var(--color-modal-overlay);
+}
+
+.btn-close {
+    filter: none;
+}
+
+.dark .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* --------------------------------------------------------------------------
+   List group
+   -------------------------------------------------------------------------- */
+.list-group-item {
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+}
+
+.list-group-item:hover,
+.list-group-item:focus {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-primary);
+}
+
+.list-group-item.active {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-text-inverse);
+}
+
+/* --------------------------------------------------------------------------
+   Badges — semantic contrast
+   -------------------------------------------------------------------------- */
+.badge.bg-warning.text-dark {
+    color: var(--color-text-primary) !important;
+}
+
+.dark .badge.bg-warning.text-dark {
+    color: var(--color-text-inverse) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Alerts
+   -------------------------------------------------------------------------- */
+.alert {
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+}
+
+.alert-success {
+    background-color: var(--color-success-soft);
+    border-color: var(--color-success);
+    color: var(--color-success);
+}
+
+.alert-danger {
+    background-color: var(--color-danger-soft);
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+}
+
+.alert-warning {
+    background-color: var(--color-warning-soft);
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+}
+
+.alert-info {
+    background-color: var(--color-info-soft);
+    border-color: var(--color-info);
+    color: var(--color-info);
+}
+
+/* --------------------------------------------------------------------------
+   Nav tabs (filters, settings)
+   -------------------------------------------------------------------------- */
+.nav-tabs .nav-link {
+    color: var(--color-text-secondary);
+    border-color: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-subtle);
+    background-color: var(--color-surface-hover);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--color-accent);
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-border) var(--color-border) var(--color-surface-elevated);
+}
+
+/* --------------------------------------------------------------------------
+   Tooltips (Bootstrap)
+   -------------------------------------------------------------------------- */
+.tooltip-inner {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+}
+
+.dark .tooltip-inner {
+    background-color: #1e293b;
+    color: var(--color-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Page utilities
+   -------------------------------------------------------------------------- */
+.surface-panel {
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.page-header h1,
+.page-header h2,
+.page-header .h2 {
+    color: var(--color-text-primary);
+}
+
+.card-body p {
+    color: var(--color-text-primary);
+}
+
+.card-body .form-control-plaintext {
+    color: var(--color-text-primary);
+}
+
+.min-w-0 {
+    min-width: 0;
+}

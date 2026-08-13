@@ -92,9 +92,15 @@ function buildChart() {
   })
 }
 
-onMounted(buildChart)
+onMounted(() => {
+  buildChart()
+  window.addEventListener('mkd-theme-changed', buildChart)
+})
 watch(() => props.data, buildChart, { deep: true })
-onUnmounted(() => chart?.destroy())
+onUnmounted(() => {
+  window.removeEventListener('mkd-theme-changed', buildChart)
+  chart?.destroy()
+})
 </script>
 
 <style scoped>

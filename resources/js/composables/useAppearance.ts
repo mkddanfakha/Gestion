@@ -20,6 +20,8 @@ export function updateTheme(value: Appearance) {
     } else {
         document.documentElement.classList.toggle('dark', value === 'dark');
     }
+
+    window.dispatchEvent(new CustomEvent('mkd-theme-changed'));
 }
 
 const setCookie = (name: string, value: string, days = 365) => {

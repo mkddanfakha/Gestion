@@ -85,35 +85,21 @@ const currentPath = page.url;
 <style scoped>
 .nav-link {
     padding: 0.75rem 1rem;
-    color: #495057;
+    color: var(--color-text-secondary);
     border-left: 3px solid transparent;
-    transition: all 0.2s ease;
+    transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .nav-link:hover {
-    background-color: #f8f9fa;
-    color: #0d6efd;
-    border-left-color: #0d6efd;
+    background-color: var(--color-surface-hover);
+    color: var(--color-link);
+    border-left-color: var(--color-accent);
 }
 
 .nav-link.active {
-    background-color: #e7f1ff;
-    color: #0d6efd;
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent);
     font-weight: 600;
-    border-left-color: #0d6efd;
-}
-
-:deep(.dark) .nav-link {
-    color: #e2e8f0;
-}
-
-:deep(.dark) .nav-link:hover {
-    background-color: #1e293b;
-    color: #60a5fa;
-}
-
-:deep(.dark) .nav-link.active {
-    background-color: #1e3a5f;
-    color: #60a5fa;
+    border-left-color: var(--color-accent);
 }
 </style>

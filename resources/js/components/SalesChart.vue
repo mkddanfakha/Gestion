@@ -57,6 +57,11 @@ const createChart = async () => {
       chartInstance.destroy()
     }
 
+    const dark = document.documentElement.classList.contains('dark')
+    const textColor = dark ? '#cbd5e1' : '#475569'
+    const gridColor = dark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(0, 0, 0, 0.1)'
+    const tooltipBg = dark ? '#1e293b' : 'rgba(0, 0, 0, 0.8)'
+
     // Préparer les données
     const labels = props.data.map(item => formatMonth(item.month))
     const values = props.data.map(item => item.total)
@@ -96,6 +101,7 @@ const createChart = async () => {
             labels: {
               usePointStyle: true,
               padding: 20,
+              color: textColor,
               font: {
                 size: 14,
                 weight: '500'
@@ -103,7 +109,7 @@ const createChart = async () => {
             }
           },
           tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backgroundColor: tooltipBg,
             titleColor: '#ffffff',
             bodyColor: '#ffffff',
             borderColor: '#0d6efd',
@@ -123,6 +129,7 @@ const createChart = async () => {
             title: {
               display: true,
               text: 'Mois',
+              color: textColor,
               font: {
                 size: 14,
                 weight: '600'
@@ -130,9 +137,10 @@ const createChart = async () => {
             },
             grid: {
               display: true,
-              color: 'rgba(0, 0, 0, 0.1)'
+              color: gridColor
             },
             ticks: {
+              color: textColor,
               font: {
                 size: 12
               }
@@ -143,6 +151,7 @@ const createChart = async () => {
             title: {
               display: true,
               text: 'Montant (FCFA)',
+              color: textColor,
               font: {
                 size: 14,
                 weight: '600'
@@ -150,9 +159,10 @@ const createChart = async () => {
             },
             grid: {
               display: true,
-              color: 'rgba(0, 0, 0, 0.1)'
+              color: gridColor
             },
             ticks: {
+              color: textColor,
               font: {
                 size: 12
               },
@@ -185,6 +195,7 @@ const createChart = async () => {
 onMounted(async () => {
   await nextTick()
   createChart()
+  window.addEventListener('mkd-theme-changed', createChart)
 })
 
 // Mettre à jour le graphique quand les données changent
@@ -194,6 +205,7 @@ watch(() => props.data, () => {
 
 // Nettoyer le graphique au démontage
 onUnmounted(() => {
+  window.removeEventListener('mkd-theme-changed', createChart)
   if (chartInstance) {
     chartInstance.destroy()
   }

@@ -373,7 +373,7 @@
             <div class="card-body">
               <div class="text-center">
                 <!-- Image preview -->
-                <div class="mb-3" style="min-height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa; border-radius: 0.375rem; padding: 1rem;">
+                <div class="mb-3 surface-muted d-flex align-items-center justify-content-center" style="min-height: 200px; padding: 1rem;">
                   <img
                     v-if="previewImageUrl"
                     :src="previewImageUrl"

@@ -6,6 +6,8 @@
 @import './theme.css';
 @import './layout.css';
 @import './dashboard.css';
+@import './components.css';
+@import './sales.css';
 
 /* Notification Center */
 @import './notifications.css';
@@ -47,7 +49,12 @@ body {
 }
 
 .dark .bg-light {
-    background-color: var(--color-background) !important;
+    background-color: var(--color-surface-hover) !important;
+    color: var(--color-text-secondary);
+}
+
+.dark .text-muted {
+    color: var(--color-text-muted) !important;
 }
 
 .dark .bg-white {
@@ -57,10 +64,6 @@ body {
 
 .dark .text-dark {
     color: var(--color-text-primary) !important;
-}
-
-.dark .text-muted {
-    color: var(--color-text-muted) !important;
 }
 
 .dark .border,
@@ -74,117 +77,12 @@ body {
     color: var(--color-text-primary);
 }
 
-.dark .table {
-    --bs-table-bg: var(--color-surface-elevated);
-    --bs-table-color: var(--color-text-primary);
-    --bs-table-border-color: var(--color-border);
-}
-
-.dark .table-hover tbody tr:hover {
-    background-color: #334155 !important;
-    color: #e2e8f0 !important;
-}
-
-.dark .table-hover tbody tr:hover td,
-.dark .table-hover tbody tr:hover th {
-    color: #e2e8f0 !important;
-}
-
-.dark .table-hover tbody tr:hover a {
-    color: #60a5fa !important;
-}
-
-.dark .table-hover tbody tr:hover .text-muted {
-    color: #94a3b8 !important;
-}
-
-.dark .table-hover tbody tr:hover .text-success {
-    color: #34d399 !important;
-}
-
-.dark .table-hover tbody tr:hover .text-danger {
-    color: #f87171 !important;
-}
-
-.dark .form-control,
 .dark .form-select {
-    background-color: var(--color-surface-elevated);
-    border-color: var(--color-border);
-    color: var(--color-text-primary);
     color-scheme: dark;
 }
 
-.dark .form-control:focus,
-.dark .form-select:focus {
-    background-color: var(--color-surface-elevated);
-    border-color: var(--color-accent);
-    color: var(--color-text-primary);
-    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
-}
-
-.dark .form-control::placeholder,
-.dark .form-select::placeholder,
-.dark input::placeholder,
-.dark textarea::placeholder {
-    color: #94a3b8 !important;
-    opacity: 1 !important;
-}
-
-.dark .form-select option {
-    background-color: #1e293b;
-    color: #e2e8f0;
-}
-
-.dark .form-select option[value=""] {
-    color: #94a3b8;
-}
-
 .dark .form-select:not(:focus):has(option[value=""]:checked) {
-    color: #94a3b8 !important;
-}
-
-.dark .btn-outline-secondary {
-    color: #94a3b8;
-    border-color: #475569;
-}
-
-.dark .btn-outline-secondary:hover {
-    background-color: #475569;
-    border-color: #475569;
-    color: white;
-}
-
-.dark .btn-outline-primary {
-    color: #60a5fa;
-    border-color: #60a5fa;
-}
-
-.dark .btn-outline-primary:hover {
-    background-color: #60a5fa;
-    border-color: #60a5fa;
-    color: white;
-}
-
-.dark .btn-outline-success {
-    color: #34d399;
-    border-color: #34d399;
-}
-
-.dark .btn-outline-success:hover {
-    background-color: #34d399;
-    border-color: #34d399;
-    color: white;
-}
-
-.dark .btn-outline-danger {
-    color: #f87171;
-    border-color: #f87171;
-}
-
-.dark .btn-outline-danger:hover {
-    background-color: #f87171;
-    border-color: #f87171;
-    color: white;
+    color: var(--color-text-muted) !important;
 }
 
 .dark .dropdown-menu {
@@ -192,128 +90,44 @@ body {
     border-color: var(--color-border);
 }
 
-.dark .dropdown-item {
-    color: var(--color-text-primary);
-}
-
-.dark .dropdown-item:hover {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text-primary);
-}
-
 .dark .breadcrumb {
     background-color: transparent;
 }
 
-.dark .badge {
-    color: #e2e8f0;
-}
-
-.dark .form-control-plaintext {
-    color: #e2e8f0 !important;
-}
-
-.dark .form-control-plaintext.text-dark-emphasis {
-    color: #e2e8f0 !important;
-}
-
-.dark .card-body p {
-    color: #e2e8f0 !important;
-}
-
-.dark .card-body .form-control-plaintext {
-    color: #e2e8f0 !important;
-}
-
-.dark input[type="text"],
-.dark input[type="number"],
-.dark input[type="email"],
-.dark input[type="date"],
-.dark textarea,
-.dark select {
-    background-color: var(--color-surface-elevated) !important;
-    border-color: var(--color-border) !important;
-    color: var(--color-text-primary) !important;
-}
-
-.dark .input-group-text {
-    background-color: var(--color-surface-hover) !important;
-    border-color: var(--color-border) !important;
-    color: var(--color-text-primary) !important;
-}
-
-.dark .invalid-feedback {
-    color: #f87171 !important;
-}
-
 .dark .nav-link {
-    color: rgba(226, 232, 240, 0.8) !important;
+    color: var(--color-text-secondary) !important;
 }
 
 .dark .nav-link:hover {
-    color: #e2e8f0 !important;
+    color: var(--color-text-primary) !important;
 }
 
 .dark .nav-link.active {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.dark .breadcrumb-item.active {
-    color: #94a3b8 !important;
-}
-
-.dark .text-decoration-none {
-    color: #e2e8f0 !important;
-}
-
-.dark .text-decoration-none:hover {
-    color: #60a5fa !important;
+    background-color: var(--color-surface-hover) !important;
 }
 
 .dark .text-primary {
-    color: #60a5fa !important;
+    color: var(--color-link) !important;
 }
 
 .dark .text-success {
-    color: #34d399 !important;
+    color: var(--color-success) !important;
 }
 
 .dark .text-danger {
-    color: #f87171 !important;
+    color: var(--color-danger) !important;
 }
 
 .dark .text-warning {
-    color: #fbbf24 !important;
+    color: var(--color-warning) !important;
 }
 
-.dark .alert {
-    background-color: #1e293b !important;
-    border-color: #334155 !important;
-    color: #e2e8f0 !important;
+.dark .text-decoration-none {
+    color: var(--color-text-primary) !important;
 }
 
-.dark .alert-success {
-    background-color: rgba(16, 185, 129, 0.1) !important;
-    border-color: #10b981 !important;
-    color: #34d399 !important;
-}
-
-.dark .alert-danger {
-    background-color: rgba(239, 68, 68, 0.1) !important;
-    border-color: #ef4444 !important;
-    color: #f87171 !important;
-}
-
-.dark .alert-warning {
-    background-color: rgba(245, 158, 11, 0.1) !important;
-    border-color: #f59e0b !important;
-    color: #fbbf24 !important;
-}
-
-.dark .alert-info {
-    background-color: rgba(6, 182, 212, 0.1) !important;
-    border-color: #06b6d4 !important;
-    color: #22d3ee !important;
+.dark .text-decoration-none:hover {
+    color: var(--color-link) !important;
 }
 
 /* Sidebar uses global design tokens — no forced dark override */
