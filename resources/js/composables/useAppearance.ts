@@ -69,6 +69,21 @@ export function initializeTheme() {
 
 const appearance = ref<Appearance>('system');
 
+export function toggleAppearance() {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    const isDark = document.documentElement.classList.contains('dark');
+    const next: Appearance = isDark ? 'light' : 'dark';
+
+    localStorage.setItem('appearance', next);
+    setCookie('appearance', next);
+    updateTheme(next);
+
+    return next;
+}
+
 export function useAppearance() {
     onMounted(() => {
         const savedAppearance = localStorage.getItem(
@@ -95,5 +110,6 @@ export function useAppearance() {
     return {
         appearance,
         updateAppearance,
+        toggleAppearance,
     };
 }

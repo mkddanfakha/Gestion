@@ -164,39 +164,4 @@ watch(
   flex-direction: column;
   gap: 1.25rem;
 }
-
-.dashboard-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.dashboard-grid--main {
-  grid-template-columns: 1fr;
-}
-
-.dashboard-grid--split {
-  grid-template-columns: 1fr;
-}
-
-.dashboard-grid__span-2 {
-  grid-column: 1 / -1;
-}
-
-.dashboard-empty {
-  text-align: center;
-  color: #64748b;
-  padding: 2.5rem 1rem;
-}
-
-.dashboard-empty i {
-  font-size: 2rem;
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-@media (min-width: 768px) {
-  .dashboard-grid--split {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 </style>

@@ -2,6 +2,11 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import 'bootstrap-icons/font/bootstrap-icons.css';
 
+/* MKD-Pro Design System */
+@import './theme.css';
+@import './layout.css';
+@import './dashboard.css';
+
 /* Notification Center */
 @import './notifications.css';
 
@@ -22,60 +27,57 @@ body {
     --bs-dark: #212529;
 }
 
-/* Dark mode support - Modern theme */
+/* Dark mode — Bootstrap bridge via design tokens */
 .dark {
-    --bs-body-bg: #0f172a;
-    --bs-body-color: #e2e8f0;
-    --bs-primary: #3b82f6;
+    --bs-body-bg: var(--color-background);
+    --bs-body-color: var(--color-text-primary);
+    --bs-primary: var(--color-accent);
     --bs-secondary: #64748b;
     --bs-success: #10b981;
     --bs-info: #06b6d4;
     --bs-warning: #f59e0b;
     --bs-danger: #ef4444;
-    --bs-light: #1e293b;
-    --bs-dark: #0f172a;
+    --bs-light: var(--color-surface);
+    --bs-dark: var(--color-background);
 }
 
 .dark body {
-    background-color: #0f172a !important;
-    color: #e2e8f0 !important;
+    background-color: var(--color-background) !important;
+    color: var(--color-text-primary) !important;
 }
 
 .dark .bg-light {
-    background-color: #1e293b !important;
+    background-color: var(--color-background) !important;
 }
 
 .dark .bg-white {
-    background-color: #1e293b !important;
-    color: #e2e8f0 !important;
+    background-color: var(--color-surface-elevated) !important;
+    color: var(--color-text-primary) !important;
 }
 
 .dark .text-dark {
-    color: #e2e8f0 !important;
+    color: var(--color-text-primary) !important;
 }
 
 .dark .text-muted {
-    color: #94a3b8 !important;
+    color: var(--color-text-muted) !important;
 }
 
-.dark .border {
-    border-color: #334155 !important;
-}
-
+.dark .border,
 .dark .border-bottom {
-    border-color: #334155 !important;
+    border-color: var(--color-border) !important;
 }
 
 .dark .card {
-    background-color: #1e293b;
-    border-color: #334155;
-    color: #e2e8f0;
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
 }
 
 .dark .table {
-    --bs-table-bg: #1e293b;
-    --bs-table-color: #e2e8f0;
-    --bs-table-border-color: #334155;
+    --bs-table-bg: var(--color-surface-elevated);
+    --bs-table-color: var(--color-text-primary);
+    --bs-table-border-color: var(--color-border);
 }
 
 .dark .table-hover tbody tr:hover {
@@ -106,17 +108,17 @@ body {
 
 .dark .form-control,
 .dark .form-select {
-    background-color: #1e293b;
-    border-color: #334155;
-    color: #e2e8f0;
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
     color-scheme: dark;
 }
 
 .dark .form-control:focus,
 .dark .form-select:focus {
-    background-color: #1e293b;
-    border-color: #3b82f6;
-    color: #e2e8f0;
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-accent);
+    color: var(--color-text-primary);
     box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
 }
 
@@ -186,17 +188,17 @@ body {
 }
 
 .dark .dropdown-menu {
-    background-color: #1e293b;
-    border-color: #334155;
+    background-color: var(--color-surface-elevated);
+    border-color: var(--color-border);
 }
 
 .dark .dropdown-item {
-    color: #e2e8f0;
+    color: var(--color-text-primary);
 }
 
 .dark .dropdown-item:hover {
-    background-color: #334155;
-    color: #e2e8f0;
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-primary);
 }
 
 .dark .breadcrumb {
@@ -229,26 +231,15 @@ body {
 .dark input[type="date"],
 .dark textarea,
 .dark select {
-    background-color: #1e293b !important;
-    border-color: #334155 !important;
-    color: #e2e8f0 !important;
-}
-
-.dark input[type="text"]:focus,
-.dark input[type="number"]:focus,
-.dark input[type="email"]:focus,
-.dark input[type="date"]:focus,
-.dark textarea:focus,
-.dark select:focus {
-    background-color: #1e293b !important;
-    border-color: #3b82f6 !important;
-    color: #e2e8f0 !important;
+    background-color: var(--color-surface-elevated) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text-primary) !important;
 }
 
 .dark .input-group-text {
-    background-color: #334155 !important;
-    border-color: #334155 !important;
-    color: #e2e8f0 !important;
+    background-color: var(--color-surface-hover) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text-primary) !important;
 }
 
 .dark .invalid-feedback {
@@ -325,48 +316,7 @@ body {
     color: #22d3ee !important;
 }
 
-/* Sidebar dark mode override - FORCE TOUJOURS DARK */
-/* Règle robuste : la sidebar doit TOUJOURS être dark, même si bg-primary est ajouté */
-.sidebar.sidebar-dark,
-.sidebar.bg-primary.sidebar-dark,
-.dark .sidebar,
-.dark .sidebar.bg-primary,
-.sidebar.bg-primary {
-    background-color: #1e293b !important;
-}
-
-/* Empêcher bg-primary d'affecter la sidebar dans tous les cas */
-.sidebar .bg-primary {
-    background-color: #1e293b !important;
-}
-
-.dark .sidebar-header {
-    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.dark .sidebar-footer {
-    border-top-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.dark .sidebar .nav-link i {
-    color: rgba(255, 255, 255, 0.8) !important;
-}
-
-.dark .sidebar .nav-link:hover i {
-    color: white !important;
-}
-
-.dark .sidebar .nav-link.active i {
-    color: white !important;
-}
-
-.dark .sidebar .dropdown-toggle::after {
-    border-top-color: rgba(255, 255, 255, 0.8) !important;
-}
-
-.dark .sidebar-overlay {
-    background-color: rgba(0, 0, 0, 0.7) !important;
-}
+/* Sidebar uses global design tokens — no forced dark override */
 
 /* Custom utilities */
 .text-truncate-2 {

@@ -1,0 +1,380 @@
+/* MKD-Pro Gestion — App Shell Layout */
+
+.app-shell {
+    min-height: 100vh;
+    background: var(--color-background);
+    transition: background-color var(--transition-theme);
+}
+
+/* ── Sidebar ── */
+.app-shell .sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: fixed;
+    z-index: 1000;
+    background: var(--color-surface-sidebar);
+    border-right: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    transition: background-color var(--transition-theme), border-color var(--transition-theme), left var(--transition-fast);
+}
+
+.app-shell .sidebar-header {
+    flex-shrink: 0;
+    padding: 1.25rem 1rem 1rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.app-shell .sidebar-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--color-text-primary);
+}
+
+.app-shell .sidebar-brand-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 68px;
+    height: 68px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    transition: background-color var(--transition-theme), border-color var(--transition-theme);
+}
+
+.app-shell .sidebar-brand-logo {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    display: block;
+}
+
+.app-shell .sidebar-brand-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--color-text-primary);
+}
+
+.app-shell .sidebar-brand-subtitle {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-top: -0.25rem;
+}
+
+.app-shell .sidebar-nav {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 0.75rem 0.75rem 1.25rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.app-shell .sidebar-nav::-webkit-scrollbar {
+    width: 5px;
+}
+
+.app-shell .sidebar-nav::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+}
+
+.app-shell .sidebar .nav-item {
+    margin-bottom: 0.2rem;
+}
+
+.app-shell .sidebar .nav-link-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--color-text-secondary);
+    padding: 0.5rem 0.7rem;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.app-shell .sidebar .nav-link-pill:hover {
+    color: var(--color-text-primary);
+    background: var(--color-surface-hover);
+}
+
+.app-shell .sidebar .nav-link-pill.active {
+    background: var(--color-surface-active);
+    color: var(--color-accent);
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.dark .app-shell .sidebar .nav-link-pill.active {
+    background: var(--color-surface-active);
+    color: var(--color-accent-muted);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.app-shell .nav-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    transition: background-color var(--transition-theme), color var(--transition-theme);
+}
+
+.app-shell .nav-icon-wrap--home { background: var(--nav-icon-home-bg); color: var(--nav-icon-home-fg); }
+.app-shell .nav-icon-wrap--catalog { background: var(--nav-icon-catalog-bg); color: var(--nav-icon-catalog-fg); }
+.app-shell .nav-icon-wrap--commerce { background: var(--nav-icon-commerce-bg); color: var(--nav-icon-commerce-fg); }
+.app-shell .nav-icon-wrap--supply { background: var(--nav-icon-supply-bg); color: var(--nav-icon-supply-fg); }
+.app-shell .nav-icon-wrap--company { background: var(--nav-icon-company-bg); color: var(--nav-icon-company-fg); }
+.app-shell .nav-icon-wrap--admin { background: var(--nav-icon-admin-bg); color: var(--nav-icon-admin-fg); }
+
+.app-shell .nav-label {
+    line-height: 1.25;
+    font-size: 0.9rem;
+}
+
+.app-shell .nav-group-spacer {
+    height: 0.55rem;
+    list-style: none;
+}
+
+/* ── Main content ── */
+.app-shell .main-content {
+    margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
+    min-height: 100vh;
+    background: var(--color-background);
+    transition: background-color var(--transition-theme);
+}
+
+.app-shell .app-main {
+    flex: 1;
+    padding: 1rem 1.25rem 1.5rem;
+}
+
+/* ── Header ── */
+.app-shell .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    margin: 0.75rem 1rem 0;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-header);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    transition: background-color var(--transition-theme), border-color var(--transition-theme), box-shadow var(--transition-theme);
+}
+
+.app-shell .app-header-inner {
+    min-height: var(--header-height);
+}
+
+.app-shell .header-greeting {
+    min-width: 0;
+}
+
+.app-shell .header-greeting__text {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-shell .header-greeting__role {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.app-shell .header-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-shrink: 0;
+}
+
+.app-shell .header-toolbar-group {
+    display: inline-flex;
+    align-items: stretch;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-elevated);
+}
+
+.app-shell .header-toolbar-segment + .header-toolbar-segment {
+    border-left: 1px solid var(--color-border-subtle);
+}
+
+.app-shell .header-toolbar-segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.app-shell .header-theme-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: none;
+    background: transparent;
+    color: var(--color-accent);
+    transition: background-color var(--transition-fast);
+}
+
+.app-shell .header-theme-btn:hover {
+    background: var(--color-accent-soft);
+}
+
+.app-shell .header-toolbar .nc-bell__btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--color-accent) !important;
+    box-shadow: none !important;
+}
+
+.app-shell .header-toolbar .nc-bell__btn:hover,
+.app-shell .header-toolbar .nc-bell__btn:focus-visible {
+    background: var(--color-accent-soft) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.app-shell .header-user-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.3rem 0.7rem 0.3rem 0.3rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface-elevated);
+    box-shadow: var(--shadow-sm);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.app-shell .header-user-btn:hover {
+    border-color: var(--color-accent-muted);
+    box-shadow: var(--shadow-md);
+}
+
+.app-shell .header-user-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.15rem;
+    height: 2.15rem;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--color-accent) 0%, #7c3aed 100%);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+}
+
+.app-shell .header-user-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+}
+
+.app-shell .header-user-role {
+    font-size: 0.65rem;
+    font-weight: 600;
+    margin-top: 0.1rem;
+}
+
+.app-shell .header-user-chevron {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+}
+
+.app-shell .sidebar-mobile-toggle {
+    border: 1px solid var(--color-border);
+    color: var(--color-accent);
+    background: var(--color-surface-elevated);
+    border-radius: var(--radius-sm);
+}
+
+.app-shell .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 18, 32, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+}
+
+/* Breadcrumb in header */
+.app-shell .app-header .breadcrumb-item a {
+    color: var(--color-accent);
+    text-decoration: none;
+}
+
+.app-shell .app-header .breadcrumb-item.active {
+    color: var(--color-text-muted);
+}
+
+/* ── Global cards in app shell ── */
+.app-shell .card {
+    background: var(--color-surface-elevated);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: background-color var(--transition-theme), border-color var(--transition-theme);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .app-shell .sidebar {
+        left: calc(-1 * var(--sidebar-width));
+    }
+
+    .app-shell .sidebar.show {
+        left: 0;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .app-shell .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    .app-shell .app-header {
+        margin: 0;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .app-shell .app-main {
+        padding: 0.85rem;
+    }
+}
+
+@media (min-width: 769px) {
+    .app-shell .app-main {
+        padding: 0.5rem 1.25rem 1.5rem;
+    }
+}

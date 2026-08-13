@@ -1,130 +1,128 @@
 <template>
-  <div class="d-flex min-vh-100 bg-light">
-    <!-- Sidebar verticale -->
-    <!-- IMPORTANT: La sidebar doit TOUJOURS être en mode dark, peu importe le thème de l'application -->
-    <!-- Ne jamais ajouter bg-primary à cette div - utiliser uniquement sidebar-dark -->
-    <div class="sidebar text-white sidebar-dark">
+  <div class="d-flex app-shell">
+    <!-- Sidebar -->
+    <div class="sidebar">
       <!-- Logo et nom de l'application -->
-      <div class="sidebar-header p-3 border-bottom border-white border-opacity-25">
-        <Link :href="route('dashboard')" class="d-flex align-items-center text-white text-decoration-none">
-          <div class="me-2">
-            <img 
-              src="/logo.png" 
-              alt="Logo" 
-              class="logo-img"
-              style="width: 120px; height: 120px; object-fit: contain;"
+      <div class="sidebar-header">
+        <Link :href="route('dashboard')" class="sidebar-brand text-decoration-none">
+          <div class="sidebar-brand-card">
+            <img
+              src="/logo.png"
+              alt="Logo MKD-Pro"
+              class="sidebar-brand-logo"
             />
           </div>
-          <span class="fw-bold">Gestion</span>
+          <span class="sidebar-brand-title">Gestion</span>
+          <span class="sidebar-brand-subtitle">MKD-Pro</span>
         </Link>
       </div>
 
       <!-- Menu de navigation -->
-      <nav class="sidebar-nav p-3">
+      <nav class="sidebar-nav">
         <ul class="nav nav-pills flex-column">
-          <li v-if="canView('dashboard')" class="nav-item mb-2">
-            <Link :href="route('dashboard')" class="nav-link" :class="{ active: $page.url === '/' }">
-              <i class="bi bi-house-door me-2"></i>
-              Dashboard
+          <li v-if="canView('dashboard')" class="nav-item">
+            <Link :href="route('dashboard')" class="nav-link nav-link-pill" :class="{ active: $page.url === '/' }">
+              <span class="nav-icon-wrap nav-icon-wrap--home"><i class="bi bi-house-door"></i></span>
+              <span class="nav-label">Dashboard</span>
             </Link>
           </li>
           
-          <li v-if="canView('products') || canView('categories')" class="nav-divider my-2"></li>
+          <li v-if="canView('products') || canView('categories')" class="nav-group-spacer" aria-hidden="true"></li>
           
-          <li v-if="canView('products')" class="nav-item mb-2">
-            <Link :href="route('products.index')" class="nav-link" :class="{ active: $page.url.startsWith('/products') }">
-              <i class="bi bi-box me-2"></i>
-              Produits
+          <li v-if="canView('products')" class="nav-item">
+            <Link :href="route('products.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/products') }">
+              <span class="nav-icon-wrap nav-icon-wrap--catalog"><i class="bi bi-box"></i></span>
+              <span class="nav-label">Produits</span>
             </Link>
           </li>
-          <li v-if="canView('categories')" class="nav-item mb-2">
-            <Link :href="route('categories.index')" class="nav-link" :class="{ active: $page.url.startsWith('/categories') }">
-              <i class="bi bi-tags me-2"></i>
-              Catégories
-            </Link>
-          </li>
-          
-          <li v-if="canView('customers') || canView('sales') || canView('quotes') || canView('expenses')" class="nav-divider my-2"></li>
-          
-          <li v-if="canView('customers')" class="nav-item mb-2">
-            <Link :href="route('customers.index')" class="nav-link" :class="{ active: $page.url.startsWith('/customers') }">
-              <i class="bi bi-people me-2"></i>
-              Clients
-            </Link>
-          </li>
-          <li v-if="canView('sales')" class="nav-item mb-2">
-            <Link :href="route('sales.index')" class="nav-link" :class="{ active: $page.url.startsWith('/sales') }">
-              <i class="bi bi-cart me-2"></i>
-              Ventes
-            </Link>
-          </li>
-          <li v-if="canView('quotes')" class="nav-item mb-2">
-            <Link :href="route('quotes.index')" class="nav-link" :class="{ active: $page.url.startsWith('/quotes') }">
-              <i class="bi bi-file-earmark-check me-2"></i>
-              Devis
-            </Link>
-          </li>
-          <li v-if="canView('expenses')" class="nav-item mb-2">
-            <Link :href="route('expenses.index')" class="nav-link" :class="{ active: $page.url.startsWith('/expenses') }">
-              <i class="bi bi-receipt me-2"></i>
-              Dépenses
+          <li v-if="canView('categories')" class="nav-item">
+            <Link :href="route('categories.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/categories') }">
+              <span class="nav-icon-wrap nav-icon-wrap--catalog"><i class="bi bi-tags"></i></span>
+              <span class="nav-label">Catégories</span>
             </Link>
           </li>
           
-          <li v-if="canView('suppliers') || canView('purchase-orders') || canView('delivery-notes')" class="nav-divider my-2"></li>
+          <li v-if="canView('customers') || canView('sales') || canView('quotes') || canView('expenses')" class="nav-group-spacer" aria-hidden="true"></li>
           
-          <li v-if="canView('suppliers')" class="nav-item mb-2">
-            <Link :href="route('suppliers.index')" class="nav-link" :class="{ active: $page.url.startsWith('/suppliers') }">
-              <i class="bi bi-truck me-2"></i>
-              Fournisseurs
+          <li v-if="canView('customers')" class="nav-item">
+            <Link :href="route('customers.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/customers') }">
+              <span class="nav-icon-wrap nav-icon-wrap--commerce"><i class="bi bi-people"></i></span>
+              <span class="nav-label">Clients</span>
             </Link>
           </li>
-          <li v-if="canView('purchase-orders')" class="nav-item mb-2">
-            <Link :href="route('purchase-orders.index')" class="nav-link" :class="{ active: $page.url.startsWith('/purchase-orders') }">
-              <i class="bi bi-file-earmark-text me-2"></i>
-              Bons de commande
+          <li v-if="canView('sales')" class="nav-item">
+            <Link :href="route('sales.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/sales') }">
+              <span class="nav-icon-wrap nav-icon-wrap--commerce"><i class="bi bi-cart"></i></span>
+              <span class="nav-label">Ventes</span>
             </Link>
           </li>
-          <li v-if="canView('delivery-notes')" class="nav-item mb-2">
-            <Link :href="route('delivery-notes.index')" class="nav-link" :class="{ active: $page.url.startsWith('/delivery-notes') }">
-              <i class="bi bi-clipboard-check me-2"></i>
-              Bons de livraison
+          <li v-if="canView('quotes')" class="nav-item">
+            <Link :href="route('quotes.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/quotes') }">
+              <span class="nav-icon-wrap nav-icon-wrap--commerce"><i class="bi bi-file-earmark-check"></i></span>
+              <span class="nav-label">Devis</span>
+            </Link>
+          </li>
+          <li v-if="canView('expenses')" class="nav-item">
+            <Link :href="route('expenses.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/expenses') }">
+              <span class="nav-icon-wrap nav-icon-wrap--commerce"><i class="bi bi-receipt"></i></span>
+              <span class="nav-label">Dépenses</span>
             </Link>
           </li>
           
-          <li v-if="canView('company')" class="nav-divider my-2"></li>
+          <li v-if="canView('suppliers') || canView('purchase-orders') || canView('delivery-notes')" class="nav-group-spacer" aria-hidden="true"></li>
           
-          <li v-if="canView('company')" class="nav-item mb-2">
-            <Link :href="route('company.edit')" class="nav-link" :class="{ active: $page.url.startsWith('/company') }">
-              <i class="bi bi-building me-2"></i>
-              Entreprise
+          <li v-if="canView('suppliers')" class="nav-item">
+            <Link :href="route('suppliers.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/suppliers') }">
+              <span class="nav-icon-wrap nav-icon-wrap--supply"><i class="bi bi-truck"></i></span>
+              <span class="nav-label">Fournisseurs</span>
+            </Link>
+          </li>
+          <li v-if="canView('purchase-orders')" class="nav-item">
+            <Link :href="route('purchase-orders.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/purchase-orders') }">
+              <span class="nav-icon-wrap nav-icon-wrap--supply"><i class="bi bi-file-earmark-text"></i></span>
+              <span class="nav-label">Bons de commande</span>
+            </Link>
+          </li>
+          <li v-if="canView('delivery-notes')" class="nav-item">
+            <Link :href="route('delivery-notes.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/delivery-notes') }">
+              <span class="nav-icon-wrap nav-icon-wrap--supply"><i class="bi bi-clipboard-check"></i></span>
+              <span class="nav-label">Bons de livraison</span>
+            </Link>
+          </li>
+          
+          <li v-if="canView('company')" class="nav-group-spacer" aria-hidden="true"></li>
+          
+          <li v-if="canView('company')" class="nav-item">
+            <Link :href="route('company.edit')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/company') }">
+              <span class="nav-icon-wrap nav-icon-wrap--company"><i class="bi bi-building"></i></span>
+              <span class="nav-label">Entreprise</span>
             </Link>
           </li>
           
           <!-- Menu Administrateur -->
-          <li v-if="isAdmin" class="nav-divider my-2"></li>
-          <li v-if="isAdmin" class="nav-item mb-2">
-            <Link :href="route('admin.users.index')" class="nav-link" :class="{ active: $page.url.startsWith('/admin/users') }">
-              <i class="bi bi-shield-lock me-2"></i>
-              Utilisateurs
+          <li v-if="isAdmin" class="nav-group-spacer" aria-hidden="true"></li>
+          <li v-if="isAdmin" class="nav-item">
+            <Link :href="route('admin.users.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/admin/users') }">
+              <span class="nav-icon-wrap nav-icon-wrap--admin"><i class="bi bi-shield-lock"></i></span>
+              <span class="nav-label">Utilisateurs</span>
             </Link>
           </li>
-          <li v-if="isAdmin && canView('backups')" class="nav-item mb-2">
-            <Link :href="route('admin.backups.index')" class="nav-link" :class="{ active: $page.url.startsWith('/admin/backups') }">
-              <i class="bi bi-database me-2"></i>
-              Sauvegardes
+          <li v-if="isAdmin && canView('backups')" class="nav-item">
+            <Link :href="route('admin.backups.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/admin/backups') }">
+              <span class="nav-icon-wrap nav-icon-wrap--admin"><i class="bi bi-database"></i></span>
+              <span class="nav-label">Sauvegardes</span>
             </Link>
           </li>
-          <li v-if="isAdmin" class="nav-item mb-2">
-            <Link :href="route('admin.activity-logs.index')" class="nav-link" :class="{ active: $page.url.startsWith('/admin/activity-logs') }">
-              <i class="bi bi-journal-text me-2"></i>
-              Journal d'activité
+          <li v-if="isAdmin" class="nav-item">
+            <Link :href="route('admin.activity-logs.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/admin/activity-logs') }">
+              <span class="nav-icon-wrap nav-icon-wrap--admin"><i class="bi bi-journal-text"></i></span>
+              <span class="nav-label">Journal d'activité</span>
             </Link>
           </li>
-          <li v-if="isAdmin" class="nav-item mb-2">
-            <Link :href="route('admin.settings.notifications')" class="nav-link" :class="{ active: $page.url.startsWith('/admin/settings/notifications') }">
-              <i class="bi bi-bell me-2"></i>
-              Notifications
+          <li v-if="isAdmin" class="nav-item">
+            <Link :href="route('admin.settings.notifications')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/admin/settings/notifications') }">
+              <span class="nav-icon-wrap nav-icon-wrap--admin"><i class="bi bi-bell"></i></span>
+              <span class="nav-label">Notifications</span>
             </Link>
           </li>
         </ul>
@@ -135,19 +133,19 @@
     <!-- Contenu principal -->
     <div class="main-content flex-grow-1 d-flex flex-column">
       <!-- Header -->
-      <header class="bg-white shadow-sm border-bottom">
-        <div class="container-fluid px-3 py-2 d-flex justify-content-between align-items-center">
+      <header class="app-header">
+        <div class="app-header-inner container-fluid px-3 py-2 d-flex justify-content-between align-items-center">
           <!-- Bouton toggle sidebar sur mobile -->
           <button 
-            class="btn btn-sm btn-outline-primary d-md-none me-2"
+            class="btn btn-sm sidebar-mobile-toggle d-md-none me-2"
             @click="toggleSidebar"
             type="button"
           >
             <i class="bi bi-list"></i>
           </button>
           
-          <!-- Fil d'Ariane -->
-          <nav v-if="breadcrumbs && breadcrumbs.length > 0" aria-label="breadcrumb" class="flex-grow-1">
+          <!-- Fil d'Ariane ou salutation -->
+          <nav v-if="breadcrumbs && breadcrumbs.length > 0" aria-label="breadcrumb" class="flex-grow-1 min-w-0">
             <ol class="breadcrumb mb-0">
               <li v-if="!page.url.includes('/settings')" class="breadcrumb-item">
                 <Link :href="route('dashboard')">
@@ -168,33 +166,45 @@
               </li>
             </ol>
           </nav>
+          <div v-else class="header-greeting flex-grow-1 min-w-0 d-none d-sm-block">
+            <div class="header-greeting__text">Bonjour, {{ userFirstName }}</div>
+            <div class="header-greeting__role">{{ getRoleLabel(($page.props.auth.user as any)?.role) }}</div>
+          </div>
           
           <!-- Notifications, bouton toggle theme et menu utilisateur -->
-          <div class="d-flex align-items-center gap-2 ms-auto">
-            <NotificationBell />
-            <button 
-              @click="toggleTheme" 
-              class="btn btn-sm btn-outline-primary"
-              type="button"
-            >
-              <i :class="isDark ? 'bi bi-sun' : 'bi bi-moon'"></i>
-            </button>
+          <div class="header-toolbar ms-auto">
+            <div class="header-toolbar-group">
+              <div class="header-toolbar-segment">
+                <NotificationBell />
+              </div>
+              <div class="header-toolbar-segment">
+                <button 
+                  @click="toggleTheme" 
+                  class="header-theme-btn"
+                  type="button"
+                  :aria-label="isDark ? 'Passer en mode clair' : 'Passer en mode sombre'"
+                >
+                  <i :class="isDark ? 'bi bi-sun' : 'bi bi-moon'"></i>
+                </button>
+              </div>
+            </div>
             
             <!-- Menu utilisateur -->
-            <div class="dropdown">
+            <div class="dropdown header-user">
               <button 
-                class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2" 
+                class="header-user-btn" 
                 type="button" 
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
               >
-                <i class="bi bi-person-circle"></i>
-                <span class="d-none d-md-inline">
-                  {{ $page.props.auth.user?.name || 'Utilisateur' }}
-                  <span class="badge ms-2" :class="getRoleBadgeClass(($page.props.auth.user as any)?.role)">
+                <span class="header-user-avatar">{{ userInitials }}</span>
+                <span class="header-user-info d-none d-md-flex flex-column align-items-start">
+                  <span class="header-user-name">{{ $page.props.auth.user?.name || 'Utilisateur' }}</span>
+                  <span class="header-user-role badge" :class="getRoleBadgeClass(($page.props.auth.user as any)?.role)">
                     {{ getRoleLabel(($page.props.auth.user as any)?.role) }}
                   </span>
                 </span>
+                <i class="bi bi-chevron-down header-user-chevron d-none d-md-inline"></i>
               </button>
               <ul class="dropdown-menu dropdown-menu-end shadow">
                 <li class="px-3 py-2">
@@ -229,7 +239,7 @@
       ></div>
 
       <!-- Contenu de la page -->
-      <main class="flex-grow-1 container-fluid py-4">
+      <main class="flex-grow-1 app-main">
         <slot />
       </main>
     </div>
@@ -243,10 +253,11 @@
 import { Link, usePage, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import type { BreadcrumbItemType } from '@/types'
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
 import { usePermissions } from '@/composables/usePermissions'
+import { toggleAppearance } from '@/composables/useAppearance'
 
 const { canView, isAdmin: isAdminFromPermissions } = usePermissions()
 
@@ -262,6 +273,20 @@ const page = usePage()
 
 // Vérifier si l'utilisateur est administrateur (utiliser le composable pour la cohérence)
 const isAdmin = computed(() => isAdminFromPermissions.value)
+
+const userInitials = computed(() => {
+  const name = page.props.auth.user?.name?.trim()
+  if (!name) return 'U'
+  const parts = name.split(/\s+/).filter(Boolean)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+})
+
+const userFirstName = computed(() => {
+  const name = page.props.auth.user?.name?.trim()
+  if (!name) return 'Utilisateur'
+  return name.split(/\s+/)[0]
+})
 
 // Flag pour éviter les rechargements multiples
 const authReloadAttempted = ref(false)
@@ -306,20 +331,20 @@ onMounted(() => {
 })
 
 const toggleTheme = () => {
-  const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
-  
-  // Mettre à jour la classe
-  if (newTheme === 'dark') {
-    document.documentElement.classList.add('dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-  }
-  
-  // Sauvegarder le préférence
-  localStorage.setItem('appearance', newTheme)
-  isDark.value = newTheme === 'dark'
+  toggleAppearance()
 }
+
+const closeSidebar = () => {
+  const sidebar = document.querySelector('.sidebar') as HTMLElement
+  if (sidebar?.classList.contains('show')) {
+    sidebar.classList.remove('show')
+    sidebarVisible.value = false
+  }
+}
+
+watch(() => page.url, () => {
+  closeSidebar()
+})
 
 const toggleSidebar = () => {
   const sidebar = document.querySelector('.sidebar') as HTMLElement
@@ -351,269 +376,3 @@ const getRoleBadgeClass = (role?: string): string => {
   return roleClasses[role || 'user'] || 'bg-secondary'
 }
 </script>
-
-<style scoped>
-.sidebar {
-  width: 250px;
-  min-width: 250px;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  position: fixed;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  transition: background-color 0.3s ease;
-}
-
-/* Règle globale : la sidebar doit TOUJOURS être dark */
-.sidebar {
-  background-color: #1e293b !important;
-}
-
-:deep(.dark) .sidebar {
-  background-color: #1e293b !important;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5);
-}
-
-.sidebar-header {
-  flex-shrink: 0;
-}
-
-.sidebar-header .logo-img {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
-  display: block;
-}
-
-.sidebar-nav {
-  flex: 1 1 auto;
-  overflow-y: auto;
-}
-
-
-.sidebar .nav-link {
-  color: rgba(255, 255, 255, 0.8);
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  transition: all 0.2s ease;
-}
-
-.sidebar .nav-link:hover {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.sidebar .nav-link.active {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-}
-
-.sidebar .nav-link i {
-  width: 20px;
-  text-align: center;
-}
-
-.sidebar .nav-divider {
-  height: 1px;
-  background-color: rgba(255, 255, 255, 0.2);
-  margin: 0.5rem 0;
-  list-style: none;
-  border: none;
-}
-
-.main-content {
-  margin-left: 250px;
-  width: calc(100% - 250px);
-}
-
-/* Pleine largeur lorsqu'affiché dans un iframe (modale) */
-/* (classe supprimée) */
-
-/* Responsive: masquer la sidebar sur mobile */
-@media (max-width: 768px) {
-  .sidebar {
-    left: -250px;
-    transition: left 0.3s ease;
-  }
-
-  .sidebar.show {
-    left: 0;
-  }
-
-  .main-content {
-    margin-left: 0 !important;
-    width: 100% !important;
-  }
-}
-
-/* Scroll personnalisé pour la sidebar */
-.sidebar-nav {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-}
-
-.sidebar-nav::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sidebar-nav::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.5);
-}
-
-/* Dark mode styles */
-:deep(.dark) {
-  background-color: #0f172a !important;
-}
-
-:deep(.dark) .main-content {
-  background-color: #0f172a !important;
-}
-
-:deep(.dark) .bg-white {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
-}
-
-:deep(.dark) .bg-light {
-  background-color: #0f172a !important;
-}
-
-:deep(.dark) .border-bottom {
-  border-color: #334155 !important;
-}
-
-:deep(.dark) .breadcrumb-item a {
-  color: #60a5fa !important;
-}
-
-:deep(.dark) .breadcrumb-item.active {
-  color: #94a3b8 !important;
-}
-
-:deep(.dark) .card {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
-}
-
-:deep(.dark) .text-dark {
-  color: #e2e8f0 !important;
-}
-
-:deep(.dark) .text-muted {
-  color: #94a3b8 !important;
-}
-
-:deep(.dark) .table {
-  background-color: #1e293b !important;
-  color: #e2e8f0 !important;
-}
-
-:deep(.dark) .table td,
-:deep(.dark) .table th {
-  border-color: #334155 !important;
-}
-
-:deep(.dark) .table-hover tbody tr:hover {
-  background-color: #334155 !important;
-}
-
-:deep(.dark) .btn-outline-primary {
-  color: #60a5fa !important;
-  border-color: #60a5fa !important;
-}
-
-:deep(.dark) .btn-outline-primary:hover {
-  background-color: #60a5fa !important;
-  border-color: #60a5fa !important;
-  color: white !important;
-}
-
-:deep(.dark) .badge {
-  color: #e2e8f0 !important;
-}
-
-/* Sidebar dark mode styles */
-:deep(.dark) .sidebar .nav-link {
-  color: rgba(255, 255, 255, 0.8) !important;
-}
-
-:deep(.dark) .sidebar .nav-link:hover {
-  color: white !important;
-  background-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-:deep(.dark) .sidebar .nav-link.active {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
-}
-
-:deep(.dark) .sidebar .nav-divider {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-}
-
-
-:deep(.dark) .sidebar .dropdown-menu {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
-}
-
-:deep(.dark) .sidebar .dropdown-item {
-  color: #e2e8f0 !important;
-}
-
-:deep(.dark) .sidebar .dropdown-item:hover {
-  background-color: #334155 !important;
-  color: #e2e8f0 !important;
-}
-
-/* Règle robuste : sidebar-dark doit TOUJOURS avoir la priorité */
-.sidebar-dark {
-  background-color: #1e293b !important;
-  border-color: #334155;
-}
-
-/* Forcer la sidebar à être dark même si bg-primary est ajouté par erreur */
-.sidebar.sidebar-dark,
-.sidebar.bg-primary.sidebar-dark {
-  background-color: #1e293b !important;
-}
-
-/* Empêcher bg-primary d'être appliqué à la sidebar */
-.sidebar.bg-primary {
-  background-color: #1e293b !important;
-}
-
-.sidebar-dark .sidebar-header {
-  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-
-/* Overlay pour mobile */
-.sidebar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-}
-
-/* Amélioration responsive pour la sidebar */
-@media (max-width: 768px) {
-  .sidebar {
-    z-index: 1000;
-    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.3);
-  }
-}
-</style>
