@@ -387,7 +387,7 @@
 
 .dark .nc-item__group-panel {
     background: rgba(15, 23, 42, 0.55);
-    border-color: #334155;
+    border-color: var(--color-border);
 }
 
 .nc-item__group-heading {
@@ -396,7 +396,7 @@
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #64748b;
+    color: var(--color-text-muted);
 }
 
 .nc-group-products {
@@ -446,7 +446,7 @@
 }
 
 .nc-group-product__placeholder {
-    color: #94a3b8;
+    color: var(--color-text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -473,7 +473,7 @@
 }
 
 .nc-group-product__line--muted {
-    color: #94a3b8;
+    color: var(--color-text-muted);
 }
 
 .nc-group-product__status {
@@ -507,7 +507,7 @@
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #64748b;
+    color: var(--color-text-muted);
     background: inherit;
 }
 

@@ -46,6 +46,10 @@
           Recherche en cours...
         </div>
         <template v-else-if="filteredProducts.length > 0">
+          <div v-if="excludedOnlyMatches" class="dropdown-item text-muted small border-bottom">
+            <i class="bi bi-info-circle me-1"></i>
+            Produit déjà présent dans cette vente.
+          </div>
           <div
             v-for="(product, index) in filteredProducts"
             :key="product.id"
@@ -108,7 +112,7 @@
                     v-if="isProductSelected(product.id)"
                     class="badge bg-secondary"
                   >
-                    Déjà sélectionné
+                    Déjà ajouté
                   </span>
                 </div>
               </div>
@@ -219,17 +223,31 @@ function filterClientProducts(query: string): Product[] {
   return catalogProducts.value.filter((product) => productMatchesQuery(product, query)).slice(0, 20)
 }
 
+const isProductSelected = (productId: number): boolean => props.excludeProductIds.includes(productId)
+
+const isProductSelectable = (product: Product): boolean => (
+  !isProductSelected(product.id) && product.stock_quantity > 0
+)
+
 const filteredProducts = computed(() => {
   const source = remoteProducts.value.length > 0 || normalizedQuery.value || showDropdown.value
     ? remoteProducts.value
     : catalogProducts.value
 
-  return source
-    .filter((product) => !props.excludeProductIds.includes(product.id))
-    .slice(0, 20)
+  const results = source.slice(0, 20)
+
+  if (!normalizedQuery.value) {
+    return results.filter((product) => !props.excludeProductIds.includes(product.id))
+  }
+
+  return results
 })
 
-const isProductSelected = (productId: number): boolean => props.excludeProductIds.includes(productId)
+const excludedOnlyMatches = computed(() => (
+  normalizedQuery.value.length > 0
+  && filteredProducts.value.length > 0
+  && filteredProducts.value.every((product) => isProductSelected(product.id))
+))
 
 const dropdownStyle = computed(() => {
   if (useInlineDropdown.value) {
@@ -427,11 +445,20 @@ const selectProduct = (product: Product) => {
 }
 
 const selectFirstMatch = () => {
-  if (filteredProducts.value.length > 0 && selectedIndex.value >= 0) {
-    selectProduct(filteredProducts.value[selectedIndex.value])
-  } else if (filteredProducts.value.length > 0) {
-    selectProduct(filteredProducts.value[0])
+  const selectable = filteredProducts.value.filter(isProductSelectable)
+  if (selectable.length === 0) {
+    return
   }
+
+  if (selectedIndex.value >= 0) {
+    const highlighted = filteredProducts.value[selectedIndex.value]
+    if (highlighted && isProductSelectable(highlighted)) {
+      selectProduct(highlighted)
+      return
+    }
+  }
+
+  selectProduct(selectable[0])
 }
 
 const navigateDown = () => {

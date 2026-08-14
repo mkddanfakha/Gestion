@@ -12,6 +12,25 @@
     color: var(--color-text-primary) !important;
 }
 
+.text-secondary,
+.text-body-secondary {
+    color: var(--color-text-secondary) !important;
+}
+
+.form-text {
+    color: var(--color-text-secondary);
+}
+
+.form-text.text-muted,
+small.form-text.text-muted {
+    color: var(--color-text-muted) !important;
+}
+
+small.text-muted:not(.badge),
+.text-muted.small:not(.badge) {
+    color: var(--color-text-muted);
+}
+
 .card-header {
     background-color: var(--color-surface-elevated);
     border-bottom-color: var(--color-border-subtle);
@@ -211,6 +230,14 @@ textarea::placeholder,
     color: var(--color-text-muted) !important;
 }
 
+.table-hover tbody tr:hover .form-text {
+    color: var(--color-text-secondary) !important;
+}
+
+.table-hover tbody tr:hover .form-text.text-muted {
+    color: var(--color-text-muted) !important;
+}
+
 .table-hover tbody tr:hover .text-success {
     color: var(--color-success) !important;
 }
@@ -384,6 +411,51 @@ textarea::placeholder,
 .customer-dropdown-menu .dropdown-item {
     cursor: pointer;
     padding: 0.75rem;
+}
+
+.product-dropdown-menu .dropdown-item .text-muted,
+.customer-dropdown-menu .dropdown-item .text-muted {
+    color: var(--color-text-muted);
+}
+
+.product-dropdown-menu .dropdown-item:hover:not(.disabled):not(.active) .text-muted,
+.customer-dropdown-menu .dropdown-item:hover:not(.disabled):not(.active) .text-muted {
+    color: var(--color-text-muted);
+}
+
+.product-dropdown-menu .dropdown-item.active .text-muted,
+.customer-dropdown-menu .dropdown-item.active .text-muted {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.product-dropdown-menu .dropdown-item.disabled,
+.customer-dropdown-menu .dropdown-item.disabled {
+    opacity: 1;
+    color: var(--color-text-secondary);
+    cursor: not-allowed;
+}
+
+.product-dropdown-menu .dropdown-item.disabled .fw-medium,
+.customer-dropdown-menu .dropdown-item.disabled .fw-medium {
+    color: var(--color-text-secondary);
+}
+
+.product-dropdown-menu .dropdown-item.disabled .text-muted,
+.customer-dropdown-menu .dropdown-item.disabled .text-muted {
+    color: var(--color-text-muted);
+}
+
+.product-dropdown-menu .dropdown-item.disabled:hover,
+.product-dropdown-menu .dropdown-item.disabled.active,
+.customer-dropdown-menu .dropdown-item.disabled:hover,
+.customer-dropdown-menu .dropdown-item.disabled.active {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-secondary);
+}
+
+.product-dropdown-menu .dropdown-item.text-muted,
+.customer-dropdown-menu .dropdown-item.text-muted {
+    color: var(--color-text-muted);
 }
 
 /* --------------------------------------------------------------------------
@@ -606,6 +678,14 @@ a:not(.btn):not(.nav-link):not(.page-link):not(.dropdown-item):focus-visible {
     color: var(--color-text-inverse) !important;
 }
 
+.badge.bg-info.text-dark {
+    color: var(--color-text-inverse) !important;
+}
+
+.dark .badge.bg-info.text-dark {
+    color: var(--color-text-primary) !important;
+}
+
 /* --------------------------------------------------------------------------
    Alerts
    -------------------------------------------------------------------------- */
@@ -670,7 +750,7 @@ a:not(.btn):not(.nav-link):not(.page-link):not(.dropdown-item):focus-visible {
 }
 
 .dark .tooltip-inner {
-    background-color: #1e293b;
+    background-color: var(--color-surface);
     color: var(--color-text-primary);
 }
 

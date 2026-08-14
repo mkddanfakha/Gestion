@@ -114,6 +114,16 @@
     color: var(--color-text-primary);
 }
 
+.sale-items-table .form-text,
+.sale-item-card .form-text {
+    color: var(--color-text-secondary);
+}
+
+.sale-items-table .text-muted.small,
+.sale-item-card .text-muted.small {
+    color: var(--color-text-muted);
+}
+
 .sale-product-thumb {
     width: 44px;
     height: 44px;

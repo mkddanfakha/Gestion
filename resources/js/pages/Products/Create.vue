@@ -174,12 +174,14 @@
                     Stock initial <span class="text-danger">*</span>
                   </label>
                   <input
-                    v-model="form.stock_quantity"
+                    v-model.number="form.stock_quantity"
                     type="number"
                     min="0"
+                    step="1"
                     required
                     class="form-control"
                     :class="{ 'is-invalid': errors.stock_quantity || clientErrors.stock_quantity }"
+                    @blur="validateField('stock_quantity', form.stock_quantity)"
                   />
                   <div v-if="errors.stock_quantity" class="invalid-feedback">{{ errors.stock_quantity }}</div>
                   <div v-if="clientErrors.stock_quantity" class="invalid-feedback">{{ clientErrors.stock_quantity }}</div>
@@ -229,13 +231,16 @@
                 <div class="col-md-6">
                   <label class="form-label">Stock minimum</label>
                   <input
-                    v-model="form.min_stock_level"
+                    v-model.number="form.min_stock_level"
                     type="number"
                     min="0"
+                    step="1"
                     class="form-control"
-                    :class="{ 'is-invalid': errors.min_stock_level }"
+                    :class="{ 'is-invalid': errors.min_stock_level || clientErrors.min_stock_level }"
+                    @blur="validateField('min_stock_level', form.min_stock_level)"
                   />
                   <div v-if="errors.min_stock_level" class="invalid-feedback">{{ errors.min_stock_level }}</div>
+                  <div v-if="clientErrors.min_stock_level" class="invalid-feedback">{{ clientErrors.min_stock_level }}</div>
                 </div>
 
                 <div class="col-md-6">
@@ -434,6 +439,18 @@ const { getCsrfToken } = useCsrfToken()
 // État des erreurs de validation côté client
 const clientErrors = ref<Record<string, string>>({})
 
+const STOCK_QUANTITY_INVALID_MESSAGE = 'La quantité en stock est requise et doit être supérieure ou égale à 0'
+const MIN_STOCK_LEVEL_INVALID_MESSAGE = 'Le stock minimum est requis et doit être supérieur ou égal à 0'
+
+function isInvalidNonNegativeInteger(value: unknown): boolean {
+  if (value === null || value === undefined || value === '') {
+    return true
+  }
+
+  const parsed = Number(value)
+  return Number.isNaN(parsed) || parsed < 0 || !Number.isInteger(parsed)
+}
+
 // Validation simple côté client
 const validateForm = () => {
   const errors: Record<string, string> = {}
@@ -470,12 +487,12 @@ const validateForm = () => {
     errors.cost_price = 'Le prix de revient ne peut pas être négatif'
   }
   
-  if (!form.stock_quantity || form.stock_quantity < 0) {
-    errors.stock_quantity = 'La quantité en stock est requise et doit être positive'
+  if (isInvalidNonNegativeInteger(form.stock_quantity)) {
+    errors.stock_quantity = STOCK_QUANTITY_INVALID_MESSAGE
   }
-  
-  if (!form.min_stock_level || form.min_stock_level < 0) {
-    errors.min_stock_level = 'Le niveau de stock minimum est requis et doit être positif'
+
+  if (isInvalidNonNegativeInteger(form.min_stock_level)) {
+    errors.min_stock_level = MIN_STOCK_LEVEL_INVALID_MESSAGE
   }
   
   if (!form.unit || form.unit.length > 50) {
@@ -536,14 +553,14 @@ const validateField = (fieldName: string, value: any) => {
       break
       
     case 'stock_quantity':
-      if (!value || value < 0) {
-        errorMessage = 'La quantité en stock est requise et doit être positive'
+      if (isInvalidNonNegativeInteger(value)) {
+        errorMessage = STOCK_QUANTITY_INVALID_MESSAGE
       }
       break
-      
+
     case 'min_stock_level':
-      if (!value || value < 0) {
-        errorMessage = 'Le niveau de stock minimum est requis et doit être positif'
+      if (isInvalidNonNegativeInteger(value)) {
+        errorMessage = MIN_STOCK_LEVEL_INVALID_MESSAGE
       }
       break
       

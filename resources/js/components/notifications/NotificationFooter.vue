@@ -27,7 +27,7 @@ const { hasMore, filteredNotifications, visibleNotifications } = storeToRefs(sto
     justify-content: space-between;
     align-items: center;
     font-size: 0.75rem;
-    color: #64748b;
+    color: var(--color-text-muted);
 }
 
 .nc-drawer__footer-text {

@@ -94,6 +94,8 @@
     --bs-body-color: var(--color-text-primary);
     --bs-primary: var(--color-accent);
     --bs-border-color: var(--color-border);
+    --bs-secondary-color: var(--color-text-secondary);
+    --bs-tertiary-color: var(--color-text-muted);
 }
 
 .dark {
@@ -162,6 +164,8 @@
     --bs-body-color: var(--color-text-primary);
     --bs-primary: var(--color-accent);
     --bs-border-color: var(--color-border);
+    --bs-secondary-color: var(--color-text-secondary);
+    --bs-tertiary-color: var(--color-text-muted);
 }
 
 html {
