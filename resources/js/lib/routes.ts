@@ -2,6 +2,7 @@
 export function route(name: string, params: any = {}) {
     const routes: Record<string, string> = {
         'dashboard': '/dashboard',
+        'products.autocomplete': '/products/autocomplete',
         'products.index': '/products',
         'products.create': '/products/create',
         'products.store': '/products',
@@ -18,6 +19,7 @@ export function route(name: string, params: any = {}) {
         'categories.edit': '/categories/{id}/edit',
         'categories.update': '/categories/{id}',
         'categories.destroy': '/categories/{id}',
+        'customers.autocomplete': '/customers/autocomplete',
         'customers.index': '/customers',
         'customers.create': '/customers/create',
         'customers.store': '/customers',

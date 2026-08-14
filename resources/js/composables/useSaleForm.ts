@@ -30,6 +30,8 @@ export interface SaleFormCategory {
 export interface SaleFormProduct {
   id: number
   name: string
+  sku?: string | null
+  barcode?: string | null
   price: number
   stock_quantity: number
   unit: string

@@ -132,6 +132,27 @@
     object-fit: cover;
 }
 
+.sale-items-mobile {
+    padding: 0.75rem;
+}
+
+.sale-item-card {
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: var(--color-surface-elevated);
+}
+
+.sale-item-card:last-child {
+    margin-bottom: 0;
+}
+
+.sale-item-card__total {
+    border-top: 1px solid var(--color-border-subtle);
+    padding-top: 0.75rem;
+}
+
 .sale-qty-stepper {
     display: inline-flex;
     align-items: stretch;

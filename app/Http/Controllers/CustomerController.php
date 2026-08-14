@@ -210,4 +210,42 @@ class CustomerController extends Controller
             abort(500, 'Erreur lors de la génération du PDF: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Recherche légère pour les autocomplétions (ventes, devis, etc.).
+     */
+    public function autocomplete(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            abort(401);
+        }
+
+        $user->refresh();
+
+        $canSearch = $user->hasPermission('sales', 'create')
+            || $user->hasPermission('sales', 'edit')
+            || $user->hasPermission('customers', 'view');
+
+        if (!$canSearch) {
+            abort(403);
+        }
+
+        $search = trim((string) $request->query('q', ''));
+
+        $query = Customer::query()->orderBy('name')->limit(20);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        return response()->json(
+            $query->get(['id', 'name', 'email', 'phone'])
+        );
+    }
 }

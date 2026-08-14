@@ -31,6 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Produits
+    Route::get('/products/autocomplete', [ProductController::class, 'autocomplete'])->name('products.autocomplete');
     Route::resource('products', ProductController::class);
     Route::post('/products/generate-sku', [ProductController::class, 'generateSku'])->name('products.generate-sku');
     Route::post('/products/upload-image', [ProductController::class, 'uploadImage'])->name('products.upload-image');
@@ -39,6 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('categories', CategoryController::class);
     
     // Clients
+    Route::get('/customers/autocomplete', [CustomerController::class, 'autocomplete'])->name('customers.autocomplete');
     Route::resource('customers', CustomerController::class);
     Route::get('/customers/export/excel', [CustomerController::class, 'exportExcel'])->name('customers.export.excel');
     Route::get('/customers/export/pdf', [CustomerController::class, 'exportPdf'])->name('customers.export.pdf');

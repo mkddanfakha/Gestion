@@ -72,7 +72,107 @@
             <p class="mb-0">Aucun article ajouté. Cliquez sur « Ajouter un article » pour commencer.</p>
           </div>
 
-          <div v-else class="table-responsive">
+          <div v-else>
+            <!-- Mobile : cartes empilées -->
+            <div class="d-md-none sale-items-mobile">
+              <div
+                v-for="(item, index) in form.items"
+                :key="`mobile-item-${index}`"
+                class="sale-item-card"
+              >
+                <div class="d-flex align-items-start gap-3 mb-3">
+                  <div class="sale-product-thumb flex-shrink-0">
+                    <img
+                      v-if="getProduct(item.product_id)?.image_url"
+                      :src="getProduct(item.product_id)!.image_url!"
+                      :alt="getProduct(item.product_id)?.name ?? 'Produit'"
+                    />
+                    <i v-else class="bi bi-box-seam"></i>
+                  </div>
+                  <div class="flex-grow-1 min-w-0">
+                    <label class="form-label small mb-1">Produit</label>
+                    <ProductAutocomplete
+                      v-model="item.product_id"
+                      :products="products"
+                      :exclude-product-ids="getExcludedProductIds(index)"
+                      :is-invalid="isProductDuplicate(index)"
+                      placeholder="Rechercher un produit..."
+                      @selected="(product) => handleProductSelected(product, index)"
+                    />
+                    <div v-if="isProductDuplicate(index)" class="invalid-feedback d-block">
+                      Ce produit est déjà sélectionné dans cette vente.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-link text-danger p-0 flex-shrink-0"
+                    title="Supprimer"
+                    @click="removeItem(index)"
+                  >
+                    <i class="bi bi-trash fs-5"></i>
+                  </button>
+                </div>
+
+                <div class="row g-3 align-items-end">
+                  <div class="col-6">
+                    <label class="form-label small mb-1">Quantité</label>
+                    <div
+                      class="sale-qty-stepper w-100"
+                      :class="{ 'sale-qty-stepper--invalid': isQuantityExceedsStock(index) }"
+                    >
+                      <button
+                        type="button"
+                        class="sale-qty-stepper__btn"
+                        title="Diminuer"
+                        :disabled="item.quantity <= 1"
+                        @click="decrementQuantity(index)"
+                      >
+                        <i class="bi bi-dash"></i>
+                      </button>
+                      <span class="sale-qty-stepper__value">{{ item.quantity }}</span>
+                      <button
+                        type="button"
+                        class="sale-qty-stepper__btn"
+                        title="Augmenter"
+                        :disabled="!canIncrementQuantity(index)"
+                        @click="incrementQuantity(index)"
+                      >
+                        <i class="bi bi-plus"></i>
+                      </button>
+                    </div>
+                    <div v-if="isQuantityExceedsStock(index)" class="invalid-feedback d-block">
+                      Stock insuffisant. Disponible : {{ getAvailableStock(index) }} {{ getProductUnit(index) }}
+                    </div>
+                    <div v-else-if="item.product_id" class="form-text">
+                      Stock : {{ getAvailableStock(index) }}
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small mb-1">Prix unit.</label>
+                    <div class="input-group input-group-sm">
+                      <input
+                        v-model.number="item.unit_price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="form-control"
+                        @input="updateItemTotal(index)"
+                      />
+                      <span class="input-group-text">FCFA</span>
+                    </div>
+                  </div>
+                  <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center sale-item-card__total">
+                      <span class="text-muted small">Total ligne</span>
+                      <span class="fw-semibold">{{ formatCurrency(item.total_price || 0) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Desktop : tableau -->
+            <div class="table-responsive d-none d-md-block">
             <table class="table sale-items-table mb-0 align-middle">
               <thead>
                 <tr>
@@ -174,6 +274,7 @@
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
 
           <div class="p-3 border-top d-flex flex-wrap gap-2 justify-content-between align-items-center">

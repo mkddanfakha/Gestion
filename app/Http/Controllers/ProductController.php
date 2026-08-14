@@ -409,4 +409,58 @@ class ProductController extends Controller
 
         return back()->with('sku', $sku);
     }
+
+    /**
+     * Recherche légère pour les autocomplétions (ventes, devis, etc.).
+     */
+    public function autocomplete(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            abort(401);
+        }
+
+        $user->refresh();
+
+        $canSearch = $user->hasPermission('sales', 'create')
+            || $user->hasPermission('sales', 'edit')
+            || $user->hasPermission('products', 'view');
+
+        if (!$canSearch) {
+            abort(403);
+        }
+
+        $search = trim((string) $request->query('q', ''));
+
+        $query = Product::query()
+            ->with(['category:id,name,color'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->limit(20);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%");
+            });
+        }
+
+        $products = $query->get()->map(function (Product $product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sku' => $product->sku,
+                'barcode' => $product->barcode,
+                'price' => (float) $product->price,
+                'stock_quantity' => (int) $product->stock_quantity,
+                'unit' => $product->unit,
+                'category' => $product->category,
+                'image_url' => $product->getThumbImageUrl(),
+            ];
+        });
+
+        return response()->json($products);
+    }
 }
