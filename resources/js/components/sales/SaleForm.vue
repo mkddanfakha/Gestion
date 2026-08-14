@@ -314,10 +314,13 @@
                   Client
                 </label>
                 <CustomerAutocomplete
+                  ref="customerAutocompleteRef"
                   v-model="form.customer_id"
-                  :customers="customers"
+                  :customers="localCustomers"
                   placeholder="Rechercher un client (optionnel)..."
                   :is-invalid="!!errors.customer_id"
+                  :allow-create="canCreateCustomer"
+                  @create-request="openCustomerCreateModal"
                 />
                 <div v-if="errors.customer_id" class="invalid-feedback d-block">{{ errors.customer_id }}</div>
               </div>
@@ -638,28 +641,52 @@
             <i class="bi bi-x-lg me-1"></i>
             Annuler
           </Link>
-          <button
-            type="submit"
-            class="btn btn-success order-2 order-sm-2 ms-sm-auto"
-            :disabled="processing || form.items.length === 0"
-            :aria-busy="processing"
-          >
-            <span v-if="processing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-            <i v-else :class="`${submitIcon} me-1`"></i>
-            {{ processing ? submitLoadingLabel : submitLabel }}
-          </button>
+          <div class="d-flex flex-column flex-sm-row gap-2 order-2 order-sm-2 ms-sm-auto">
+            <button
+              v-if="canPreviewInvoice"
+              type="button"
+              class="btn btn-outline-primary"
+              :disabled="processing || isPreviewing || form.items.length === 0"
+              :aria-busy="isPreviewing"
+              @click="previewInvoice"
+            >
+              <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              <i v-else class="bi bi-eye me-1"></i>
+              Aperçu
+            </button>
+            <button
+              type="submit"
+              class="btn btn-success"
+              :disabled="processing || form.items.length === 0"
+              :aria-busy="processing"
+            >
+              <span v-if="processing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              <i v-else :class="`${submitIcon} me-1`"></i>
+              {{ processing ? submitLoadingLabel : submitLabel }}
+            </button>
+          </div>
         </div>
       </div>
     </form>
+
+    <CustomerQuickCreateModal
+      v-model:open="showCustomerCreateModal"
+      :initial-name="customerCreateInitialName"
+      @created="handleCustomerCreated"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
-import { toRef } from 'vue'
+import { ref, toRef } from 'vue'
 import { route } from '@/lib/routes'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 import CustomerAutocomplete from '@/components/CustomerAutocomplete.vue'
+import CustomerQuickCreateModal from '@/components/customers/CustomerQuickCreateModal.vue'
+import type { CreatedCustomer } from '@/components/customers/CustomerQuickCreateModal.vue'
+import { usePermissions } from '@/composables/usePermissions'
+import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
 import {
   useSaleForm,
   type SaleFormCustomer,
@@ -674,6 +701,22 @@ const props = defineProps<{
   customers: SaleFormCustomer[]
   products: SaleFormProduct[]
 }>()
+
+const { canCreate, canAny } = usePermissions()
+const canCreateCustomer = canCreate('customers')
+const canPreviewInvoice = canAny('sales', ['invoice', 'create', 'update'])
+const { openFromPayload } = useDocumentPdfPreview()
+const isPreviewing = ref(false)
+
+const localCustomers = ref<SaleFormCustomer[]>([...props.customers])
+const customerAutocompleteRef = ref<InstanceType<typeof CustomerAutocomplete> | null>(null)
+const showCustomerCreateModal = ref(false)
+const customerCreateInitialName = ref('')
+
+const openCustomerCreateModal = (payload?: { initialName?: string }) => {
+  customerCreateInitialName.value = payload?.initialName ?? ''
+  showCustomerCreateModal.value = true
+}
 
 const {
   mode,
@@ -730,10 +773,43 @@ const {
   onTaxPercentInput,
   onDiscountPercentInput,
   validateField,
+  preparePreview,
   submit,
 } = useSaleForm({
   mode: props.mode,
   sale: props.sale,
   products: toRef(props, 'products'),
 })
+
+const previewInvoice = async () => {
+  const payload = preparePreview()
+  if (!payload) {
+    return
+  }
+
+  isPreviewing.value = true
+  try {
+    await openFromPayload('sales.invoice.preview', payload, 'Apercu_Facture.pdf')
+  } finally {
+    isPreviewing.value = false
+  }
+}
+
+const handleCustomerCreated = (customer: CreatedCustomer) => {
+  const normalizedCustomer: SaleFormCustomer = {
+    id: customer.id,
+    name: customer.name,
+    email: customer.email ?? null,
+    phone: customer.phone ?? null,
+  }
+
+  const exists = localCustomers.value.some((item) => item.id === normalizedCustomer.id)
+  if (!exists) {
+    localCustomers.value = [...localCustomers.value, normalizedCustomer]
+      .sort((left, right) => left.name.localeCompare(right.name, 'fr'))
+  }
+
+  form.customer_id = normalizedCustomer.id
+  customerAutocompleteRef.value?.selectCustomer(normalizedCustomer)
+}
 </script>

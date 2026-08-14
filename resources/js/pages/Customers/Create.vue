@@ -18,135 +18,18 @@
     <form>
       <div class="row justify-content-center">
         <div class="col-lg-8">
-          <!-- Informations générales -->
           <div class="card mb-4">
             <div class="card-header">
-              <h5 class="card-title mb-0">Informations générales</h5>
+              <h5 class="card-title mb-0">Informations client</h5>
             </div>
             <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="form-label">
-                    Nom complet <span class="text-danger">*</span>
-                  </label>
-                  <input
-                    v-model="form.name"
-                    type="text"
-                    required
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.name || clientErrors.name }"
-                    @blur="validateField('name', form.name)"
-                    @input="validateField('name', form.name)"
-                  />
-                  <div v-if="errors.name" class="invalid-feedback">{{ errors.name }}</div>
-                  <div v-if="clientErrors.name" class="invalid-feedback">{{ clientErrors.name }}</div>
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label">Email</label>
-                  <input
-                    v-model="form.email"
-                    type="email"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.email || clientErrors.email }"
-                    @blur="validateField('email', form.email)"
-                    @input="validateField('email', form.email)"
-                  />
-                  <div v-if="errors.email" class="invalid-feedback">{{ errors.email }}</div>
-                  <div v-if="clientErrors.email" class="invalid-feedback">{{ clientErrors.email }}</div>
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label">Téléphone</label>
-                  <input
-                    v-model="form.phone"
-                    type="tel"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.phone || clientErrors.phone }"
-                    @blur="validateField('phone', form.phone)"
-                    @input="validateField('phone', form.phone)"
-                  />
-                  <div v-if="errors.phone" class="invalid-feedback">{{ errors.phone }}</div>
-                  <div v-if="clientErrors.phone" class="invalid-feedback">{{ clientErrors.phone }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Adresse -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Adresse</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-12">
-                  <label class="form-label">Adresse</label>
-                  <textarea
-                    v-model="form.address"
-                    rows="3"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.address }"
-                  ></textarea>
-                  <div v-if="errors.address" class="invalid-feedback">{{ errors.address }}</div>
-                </div>
-
-                <div class="col-md-4">
-                  <label class="form-label">Ville</label>
-                  <input
-                    v-model="form.city"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.city }"
-                  />
-                  <div v-if="errors.city" class="invalid-feedback">{{ errors.city }}</div>
-                </div>
-
-                <div class="col-md-4">
-                  <label class="form-label">Code postal</label>
-                  <input
-                    v-model="form.postal_code"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.postal_code }"
-                  />
-                  <div v-if="errors.postal_code" class="invalid-feedback">{{ errors.postal_code }}</div>
-                </div>
-
-                <div class="col-md-4">
-                  <label class="form-label">Pays</label>
-                  <input
-                    v-model="form.country"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.country }"
-                  />
-                  <div v-if="errors.country" class="invalid-feedback">{{ errors.country }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Statut -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Statut</h5>
-            </div>
-            <div class="card-body">
-              <div class="form-check form-switch">
-                <input
-                  v-model="form.is_active"
-                  class="form-check-input"
-                  type="checkbox"
-                  id="is_active"
-                />
-                <label class="form-check-label" for="is_active">
-                  Client actif
-                </label>
-                <div class="form-text">
-                  Un client inactif ne sera pas visible dans les ventes
-                </div>
-              </div>
+              <CustomerFormFields
+                :form="form"
+                :errors="errors"
+                :client-errors="clientErrors"
+                id-prefix="customer-create"
+                @validate-field="validateField"
+              />
             </div>
           </div>
 
@@ -178,64 +61,22 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
+import CustomerFormFields from '@/components/customers/CustomerFormFields.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { validateCustomerField, validateCustomerForm } from '@/composables/useCustomerFormValidation'
 
 const { success, error } = useSweetAlert()
 
-// État des erreurs de validation côté client
 const clientErrors = ref<Record<string, string>>({})
 
-// Validation simple côté client
-const validateForm = () => {
-  const errors: Record<string, string> = {}
-  
-  if (!form.name || form.name.trim().length < 2) {
-    errors.name = 'Le nom du client est requis (minimum 2 caractères)'
-  }
-  
-  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    errors.email = 'Adresse email invalide'
-  }
-  
-  if (form.phone && !/^[\+]?[0-9\s\-\(\)]{8,}$/.test(form.phone)) {
-    errors.phone = 'Numéro de téléphone invalide'
-  }
-  
-  return Object.keys(errors).length === 0 ? null : errors
-}
-
-// Validation en temps réel pour un champ spécifique
-const validateField = (fieldName: string, value: any) => {
-  // Effacer l'erreur précédente pour ce champ
+const validateField = (fieldName: string, value: unknown) => {
   if (clientErrors.value[fieldName]) {
     delete clientErrors.value[fieldName]
   }
-  
-  let errorMessage = ''
-  
-  switch (fieldName) {
-    case 'name':
-      if (!value || value.trim().length < 2) {
-        errorMessage = 'Le nom du client est requis (minimum 2 caractères)'
-      }
-      break
-      
-    case 'email':
-      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        errorMessage = 'Adresse email invalide'
-      }
-      break
-      
-    case 'phone':
-      if (value && !/^[\+]?[0-9\s\-\(\)]{8,}$/.test(value)) {
-        errorMessage = 'Numéro de téléphone invalide'
-      }
-      break
-  }
-  
-  // Ajouter l'erreur si elle existe
+
+  const errorMessage = validateCustomerField(fieldName, value)
   if (errorMessage) {
     clientErrors.value[fieldName] = errorMessage
   }
@@ -256,7 +97,7 @@ const submit = () => {
   // Effacer les erreurs précédentes
   clientErrors.value = {}
   
-  const validationErrors = validateForm()
+  const validationErrors = validateCustomerForm(form)
   
   if (validationErrors) {
     // Afficher les erreurs dans le formulaire

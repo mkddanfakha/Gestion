@@ -254,6 +254,17 @@
 
               <div class="d-grid gap-2">
                 <button
+                  v-if="canPreviewPurchaseOrder"
+                  type="button"
+                  class="btn btn-outline-primary"
+                  :disabled="processing || isPreviewing || form.items.length === 0 || !form.supplier_id"
+                  @click="previewPurchaseOrder"
+                >
+                  <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-2"></span>
+                  <i v-else class="bi bi-eye me-1"></i>
+                  Aperçu
+                </button>
+                <button
                   type="button"
                   @click="submit"
                   class="btn btn-success"
@@ -284,6 +295,8 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import { usePermissions } from '@/composables/usePermissions'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 import { formatCurrency } from '@/utils/currencyFormatter'
 
@@ -330,6 +343,10 @@ interface Props {
 const props = defineProps<Props>()
 
 const { success, error } = useSweetAlert()
+const { openFromPayload } = useDocumentPdfPreview()
+const { canAny } = usePermissions()
+const canPreviewPurchaseOrder = canAny('purchase-orders', ['print', 'create', 'update'])
+const isPreviewing = ref(false)
 
 // Fonction pour convertir une date au format YYYY-MM-DD
 const formatDateForInput = (date: string | Date | null | undefined): string => {
@@ -445,6 +462,48 @@ const subtotal = computed(() => {
 const totalAmount = computed(() => {
   return subtotal.value + form.tax_amount - form.discount_amount
 })
+
+const buildPurchaseOrderPreviewPayload = () => {
+  form.subtotal = subtotal.value
+  form.total_amount = totalAmount.value
+
+  return {
+    purchase_order_id: props.purchaseOrder.id,
+    supplier_id: form.supplier_id,
+    order_date: form.order_date,
+    expected_delivery_date: form.expected_delivery_date || null,
+    status: form.status,
+    subtotal: form.subtotal,
+    tax_amount: form.tax_amount || 0,
+    discount_amount: form.discount_amount || 0,
+    total_amount: form.total_amount,
+    notes: form.notes || null,
+    items: form.items.map((item) => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      total_price: item.total_price,
+    })),
+  }
+}
+
+const previewPurchaseOrder = async () => {
+  if (form.items.length === 0 || !form.supplier_id) {
+    error('Veuillez compléter le formulaire avant l\'aperçu.')
+    return
+  }
+
+  isPreviewing.value = true
+  try {
+    await openFromPayload(
+      'purchase-orders.preview',
+      buildPurchaseOrderPreviewPayload(),
+      `BC_${props.purchaseOrder.po_number}.pdf`,
+    )
+  } finally {
+    isPreviewing.value = false
+  }
+}
 
 const submit = () => {
   form.subtotal = subtotal.value

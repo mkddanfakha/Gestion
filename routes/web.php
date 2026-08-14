@@ -11,6 +11,7 @@ use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\DeliveryNoteController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\QuoteController;
+use App\Http\Controllers\DocumentPreviewController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ActivityLogController;
@@ -49,11 +50,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('sales', SaleController::class);
     Route::get('/sales/{sale}/invoice/download', [SaleController::class, 'downloadInvoice'])->name('sales.invoice.download');
     Route::get('/sales/{sale}/invoice/print', [SaleController::class, 'printInvoice'])->name('sales.invoice.print');
+    Route::post('/sales/invoice/preview', [DocumentPreviewController::class, 'saleInvoice'])->name('sales.invoice.preview');
+    Route::get('/documents/preview/{token}', [DocumentPreviewController::class, 'showCached'])->name('documents.preview.show');
     
     // Devis
     Route::resource('quotes', QuoteController::class);
     Route::get('/quotes/{quote}/download', [QuoteController::class, 'downloadQuote'])->name('quotes.download');
     Route::get('/quotes/{quote}/print', [QuoteController::class, 'printQuote'])->name('quotes.print');
+    Route::post('/quotes/preview', [DocumentPreviewController::class, 'quote'])->name('quotes.preview');
     Route::post('/quotes/{quote}/convert-to-sale', [QuoteController::class, 'convertToSale'])->name('quotes.convert-to-sale');
     
     // Dépenses
@@ -68,6 +72,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('purchase-orders', PurchaseOrderController::class);
     Route::get('/purchase-orders/{purchaseOrder}/download', [PurchaseOrderController::class, 'downloadPurchaseOrder'])->name('purchase-orders.download');
     Route::get('/purchase-orders/{purchaseOrder}/print', [PurchaseOrderController::class, 'printPurchaseOrder'])->name('purchase-orders.print');
+    Route::post('/purchase-orders/preview', [DocumentPreviewController::class, 'purchaseOrder'])->name('purchase-orders.preview');
     
     // Bons de livraison
     // Routes spécifiques AVANT la route resource pour éviter les conflits
@@ -76,6 +81,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('delivery-notes.validate');
     Route::get('/delivery-notes/{deliveryNote}/download', [DeliveryNoteController::class, 'downloadDeliveryNote'])->name('delivery-notes.download');
     Route::get('/delivery-notes/{deliveryNote}/print', [DeliveryNoteController::class, 'printDeliveryNote'])->name('delivery-notes.print');
+    Route::post('/delivery-notes/preview', [DocumentPreviewController::class, 'deliveryNote'])->name('delivery-notes.preview');
     // Facture/BL fournisseur: upload/affichage/suppression (AVANT la route resource)
     // Utiliser des contraintes pour éviter les conflits avec la route resource
     Route::post('/delivery-notes/{deliveryNote}/invoice', [DeliveryNoteController::class, 'uploadInvoice'])
@@ -95,6 +101,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/company', [CompanyController::class, 'update'])->name('company.update');
     Route::post('/company/logo', [CompanyController::class, 'uploadLogo'])->name('company.logo.upload');
     Route::delete('/company/logo', [CompanyController::class, 'deleteLogo'])->name('company.logo.delete');
+    Route::post('/company/signature', [CompanyController::class, 'uploadSignature'])->name('company.signature.upload');
+    Route::delete('/company/signature', [CompanyController::class, 'deleteSignature'])->name('company.signature.delete');
+    Route::post('/company/stamp', [CompanyController::class, 'uploadStamp'])->name('company.stamp.upload');
+    Route::delete('/company/stamp', [CompanyController::class, 'deleteStamp'])->name('company.stamp.delete');
     
     // Notifications → app/Modules/NotificationCenter/Http/Routes/notifications.php
     

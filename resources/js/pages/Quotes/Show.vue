@@ -206,6 +206,17 @@
           <div class="card-body">
             <div class="d-grid gap-2">
               <button
+                v-if="canPreviewQuote"
+                type="button"
+                class="btn btn-outline-primary"
+                :disabled="isPreviewing || isDownloading || isPrinting"
+                @click="previewQuote"
+              >
+                <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <i v-else class="bi bi-eye me-1"></i>
+                {{ isPreviewing ? 'Génération...' : 'Aperçu' }}
+              </button>
+              <button
                 @click="downloadQuote"
                 class="btn btn-success"
                 :disabled="isDownloading || isPrinting"
@@ -286,14 +297,20 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import { usePermissions } from '@/composables/usePermissions'
 import { ref, computed } from 'vue'
 import { formatDate } from '@/utils/dateFormatter'
 import { formatCurrency } from '@/utils/currencyFormatter'
 
 const { success, error, confirm } = useSweetAlert()
+const { openFromUrl } = useDocumentPdfPreview()
+const { canAny } = usePermissions()
+const canPreviewQuote = canAny('quotes', ['print', 'create', 'update'])
 
 const isDownloading = ref(false)
 const isPrinting = ref(false)
+const isPreviewing = ref(false)
 const isConverting = ref(false)
 
 // Vérifier si le devis peut être converti en vente
@@ -397,6 +414,23 @@ const getStatusIcon = (status: string) => {
 const isExpired = (validUntil: string | undefined) => {
   if (!validUntil) return false
   return new Date(validUntil) < new Date()
+}
+
+const previewQuote = async () => {
+  if (isPreviewing.value) {
+    return
+  }
+
+  isPreviewing.value = true
+
+  try {
+    await openFromUrl(
+      route('quotes.print', { quote: props.quote.id }),
+      `Devis_${props.quote.quote_number}.pdf`,
+    )
+  } finally {
+    isPreviewing.value = false
+  }
 }
 
 const downloadQuote = async () => {

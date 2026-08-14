@@ -1,10 +1,9 @@
 <template>
   <AppLayout>
-    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
         <h1 class="h2 mb-1">Informations de l'entreprise</h1>
-        <p class="text-muted mb-0">Gérer les informations affichées sur les factures</p>
+        <p class="text-muted mb-0">Gérer les informations affichées sur les factures et documents PDF</p>
       </div>
       <div class="d-flex gap-2">
         <Link
@@ -19,9 +18,13 @@
 
     <div class="row justify-content-center">
       <div class="col-lg-10">
-        <!-- Logo de l'entreprise -->
-        <CompanyLogoSection
+        <CompanyPrintIdentitySection
           :logo-url="company.logo_url"
+          :signature-url="company.signature_url"
+          :stamp-url="company.stamp_url"
+          :company-name="form.name"
+          :company-address="form.address"
+          :company-phone="form.phone"
           :can-manage="canUpdateCompany"
         />
       </div>
@@ -31,162 +34,162 @@
       <div class="row justify-content-center">
         <div class="col-lg-10">
           <fieldset :disabled="!canUpdateCompany">
-          <!-- Informations générales -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Informations générales</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-12">
-                  <label class="form-label">
-                    Nom de l'entreprise <span class="text-danger">*</span>
-                  </label>
-                  <input
-                    v-model="form.name"
-                    type="text"
-                    required
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.name }"
-                    placeholder="ENTREPRISE SARL"
-                  />
-                  <div v-if="errors.name" class="invalid-feedback">{{ errors.name }}</div>
-                </div>
+            <CompanyPrintPreferencesSection
+              :form="form"
+              :disabled="!canUpdateCompany"
+            />
 
-                <div class="col-md-12">
-                  <label class="form-label">Slogan / Tagline</label>
-                  <input
-                    v-model="form.tagline"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.tagline }"
-                    placeholder="Votre partenaire de confiance"
-                  />
-                  <div v-if="errors.tagline" class="invalid-feedback">{{ errors.tagline }}</div>
-                </div>
+            <div class="card mb-4">
+              <div class="card-header">
+                <h5 class="card-title mb-0">Informations générales</h5>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-12">
+                    <label class="form-label">
+                      Nom de l'entreprise <span class="text-danger">*</span>
+                    </label>
+                    <input
+                      v-model="form.name"
+                      type="text"
+                      required
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.name }"
+                      placeholder="ENTREPRISE SARL"
+                    />
+                    <div v-if="errors.name" class="invalid-feedback">{{ errors.name }}</div>
+                  </div>
 
-                <div class="col-md-12">
-                  <label class="form-label">Adresse</label>
-                  <textarea
-                    v-model="form.address"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.address }"
-                    rows="2"
-                    placeholder="123 Avenue de la République, Abidjan, Côte d'Ivoire"
-                  ></textarea>
-                  <div v-if="errors.address" class="invalid-feedback">{{ errors.address }}</div>
+                  <div class="col-md-12">
+                    <label class="form-label">Slogan / Tagline</label>
+                    <input
+                      v-model="form.tagline"
+                      type="text"
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.tagline }"
+                      placeholder="Votre partenaire de confiance"
+                    />
+                    <div v-if="errors.tagline" class="invalid-feedback">{{ errors.tagline }}</div>
+                  </div>
+
+                  <div class="col-md-12">
+                    <label class="form-label">Adresse</label>
+                    <textarea
+                      v-model="form.address"
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.address }"
+                      rows="2"
+                      placeholder="123 Avenue de la République, Abidjan, Côte d'Ivoire"
+                    ></textarea>
+                    <div v-if="errors.address" class="invalid-feedback">{{ errors.address }}</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Coordonnées -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Coordonnées</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-4">
-                  <label class="form-label">Téléphone 1</label>
-                  <input
-                    v-model="form.phone1"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.phone1 }"
-                    placeholder="+225 27 22 44 55 66"
-                  />
-                  <div v-if="errors.phone1" class="invalid-feedback">{{ errors.phone1 }}</div>
-                </div>
+            <div class="card mb-4">
+              <div class="card-header">
+                <h5 class="card-title mb-0">Coordonnées</h5>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Téléphone 1</label>
+                    <input
+                      v-model="form.phone1"
+                      type="text"
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.phone1 }"
+                      placeholder="+225 27 22 44 55 66"
+                    />
+                    <div v-if="errors.phone1" class="invalid-feedback">{{ errors.phone1 }}</div>
+                  </div>
 
-                <div class="col-md-4">
-                  <label class="form-label">Téléphone 2</label>
-                  <input
-                    v-model="form.phone2"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.phone2 }"
-                    placeholder="+225 07 12 34 56 78"
-                  />
-                  <div v-if="errors.phone2" class="invalid-feedback">{{ errors.phone2 }}</div>
-                </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Téléphone 2</label>
+                    <input
+                      v-model="form.phone2"
+                      type="text"
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.phone2 }"
+                      placeholder="+225 07 12 34 56 78"
+                    />
+                    <div v-if="errors.phone2" class="invalid-feedback">{{ errors.phone2 }}</div>
+                  </div>
 
-                <div class="col-md-4">
-                  <label class="form-label">Téléphone 3</label>
-                  <input
-                    v-model="form.phone3"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.phone3 }"
-                    placeholder="+225 05 98 76 54 32"
-                  />
-                  <div v-if="errors.phone3" class="invalid-feedback">{{ errors.phone3 }}</div>
-                </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Téléphone 3</label>
+                    <input
+                      v-model="form.phone3"
+                      type="text"
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.phone3 }"
+                      placeholder="+225 05 98 76 54 32"
+                    />
+                    <div v-if="errors.phone3" class="invalid-feedback">{{ errors.phone3 }}</div>
+                  </div>
 
-                <div class="col-md-6">
-                  <label class="form-label">Email</label>
-                  <input
-                    v-model="form.email"
-                    type="email"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.email }"
-                    placeholder="contact@entreprise.ci"
-                  />
-                  <div v-if="errors.email" class="invalid-feedback">{{ errors.email }}</div>
-                </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input
+                      v-model="form.email"
+                      type="email"
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.email }"
+                      placeholder="contact@entreprise.ci"
+                    />
+                    <div v-if="errors.email" class="invalid-feedback">{{ errors.email }}</div>
+                  </div>
 
-                <div class="col-md-12">
-                  <label class="form-label">Site web</label>
-                  <input
-                    v-model="form.website"
-                    type="url"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.website }"
-                    placeholder="https://www.entreprise.ci"
-                  />
-                  <div v-if="errors.website" class="invalid-feedback">{{ errors.website }}</div>
+                  <div class="col-md-12">
+                    <label class="form-label">Site web</label>
+                    <input
+                      v-model="form.website"
+                      type="url"
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.website }"
+                      placeholder="https://www.entreprise.ci"
+                    />
+                    <div v-if="errors.website" class="invalid-feedback">{{ errors.website }}</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Informations légales -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Informations légales</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="form-label">Numéro RC (Registre du Commerce)</label>
-                  <input
-                    v-model="form.rc_number"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.rc_number }"
-                    placeholder="CI-ABJ-2024-A-12345"
-                  />
-                  <div v-if="errors.rc_number" class="invalid-feedback">{{ errors.rc_number }}</div>
-                </div>
+            <div class="card mb-4">
+              <div class="card-header">
+                <h5 class="card-title mb-0">Informations légales</h5>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Numéro RC (Registre du Commerce)</label>
+                    <input
+                      v-model="form.rc_number"
+                      type="text"
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.rc_number }"
+                      placeholder="CI-ABJ-2024-A-12345"
+                    />
+                    <div v-if="errors.rc_number" class="invalid-feedback">{{ errors.rc_number }}</div>
+                  </div>
 
-                <div class="col-md-6">
-                  <label class="form-label">Numéro NCC (Numéro de Contribuable)</label>
-                  <input
-                    v-model="form.ncc_number"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.ncc_number }"
-                    placeholder="12345678X"
-                  />
-                  <div v-if="errors.ncc_number" class="invalid-feedback">{{ errors.ncc_number }}</div>
+                  <div class="col-md-6">
+                    <label class="form-label">Numéro NCC (Numéro de Contribuable)</label>
+                    <input
+                      v-model="form.ncc_number"
+                      type="text"
+                      class="form-control"
+                      :class="{ 'is-invalid': errors.ncc_number }"
+                      placeholder="12345678X"
+                    />
+                    <div v-if="errors.ncc_number" class="invalid-feedback">{{ errors.ncc_number }}</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
           </fieldset>
 
-          <!-- Actions -->
           <div v-if="canUpdateCompany" class="card">
             <div class="card-body">
               <div class="d-flex justify-content-end gap-2">
@@ -217,7 +220,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
-import CompanyLogoSection from '@/components/company/CompanyLogoSection.vue'
+import CompanyPrintIdentitySection from '@/components/company/CompanyPrintIdentitySection.vue'
+import CompanyPrintPreferencesSection from '@/components/company/CompanyPrintPreferencesSection.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
@@ -236,6 +240,16 @@ interface Company {
   rc_number?: string
   ncc_number?: string
   logo_url?: string | null
+  signature_url?: string | null
+  stamp_url?: string | null
+  print_signature_on_invoice?: boolean
+  print_stamp_on_invoice?: boolean
+  print_signature_on_quote?: boolean
+  print_stamp_on_quote?: boolean
+  print_signature_on_purchase_order?: boolean
+  print_stamp_on_purchase_order?: boolean
+  print_signature_on_delivery_note?: boolean
+  print_stamp_on_delivery_note?: boolean
 }
 
 interface Props {
@@ -260,6 +274,14 @@ const form = useForm({
   website: props.company.website || '',
   rc_number: props.company.rc_number || '',
   ncc_number: props.company.ncc_number || '',
+  print_signature_on_invoice: props.company.print_signature_on_invoice ?? true,
+  print_stamp_on_invoice: props.company.print_stamp_on_invoice ?? true,
+  print_signature_on_quote: props.company.print_signature_on_quote ?? true,
+  print_stamp_on_quote: props.company.print_stamp_on_quote ?? true,
+  print_signature_on_purchase_order: props.company.print_signature_on_purchase_order ?? false,
+  print_stamp_on_purchase_order: props.company.print_stamp_on_purchase_order ?? false,
+  print_signature_on_delivery_note: props.company.print_signature_on_delivery_note ?? false,
+  print_stamp_on_delivery_note: props.company.print_stamp_on_delivery_note ?? false,
 })
 
 const errors = computed(() => form.errors)
@@ -272,8 +294,7 @@ const submit = () => {
     },
     onError: () => {
       error('Erreur lors de la mise à jour des informations.')
-    }
+    },
   })
 }
 </script>
-

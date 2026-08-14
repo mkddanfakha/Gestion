@@ -255,6 +255,17 @@
 
               <div class="d-grid gap-2">
                 <button
+                  v-if="canPreviewQuote"
+                  type="button"
+                  class="btn btn-outline-primary"
+                  :disabled="processing || isPreviewing || form.items.length === 0"
+                  @click="previewQuote"
+                >
+                  <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-2"></span>
+                  <i v-else class="bi bi-eye me-1"></i>
+                  Aperçu
+                </button>
+                <button
                   type="button"
                   @click="submit"
                   class="btn btn-primary"
@@ -285,6 +296,8 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import { usePermissions } from '@/composables/usePermissions'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 import { formatCurrency } from '@/utils/currencyFormatter'
 
@@ -314,6 +327,10 @@ interface Props {
 const props = defineProps<Props>()
 
 const { success, error } = useSweetAlert()
+const { openFromPayload } = useDocumentPdfPreview()
+const { canAny } = usePermissions()
+const canPreviewQuote = canAny('quotes', ['print', 'create', 'update'])
+const isPreviewing = ref(false)
 
 const form = useForm({
   customer_id: '',
@@ -445,6 +462,34 @@ const discountAmount = computed(() => {
 const totalAmount = computed(() => {
   return subtotal.value + taxAmount.value - discountAmount.value
 })
+
+const buildQuotePreviewPayload = () => ({
+  customer_id: form.customer_id || null,
+  status: form.status,
+  notes: form.notes || null,
+  valid_until: form.valid_until || null,
+  tax_amount: form.tax_amount || 0,
+  discount_amount: form.discount_amount || 0,
+  items: form.items.map((item) => ({
+    product_id: item.product_id,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+  })),
+})
+
+const previewQuote = async () => {
+  if (form.items.length === 0) {
+    error('Veuillez ajouter au moins un article.')
+    return
+  }
+
+  isPreviewing.value = true
+  try {
+    await openFromPayload('quotes.preview', buildQuotePreviewPayload(), 'Apercu_Devis.pdf')
+  } finally {
+    isPreviewing.value = false
+  }
+}
 
 const submit = () => {
   if (form.items.length === 0) {

@@ -86,6 +86,10 @@ export const usePermissions = () => {
     return hasPermission(resource, 'restore')
   }
 
+  const canAny = (resource: string, actions: string[]): boolean => {
+    return actions.some((action) => hasPermission(resource, action))
+  }
+
   return {
     isAdmin,
     isVendeur,
@@ -99,6 +103,7 @@ export const usePermissions = () => {
     canDelete,
     canDownload,
     canRestore,
+    canAny,
   }
 }
 

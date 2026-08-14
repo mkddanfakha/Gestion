@@ -105,7 +105,7 @@ function mapSaleItems(items?: SaleFormItem[]): SaleFormItem[] {
 function buildInitialForm(mode: SaleFormMode, sale?: SaleFormSale) {
   if (mode === 'edit' && sale) {
     return {
-      customer_id: sale.customer_id || '',
+      customer_id: sale.customer_id ?? null,
       payment_method: sale.payment_method || '',
       notes: sale.notes || '',
       due_date: sale.due_date ? new Date(sale.due_date).toISOString().split('T')[0] : '',
@@ -117,7 +117,7 @@ function buildInitialForm(mode: SaleFormMode, sale?: SaleFormSale) {
   }
 
   return {
-    customer_id: '',
+    customer_id: null,
     payment_method: '',
     notes: '',
     due_date: '',
@@ -672,6 +672,42 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     return true
   }
 
+  const preparePreview = (): Record<string, unknown> | false => {
+    clientErrors.value = {}
+
+    if (taxEnabled.value && taxMode.value === 'percent' && taxPercentUserEdited.value) {
+      updateTaxFromPercent()
+    } else if (!taxEnabled.value) {
+      form.tax_amount = 0
+    }
+
+    if (discountEnabled.value && discountMode.value === 'percent' && discountPercentUserEdited.value) {
+      updateDiscountFromPercent()
+    } else if (!discountEnabled.value) {
+      form.discount_amount = 0
+    }
+
+    const validationErrors = validateForm()
+    if (validationErrors) {
+      clientErrors.value = validationErrors
+      scrollToFirstError()
+      return false
+    }
+
+    if (form.items.length === 0) {
+      error('Veuillez ajouter au moins un article pour afficher l\'aperçu.')
+      return false
+    }
+
+    const payload = buildPayload()
+
+    if (mode === 'edit' && sale?.id) {
+      payload.sale_id = sale.id
+    }
+
+    return payload
+  }
+
   const submit = () => {
     if (!prepareSubmit()) return
 
@@ -760,6 +796,7 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     validateField,
     updateTaxFromPercent,
     updateDiscountFromPercent,
+    preparePreview,
     submit,
   }
 }

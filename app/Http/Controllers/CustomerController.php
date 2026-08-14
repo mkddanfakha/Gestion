@@ -73,6 +73,15 @@ class CustomerController extends Controller
 
         ActivityLogger::logCreate('Client', $customer);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+            ], 201);
+        }
+
         return redirect()->route('customers.index')
             ->with('success', 'Client créé avec succès.');
     }

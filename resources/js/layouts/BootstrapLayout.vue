@@ -246,6 +246,9 @@
     
     <!-- Loading Spinner -->
     <LoadingSpinner />
+
+    <!-- Aperçu PDF global -->
+    <DocumentPdfPreviewModal />
   </div>
 </template>
 
@@ -255,6 +258,7 @@ import { route } from '@/lib/routes'
 import type { BreadcrumbItemType } from '@/types'
 import { ref, onMounted, computed, watch } from 'vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import DocumentPdfPreviewModal from '@/components/documents/DocumentPdfPreviewModal.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { toggleAppearance } from '@/composables/useAppearance'

@@ -325,6 +325,17 @@
 
               <div class="d-grid gap-2">
                 <button
+                  v-if="canPreviewDeliveryNote"
+                  type="button"
+                  class="btn btn-outline-primary"
+                  :disabled="processing || isPreviewing || form.items.length === 0"
+                  @click="previewDeliveryNote"
+                >
+                  <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-2"></span>
+                  <i v-else class="bi bi-eye me-1"></i>
+                  Aperçu
+                </button>
+                <button
                   type="button"
                   @click="submit"
                   class="btn btn-success"
@@ -356,6 +367,8 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import { usePermissions } from '@/composables/usePermissions'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 
 interface Supplier {
@@ -410,6 +423,10 @@ interface Props {
 const props = defineProps<Props>()
 
 const { success, error } = useSweetAlert()
+const { openFromPayload } = useDocumentPdfPreview()
+const { canAny } = usePermissions()
+const canPreviewDeliveryNote = canAny('delivery-notes', ['print', 'create', 'update'])
+const isPreviewing = ref(false)
 
 // Variables pour la recherche de bon de commande
 const poSearchQuery = ref('')
@@ -685,6 +702,57 @@ const validateItemField = (index: number, fieldName: string, value: any) => {
   
   if (errorMessage) {
     clientErrors.value[key] = errorMessage
+  }
+}
+
+const buildDeliveryNotePreviewPayload = () => {
+  form.items.forEach((item) => {
+    const quantity = Number(item.quantity) || 0
+    const unitPrice = Number(item.unit_price) || 0
+    item.total_price = quantity * unitPrice
+  })
+  updateTotals()
+
+  return {
+    delivery_note_id: props.deliveryNote.id,
+    supplier_id: form.supplier_id,
+    purchase_order_id: form.purchase_order_id,
+    delivery_date: form.delivery_date,
+    status: form.status,
+    subtotal: form.subtotal,
+    tax_amount: form.tax_amount || 0,
+    discount_amount: form.discount_amount || 0,
+    total_amount: form.total_amount,
+    notes: form.notes || null,
+    invoice_number: form.invoice_number || null,
+    items: form.items.map((item) => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      total_price: item.total_price,
+    })),
+  }
+}
+
+const previewDeliveryNote = async () => {
+  clientErrors.value = {}
+  const validationErrors = validateForm()
+
+  if (validationErrors) {
+    clientErrors.value = validationErrors
+    error('Veuillez corriger les erreurs dans le formulaire.')
+    return
+  }
+
+  isPreviewing.value = true
+  try {
+    await openFromPayload(
+      'delivery-notes.preview',
+      buildDeliveryNotePreviewPayload(),
+      `BL_${props.deliveryNote.delivery_number}.pdf`,
+    )
+  } finally {
+    isPreviewing.value = false
   }
 }
 

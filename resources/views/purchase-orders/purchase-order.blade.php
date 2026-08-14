@@ -132,10 +132,9 @@
                 @foreach($purchaseOrder->items as $item)
                 <tr>
                     <td>
-                        <strong>{{ $item->product->name ?? 'Produit supprimé' }}</strong>
-                        @if($item->product && $item->product->sku)
-                            <br><span class="product-ref">Réf: {{ $item->product->sku }}</span>
-                        @endif
+                        <span class="product-name-line">
+                            <strong>{{ $item->product->name ?? 'Produit supprimé' }}</strong>@if($item->product && $item->product->sku)<span class="product-ref"> — Réf: {{ $item->product->sku }}</span>@endif
+                        </span>
                     </td>
                     <td class="text-center">{{ $item->quantity }}</td>
                     <td class="text-right">{{ format_currency($item->unit_price) }}</td>
@@ -181,6 +180,12 @@
         </div>
         @endif
         
+        @include('partials.document-signature-block', [
+            'company' => $company,
+            'showSignature' => $company->shouldPrintSignature(\App\Models\Company::DOCUMENT_PURCHASE_ORDER),
+            'showStamp' => $company->shouldPrintStamp(\App\Models\Company::DOCUMENT_PURCHASE_ORDER),
+        ])
+
         <!-- Footer -->
         <div class="document-footer">
             <p>Merci de votre collaboration | Document généré le {{ now()->format('d/m/Y à H:i') }}</p>

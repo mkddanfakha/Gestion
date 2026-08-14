@@ -75,6 +75,21 @@
         <div v-else class="dropdown-item text-muted">
           Aucun client disponible
         </div>
+        <div
+          v-if="allowCreate"
+          class="dropdown-item customer-autocomplete__create-item border-top"
+          :class="{ active: selectedIndex === createOptionIndex }"
+          role="button"
+          tabindex="0"
+          @mousedown.prevent="handleCreateMouseDown"
+          @touchstart.passive="handleItemTouchStart"
+          @touchmove.passive="handleItemTouchMove"
+          @touchend="handleCreateTouchEnd($event)"
+          @mouseenter="selectedIndex = createOptionIndex"
+        >
+          <i class="bi bi-plus-circle me-2"></i>
+          Nouveau client
+        </div>
       </div>
     </Teleport>
   </div>
@@ -99,6 +114,7 @@ interface Props {
   disabled?: boolean
   isInvalid?: boolean
   isValid?: boolean
+  allowCreate?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -106,11 +122,13 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   isInvalid: false,
   isValid: false,
+  allowCreate: false,
 })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: number | null): void
   (e: 'selected', customer: Customer): void
+  (e: 'create-request', payload?: { initialName?: string }): void
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)
@@ -164,6 +182,23 @@ const filteredCustomers = computed(() => {
     : catalogCustomers.value
 
   return source.slice(0, 20)
+})
+
+const createOptionIndex = computed(() => {
+  if (!props.allowCreate || isLoading.value) {
+    return -1
+  }
+
+  return filteredCustomers.value.length
+})
+
+const selectableItemCount = computed(() => {
+  let count = filteredCustomers.value.length
+  if (props.allowCreate && !isLoading.value) {
+    count += 1
+  }
+
+  return count
 })
 
 const dropdownStyle = computed(() => {
@@ -362,16 +397,60 @@ const selectCustomer = (customer: Customer) => {
   showDropdown.value = false
 }
 
-const selectFirstMatch = () => {
-  if (filteredCustomers.value.length > 0 && selectedIndex.value >= 0) {
+const requestCreateCustomer = () => {
+  isEditingSearch.value = false
+  showDropdown.value = false
+  selectedIndex.value = -1
+  emit('create-request', {
+    initialName: searchQuery.value.trim() || undefined,
+  })
+}
+
+const handleCreateMouseDown = (event: MouseEvent) => {
+  if (event.button !== 0 || Date.now() < suppressMouseDownUntil) {
+    return
+  }
+
+  requestCreateCustomer()
+}
+
+const handleCreateTouchEnd = (event: TouchEvent) => {
+  if (itemTouch.value.moved) {
+    return
+  }
+
+  event.preventDefault()
+  suppressMouseDownUntil = Date.now() + 400
+  requestCreateCustomer()
+}
+
+const selectHighlightedItem = () => {
+  if (selectedIndex.value === createOptionIndex.value) {
+    requestCreateCustomer()
+    return
+  }
+
+  if (selectedIndex.value >= 0 && selectedIndex.value < filteredCustomers.value.length) {
     selectCustomer(filteredCustomers.value[selectedIndex.value])
+  }
+}
+
+const selectFirstMatch = () => {
+  if (selectedIndex.value >= 0) {
+    selectHighlightedItem()
   } else if (filteredCustomers.value.length > 0) {
     selectCustomer(filteredCustomers.value[0])
+  } else if (props.allowCreate) {
+    requestCreateCustomer()
   }
 }
 
 const navigateDown = () => {
-  if (selectedIndex.value < filteredCustomers.value.length - 1) {
+  if (selectableItemCount.value === 0) {
+    return
+  }
+
+  if (selectedIndex.value < selectableItemCount.value - 1) {
     selectedIndex.value++
   }
 }
@@ -477,5 +556,6 @@ onUnmounted(() => {
 defineExpose({
   focus: () => inputRef.value?.focus(),
   clear: clearSelection,
+  selectCustomer,
 })
 </script>

@@ -200,6 +200,17 @@
           <div class="card-body">
             <div class="d-grid gap-2">
               <button
+                v-if="canPreviewDeliveryNote"
+                type="button"
+                class="btn btn-outline-primary"
+                :disabled="isPreviewing || isDownloading || isPrinting"
+                @click="previewDeliveryNote"
+              >
+                <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <i v-else class="bi bi-eye me-1"></i>
+                {{ isPreviewing ? 'Génération...' : 'Aperçu' }}
+              </button>
+              <button
                 @click="downloadDeliveryNote"
                 class="btn btn-primary"
                 :disabled="isDownloading || isPrinting"
@@ -316,6 +327,8 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import { usePermissions } from '@/composables/usePermissions'
 import { ref, computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 
@@ -376,9 +389,13 @@ const isAdmin = computed(() => {
 })
 
 const { success, error, confirm } = useSweetAlert()
+const { openFromUrl } = useDocumentPdfPreview()
+const { canAny } = usePermissions()
+const canPreviewDeliveryNote = canAny('delivery-notes', ['print', 'create', 'update'])
 
 const isDownloading = ref(false)
 const isPrinting = ref(false)
+const isPreviewing = ref(false)
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')
@@ -474,6 +491,23 @@ const validateDeliveryNote = async () => {
         error(errorMessage)
       }
     })
+  }
+}
+
+const previewDeliveryNote = async () => {
+  if (isPreviewing.value) {
+    return
+  }
+
+  isPreviewing.value = true
+
+  try {
+    await openFromUrl(
+      route('delivery-notes.print', { deliveryNote: props.deliveryNote.id }),
+      `BL_${props.deliveryNote.delivery_number}.pdf`,
+    )
+  } finally {
+    isPreviewing.value = false
   }
 }
 

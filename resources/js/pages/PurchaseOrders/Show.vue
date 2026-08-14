@@ -236,6 +236,17 @@
           <div class="card-body">
             <div class="d-grid gap-2">
               <button
+                v-if="canPreviewPurchaseOrder"
+                type="button"
+                class="btn btn-outline-primary"
+                :disabled="isPreviewing || isDownloading || isPrinting"
+                @click="previewPurchaseOrder"
+              >
+                <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <i v-else class="bi bi-eye me-1"></i>
+                {{ isPreviewing ? 'Génération...' : 'Aperçu' }}
+              </button>
+              <button
                 @click="downloadPurchaseOrder"
                 class="btn btn-primary"
                 :disabled="isDownloading || isPrinting"
@@ -283,6 +294,8 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import { usePermissions } from '@/composables/usePermissions'
 import { ref } from 'vue'
 import { formatCurrency } from '@/utils/currencyFormatter'
 
@@ -332,9 +345,13 @@ interface Props {
 const props = defineProps<Props>()
 
 const { success, error, confirm } = useSweetAlert()
+const { openFromUrl } = useDocumentPdfPreview()
+const { canAny } = usePermissions()
+const canPreviewPurchaseOrder = canAny('purchase-orders', ['print', 'create', 'update'])
 
 const isDownloading = ref(false)
 const isPrinting = ref(false)
+const isPreviewing = ref(false)
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')
@@ -350,6 +367,23 @@ const getStatusBadgeClass = (status: string) => {
     cancelled: 'bg-danger'
   }
   return classes[status] || 'bg-secondary'
+}
+
+const previewPurchaseOrder = async () => {
+  if (isPreviewing.value) {
+    return
+  }
+
+  isPreviewing.value = true
+
+  try {
+    await openFromUrl(
+      route('purchase-orders.print', { purchaseOrder: props.purchaseOrder.id }),
+      `BC_${props.purchaseOrder.po_number}.pdf`,
+    )
+  } finally {
+    isPreviewing.value = false
+  }
 }
 
 const downloadPurchaseOrder = async () => {

@@ -117,10 +117,9 @@
                 @foreach($sale->saleItems as $item)
                 <tr>
                     <td>
-                        <strong>{{ $item->product->name ?? 'Produit supprimé' }}</strong>
-                        @if($item->product && $item->product->sku)
-                            <br><span class="product-ref">Réf: {{ $item->product->sku }}</span>
-                        @endif
+                        <span class="product-name-line">
+                            <strong>{{ $item->product->name ?? 'Produit supprimé' }}</strong>@if($item->product && $item->product->sku)<span class="product-ref"> — Réf: {{ $item->product->sku }}</span>@endif
+                        </span>
                     </td>
                     <td class="text-center">{{ $item->quantity }} {{ $item->product->unit ?? 'pce' }}</td>
                     <td class="text-right">{{ format_currency($item->unit_price) }}</td>
@@ -130,71 +129,63 @@
             </tbody>
         </table>
         
-        <!-- Totaux -->
-        <div class="totals-wrapper">
-            <table class="totals-table">
-                <tr>
-                    <td>Sous-total HT</td>
-                    <td>{{ format_currency($sale->subtotal ?? $sale->total_amount) }}</td>
-                </tr>
-                @if(($sale->tax_amount ?? 0) > 0)
-                <tr>
-                    <td>Taxes</td>
-                    <td>{{ format_currency($sale->tax_amount) }}</td>
-                </tr>
-                @endif
-                @if(($sale->discount_amount ?? 0) > 0)
-                <tr class="discount">
-                    <td>Remise</td>
-                    <td>-{{ format_currency($sale->discount_amount) }}</td>
-                </tr>
-                @endif
-                @if(($sale->down_payment_amount ?? 0) > 0)
-                <tr>
-                    <td>Acompte versé</td>
-                    <td>{{ format_currency($sale->down_payment_amount) }}</td>
-                </tr>
-                @endif
-                @if(($sale->remaining_amount ?? 0) > 0)
-                <tr class="warning">
-                    <td>Reste à payer</td>
-                    <td>{{ format_currency($sale->remaining_amount) }}</td>
-                </tr>
-                @endif
-                <tr class="grand-total">
-                    <td>TOTAL TTC</td>
-                    <td>{{ format_currency($sale->total_amount) }}</td>
-                </tr>
-            </table>
-        </div>
-        
-        <!-- Informations additionnelles -->
-        <div class="additional-info">
-            @if($sale->notes)
-            <div class="info-box">
-                <div class="info-box-title">Notes</div>
-                <div class="info-box-content">{{ $sale->notes }}</div>
-            </div>
-            @endif
-            
-            @if(($sale->down_payment_amount ?? 0) > 0 || ($sale->remaining_amount ?? 0) > 0)
-            <div class="info-box">
-                <div class="info-box-title">Paiement</div>
-                <div class="info-box-content">
+        <!-- Totaux, notes, signature et footer -->
+        <div class="document-bottom">
+            <div class="totals-wrapper">
+                <table class="totals-table">
+                    <tr>
+                        <td>Sous-total HT</td>
+                        <td>{{ format_currency($sale->subtotal ?? $sale->total_amount) }}</td>
+                    </tr>
+                    @if(($sale->tax_amount ?? 0) > 0)
+                    <tr>
+                        <td>Taxes</td>
+                        <td>{{ format_currency($sale->tax_amount) }}</td>
+                    </tr>
+                    @endif
+                    @if(($sale->discount_amount ?? 0) > 0)
+                    <tr class="discount">
+                        <td>Remise</td>
+                        <td>-{{ format_currency($sale->discount_amount) }}</td>
+                    </tr>
+                    @endif
                     @if(($sale->down_payment_amount ?? 0) > 0)
-                        <p>Acompte: <strong>{{ format_currency($sale->down_payment_amount) }}</strong></p>
+                    <tr>
+                        <td>Acompte versé</td>
+                        <td>{{ format_currency($sale->down_payment_amount) }}</td>
+                    </tr>
                     @endif
                     @if(($sale->remaining_amount ?? 0) > 0)
-                        <p>Reste: <strong>{{ format_currency($sale->remaining_amount) }}</strong></p>
+                    <tr class="warning">
+                        <td>Reste à payer</td>
+                        <td>{{ format_currency($sale->remaining_amount) }}</td>
+                    </tr>
                     @endif
+                    <tr class="grand-total">
+                        <td>TOTAL TTC</td>
+                        <td>{{ format_currency($sale->total_amount) }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            @if($sale->notes)
+            <div class="additional-info">
+                <div class="info-box">
+                    <div class="info-box-title">Notes</div>
+                    <div class="info-box-content">{{ $sale->notes }}</div>
                 </div>
             </div>
             @endif
-        </div>
-        
-        <!-- Footer -->
-        <div class="document-footer">
-            <p>Merci de votre confiance | Document généré le {{ now()->format('d/m/Y à H:i') }}</p>
+
+            @include('partials.document-signature-block', [
+                'company' => $company,
+                'showSignature' => $company->shouldPrintSignature(\App\Models\Company::DOCUMENT_INVOICE),
+                'showStamp' => $company->shouldPrintStamp(\App\Models\Company::DOCUMENT_INVOICE),
+            ])
+
+            <div class="document-footer">
+                <p>Merci de votre confiance | Document généré le {{ now()->format('d/m/Y à H:i') }}</p>
+            </div>
         </div>
     </div>
 </body>

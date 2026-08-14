@@ -204,6 +204,76 @@ class ActivityLogger
         );
     }
 
+    public static function logCompanySignatureAdd(Model $company): ActivityLog
+    {
+        return self::log(
+            ActivityLog::ACTION_UPDATE,
+            'Entreprise',
+            'a ajouté la signature de l\'entreprise',
+            $company,
+        );
+    }
+
+    public static function logCompanySignatureReplace(Model $company): ActivityLog
+    {
+        return self::log(
+            ActivityLog::ACTION_UPDATE,
+            'Entreprise',
+            'a remplacé la signature de l\'entreprise',
+            $company,
+        );
+    }
+
+    public static function logCompanySignatureDelete(Model $company): ActivityLog
+    {
+        return self::log(
+            ActivityLog::ACTION_UPDATE,
+            'Entreprise',
+            'a supprimé la signature de l\'entreprise',
+            $company,
+        );
+    }
+
+    public static function logCompanyStampAdd(Model $company): ActivityLog
+    {
+        return self::log(
+            ActivityLog::ACTION_UPDATE,
+            'Entreprise',
+            'a ajouté le cachet de l\'entreprise',
+            $company,
+        );
+    }
+
+    public static function logCompanyStampReplace(Model $company): ActivityLog
+    {
+        return self::log(
+            ActivityLog::ACTION_UPDATE,
+            'Entreprise',
+            'a remplacé le cachet de l\'entreprise',
+            $company,
+        );
+    }
+
+    public static function logCompanyStampDelete(Model $company): ActivityLog
+    {
+        return self::log(
+            ActivityLog::ACTION_UPDATE,
+            'Entreprise',
+            'a supprimé le cachet de l\'entreprise',
+            $company,
+        );
+    }
+
+    public static function logCompanyPrintPreferencesUpdate(Model $company): ActivityLog
+    {
+        return self::log(
+            ActivityLog::ACTION_UPDATE,
+            'Entreprise',
+            'a modifié les préférences d\'impression de l\'entreprise',
+            $company,
+        );
+    }
+
     private static function subjectTypePhrase(string $module, string $context = 'default'): string
     {
         return match ($module) {
