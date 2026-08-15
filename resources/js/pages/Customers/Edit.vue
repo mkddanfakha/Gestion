@@ -1,59 +1,55 @@
 <template>
   <AppLayout>
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-      <div>
-        <h1 class="h2 mb-1">Modifier le client</h1>
-        <p class="text-muted mb-0">{{ customer.name }}</p>
-      </div>
-      <div class="d-flex gap-2 flex-wrap">
-        <Link :href="route('customers.show', { id: customer.id })" class="btn btn-outline-primary">
-          <i class="bi bi-eye me-1"></i>
-          Voir le client
-        </Link>
-        <Link :href="route('customers.index')" class="btn btn-outline-secondary">
-          <i class="bi bi-arrow-left me-1"></i>
-          Retour à la liste
-        </Link>
-      </div>
-    </div>
+    <FormPageLayout>
+      <FormPageHeader
+        title="Modifier le client"
+        :subtitle="customer.name"
+        :back-href="route('customers.index')"
+        back-label="Retour à la liste"
+      >
+        <template #actions>
+          <Link :href="route('customers.show', { id: customer.id })" class="btn btn-outline-primary">
+            <i class="bi bi-eye me-1"></i>
+            Voir le client
+          </Link>
+        </template>
+      </FormPageHeader>
 
-    <form @submit.prevent="submit">
-      <div class="row justify-content-center">
-        <div class="col-lg-8">
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Informations client</h5>
-            </div>
-            <div class="card-body">
-              <CustomerFormFields
-                :form="form"
-                :errors="errors"
-                :client-errors="clientErrors"
-                :exclude-id="customer.id"
-                id-prefix="customer-edit"
-                @validate-field="validateField"
-              />
-            </div>
-          </div>
+      <form @submit.prevent="submit">
+        <div class="form-page__body">
+          <FormSection title="Informations client">
+            <CustomerFormFields
+              :form="form"
+              :errors="errors"
+              :client-errors="clientErrors"
+              :exclude-id="customer.id"
+              id-prefix="customer-edit"
+              @validate-field="validateField"
+            />
+          </FormSection>
 
-          <div class="d-flex gap-2 flex-wrap">
-            <button type="submit" class="btn btn-primary" :disabled="processing">
-              <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
-              <i v-else class="bi bi-check-circle me-1"></i>
-              {{ processing ? 'Modification...' : 'Modifier le client' }}
-            </button>
+          <FormActionsBar class="form-actions-bar--split">
             <Link :href="route('customers.show', { id: customer.id })" class="btn btn-outline-secondary">
               Annuler
             </Link>
-          </div>
+            <button type="submit" class="btn btn-primary" :disabled="processing">
+              <span v-if="processing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              <i v-else class="bi bi-check-circle me-1"></i>
+              {{ processing ? 'Modification...' : 'Modifier le client' }}
+            </button>
+          </FormActionsBar>
         </div>
-      </div>
-    </form>
+      </form>
+    </FormPageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue'
+import FormPageLayout from '@/components/page/FormPageLayout.vue'
+import FormPageHeader from '@/components/page/FormPageHeader.vue'
+import FormSection from '@/components/page/FormSection.vue'
+import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import CustomerFormFields from '@/components/customers/CustomerFormFields.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'

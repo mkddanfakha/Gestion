@@ -1,31 +1,20 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">Nouveau devis</h1>
-        <p class="text-muted mb-0">Créez un nouveau devis</p>
-      </div>
-      <Link
-        :href="route('quotes.index')"
-        class="btn btn-outline-secondary"
-      >
-        <i class="bi bi-arrow-left me-1"></i>
-        Retour à la liste
-      </Link>
-    </div>
+    <FormPageLayout wide>
+      <FormPageHeader
+        title="Nouveau devis"
+        subtitle="Créez un nouveau devis"
+        :back-href="route('quotes.index')"
+        back-label="Retour à la liste"
+      />
 
-    <form>
-      <div class="row">
-        <div class="col-lg-8">
-          <!-- Informations générales -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Informations générales</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-6">
+      <form>
+        <div class="form-page__body">
+          <div class="row g-3">
+            <div class="col-12 col-lg-8 d-flex flex-column gap-3">
+              <FormSection title="Informations générales">
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
                   <label class="form-label">Client</label>
                   <select
                     v-model="form.customer_id"
@@ -40,7 +29,7 @@
                   <div v-if="errors.customer_id" class="invalid-feedback">{{ errors.customer_id }}</div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                   <label class="form-label">Statut</label>
                   <select
                     v-model="form.status"
@@ -56,7 +45,7 @@
                   <div v-if="errors.status" class="invalid-feedback">{{ errors.status }}</div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                   <label class="form-label">Date de validité (optionnel)</label>
                   <input
                     v-model="form.valid_until"
@@ -81,35 +70,30 @@
                 ></textarea>
                 <div v-if="errors.notes" class="invalid-feedback">{{ errors.notes }}</div>
               </div>
-            </div>
-          </div>
+              </FormSection>
 
-          <!-- Articles du devis -->
-          <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <h5 class="card-title mb-0">Articles</h5>
-              <div class="d-flex gap-2">
-                <button
-                  v-if="hasDuplicateProducts"
-                  type="button"
-                  @click="mergeDuplicateProducts"
-                  class="btn btn-warning btn-sm"
-                >
-                  <i class="bi bi-arrow-down-up me-1"></i>
-                  Fusionner les doublons
-                </button>
-                <button
-                  type="button"
-                  @click="addItem"
-                  class="btn btn-primary btn-sm"
-                >
-                  <i class="bi bi-plus-circle me-1"></i>
-                  Ajouter un article
-                </button>
-              </div>
-            </div>
-            <div class="card-body">
-              <div v-if="form.items.length === 0" class="text-center py-4 text-muted">
+              <FormSection title="Articles">
+                <template #actions>
+                  <button
+                    v-if="hasDuplicateProducts"
+                    type="button"
+                    @click="mergeDuplicateProducts"
+                    class="btn btn-warning btn-sm"
+                  >
+                    <i class="bi bi-arrow-down-up me-1"></i>
+                    Fusionner les doublons
+                  </button>
+                  <button
+                    type="button"
+                    @click="addItem"
+                    class="btn btn-primary btn-sm"
+                  >
+                    <i class="bi bi-plus-circle me-1"></i>
+                    Ajouter un article
+                  </button>
+                </template>
+
+                <div v-if="form.items.length === 0" class="text-center py-4 text-muted">
                 <i class="bi bi-cart-x fs-1 mb-3"></i>
                 <p>Aucun article ajouté. Cliquez sur "Ajouter un article" pour commencer.</p>
               </div>
@@ -118,10 +102,10 @@
                 <div
                   v-for="(item, index) in form.items"
                   :key="index"
-                  class="border rounded p-3 mb-3"
+                  class="border rounded p-3 mb-3 form-line-item-card"
                 >
                   <div class="row g-3">
-                    <div class="col-md-5">
+                    <div class="col-12 col-md-5">
                       <label class="form-label">
                         Produit <span class="text-danger">*</span>
                       </label>
@@ -138,7 +122,7 @@
                       </div>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                       <label class="form-label">
                         Quantité <span class="text-danger">*</span>
                       </label>
@@ -152,7 +136,7 @@
                       />
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                       <label class="form-label">Prix unitaire</label>
                       <div class="input-group">
                         <input
@@ -168,7 +152,7 @@
                       </div>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                       <label class="form-label">Total</label>
                       <div class="input-group">
                         <input
@@ -182,30 +166,24 @@
                         <span class="input-group-text">FCFA</span>
                       </div>
                     </div>
-
-                    <div class="col-md-1 d-flex align-items-end">
-                      <button
-                        type="button"
-                        @click="removeItem(index)"
-                        class="btn btn-outline-danger w-100"
-                      >
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </div>
+                  </div>
+                  <div class="form-line-item-card__toolbar">
+                    <button
+                      type="button"
+                      @click="removeItem(index)"
+                      class="btn btn-outline-danger w-100"
+                    >
+                      <i class="bi bi-trash me-1"></i>
+                      Supprimer
+                    </button>
                   </div>
                 </div>
               </div>
+              </FormSection>
             </div>
-          </div>
-        </div>
 
-        <!-- Résumé -->
-        <div class="col-lg-4">
-          <div class="card">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Résumé du devis</h5>
-            </div>
-            <div class="card-body">
+            <div class="col-12 col-lg-4">
+              <FormSection title="Résumé du devis">
               <div class="d-flex justify-content-between mb-2">
                 <span>Sous-total:</span>
                 <span class="fw-medium">{{ formatCurrency(subtotal) }}</span>
@@ -252,46 +230,53 @@
                 <span class="fw-bold">Total:</span>
                 <span class="fw-bold text-success fs-5">{{ formatCurrency(totalAmount) }}</span>
               </div>
-
-              <div class="d-grid gap-2">
-                <button
-                  v-if="canPreviewQuote"
-                  type="button"
-                  class="btn btn-outline-primary"
-                  :disabled="processing || isPreviewing || form.items.length === 0"
-                  @click="previewQuote"
-                >
-                  <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-2"></span>
-                  <i v-else class="bi bi-eye me-1"></i>
-                  Aperçu
-                </button>
-                <button
-                  type="button"
-                  @click="submit"
-                  class="btn btn-primary"
-                  :disabled="processing || form.items.length === 0"
-                >
-                  <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
-                  <i v-else class="bi bi-check-circle me-1"></i>
-                  {{ processing ? 'Enregistrement...' : 'Enregistrer le devis' }}
-                </button>
-                <Link
-                  :href="route('quotes.index')"
-                  class="btn btn-outline-secondary"
-                >
-                  Annuler
-                </Link>
-              </div>
+              </FormSection>
             </div>
           </div>
+
+          <FormActionsBar class="form-actions-bar--split">
+            <Link
+              :href="route('quotes.index')"
+              class="btn btn-outline-secondary"
+            >
+              Annuler
+            </Link>
+            <div class="d-flex flex-wrap gap-2">
+              <button
+                v-if="canPreviewQuote"
+                type="button"
+                class="btn btn-outline-primary"
+                :disabled="processing || isPreviewing || form.items.length === 0"
+                @click="previewQuote"
+              >
+                <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-eye me-1"></i>
+                Aperçu
+              </button>
+              <button
+                type="button"
+                @click="submit"
+                class="btn btn-primary"
+                :disabled="processing || form.items.length === 0"
+              >
+                <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check-circle me-1"></i>
+                {{ processing ? 'Enregistrement...' : 'Enregistrer le devis' }}
+              </button>
+            </div>
+          </FormActionsBar>
         </div>
-      </div>
-    </form>
+      </form>
+    </FormPageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue'
+import FormPageLayout from '@/components/page/FormPageLayout.vue'
+import FormPageHeader from '@/components/page/FormPageHeader.vue'
+import FormSection from '@/components/page/FormSection.vue'
+import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { route } from '@/lib/routes'

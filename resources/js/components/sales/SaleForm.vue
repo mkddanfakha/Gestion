@@ -1,19 +1,14 @@
 <template>
-  <div class="sale-form-root">
-    <div class="sale-create-header mb-4">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb sale-create-breadcrumb mb-2">
-          <li class="breadcrumb-item">
-            <Link :href="route('sales.index')">Ventes</Link>
-          </li>
-          <li class="breadcrumb-item active" aria-current="page">{{ breadcrumbLabel }}</li>
-        </ol>
-      </nav>
-      <h1 class="h2 mb-0">{{ pageTitle }}</h1>
-      <p v-if="mode === 'edit'" class="text-muted mb-0 mt-1">Modifiez les informations de la vente</p>
-    </div>
+  <div class="form-page form-page--sticky-actions form-page--wide sale-form-root">
+    <FormPageHeader
+      :title="pageTitle"
+      :subtitle="mode === 'edit' ? 'Modifiez les informations de la vente' : undefined"
+      :back-href="route('sales.index')"
+      back-label="Ventes"
+    />
 
     <form novalidate @submit.prevent="submit">
+      <div class="form-page__body">
       <!-- Cartes résumé horizontales -->
       <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
@@ -644,37 +639,36 @@
         </div>
       </div>
 
-      <div class="sale-form-actions border-top pt-4 mt-4">
-        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-sm-between align-items-stretch align-items-sm-center">
-          <Link :href="route('sales.index')" class="btn btn-outline-secondary order-1 order-sm-1">
-            <i class="bi bi-x-lg me-1"></i>
-            Annuler
-          </Link>
-          <div class="d-flex flex-column flex-sm-row gap-2 order-2 order-sm-2 ms-sm-auto">
-            <button
-              v-if="canPreviewInvoice"
-              type="button"
-              class="btn btn-outline-primary"
-              :disabled="processing || isPreviewing || form.items.length === 0"
-              :aria-busy="isPreviewing"
-              @click="previewInvoice"
-            >
-              <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-              <i v-else class="bi bi-eye me-1"></i>
-              Aperçu
-            </button>
-            <button
-              type="submit"
-              class="btn btn-success"
-              :disabled="processing || form.items.length === 0"
-              :aria-busy="processing"
-            >
-              <span v-if="processing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-              <i v-else :class="`${submitIcon} me-1`"></i>
-              {{ processing ? submitLoadingLabel : submitLabel }}
-            </button>
-          </div>
+      <FormActionsBar class="form-actions-bar--split">
+        <Link :href="route('sales.index')" class="btn btn-outline-secondary order-1 order-sm-1">
+          <i class="bi bi-x-lg me-1"></i>
+          Annuler
+        </Link>
+        <div class="d-flex flex-column flex-sm-row gap-2 order-2 order-sm-2 ms-sm-auto">
+          <button
+            v-if="canPreviewInvoice"
+            type="button"
+            class="btn btn-outline-primary"
+            :disabled="processing || isPreviewing || form.items.length === 0"
+            :aria-busy="isPreviewing"
+            @click="previewInvoice"
+          >
+            <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <i v-else class="bi bi-eye me-1"></i>
+            Aperçu
+          </button>
+          <button
+            type="submit"
+            class="btn btn-success"
+            :disabled="processing || form.items.length === 0"
+            :aria-busy="processing"
+          >
+            <span v-if="processing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <i v-else :class="`${submitIcon} me-1`"></i>
+            {{ processing ? submitLoadingLabel : submitLabel }}
+          </button>
         </div>
+      </FormActionsBar>
       </div>
     </form>
 
@@ -690,6 +684,8 @@
 import { Link } from '@inertiajs/vue3'
 import { onMounted, ref, toRef } from 'vue'
 import { route } from '@/lib/routes'
+import FormPageHeader from '@/components/page/FormPageHeader.vue'
+import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 import CustomerAutocomplete from '@/components/CustomerAutocomplete.vue'
 import CustomerQuickCreateModal from '@/components/customers/CustomerQuickCreateModal.vue'
@@ -744,7 +740,6 @@ const {
   discountEnabled,
   cashReceivedAmount,
   pageTitle,
-  breadcrumbLabel,
   submitLabel,
   submitLoadingLabel,
   submitIcon,

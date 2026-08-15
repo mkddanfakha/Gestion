@@ -285,7 +285,7 @@
     color: var(--color-success);
 }
 
-.sale-form-actions .btn {
+.sale-form-root .form-actions-bar .btn {
     min-height: 2.75rem;
 }
 
@@ -306,7 +306,9 @@
 }
 
 @media (max-width: 575.98px) {
-    .sale-form-actions .btn {
-        width: 100%;
+    .sale-qty-stepper__btn {
+        width: 2.75rem;
+        min-width: 2.75rem;
+        min-height: 2.75rem;
     }
 }

@@ -1,66 +1,56 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">Nouveau client</h1>
-        <p class="text-muted mb-0">Ajoutez un nouveau client à votre base</p>
-      </div>
-      <Link
-        :href="route('customers.index')"
-        class="btn btn-outline-secondary"
-      >
-        <i class="bi bi-arrow-left me-1"></i>
-        Retour à la liste
-      </Link>
-    </div>
+    <FormPageLayout>
+      <FormPageHeader
+        title="Nouveau client"
+        subtitle="Ajoutez un nouveau client à votre base"
+        :back-href="route('customers.index')"
+        back-label="Retour à la liste"
+      />
 
-    <form>
-      <div class="row justify-content-center">
-        <div class="col-lg-8">
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Informations client</h5>
-            </div>
-            <div class="card-body">
-              <CustomerFormFields
-                :form="form"
-                :errors="errors"
-                :client-errors="clientErrors"
-                id-prefix="customer-create"
-                @validate-field="validateField"
-              />
-            </div>
-          </div>
+      <form>
+        <div class="form-page__body">
+          <FormSection title="Informations client">
+            <CustomerFormFields
+              :form="form"
+              :errors="errors"
+              :client-errors="clientErrors"
+              id-prefix="customer-create"
+              @validate-field="validateField"
+            />
+          </FormSection>
 
-          <!-- Boutons -->
-          <div class="d-flex gap-2">
-            <button
-              type="button"
-              @click="submit"
-              class="btn btn-primary"
-              :disabled="processing"
-            >
-              <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
-              <i v-else class="bi bi-check-circle me-1"></i>
-              {{ processing ? 'Création...' : 'Créer le client' }}
-            </button>
+          <FormActionsBar class="form-actions-bar--split">
             <Link
               :href="route('customers.index')"
               class="btn btn-outline-secondary"
             >
               Annuler
             </Link>
-          </div>
+            <button
+              type="button"
+              class="btn btn-primary"
+              :disabled="processing"
+              @click="submit"
+            >
+              <span v-if="processing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              <i v-else class="bi bi-check-circle me-1"></i>
+              {{ processing ? 'Création...' : 'Créer le client' }}
+            </button>
+          </FormActionsBar>
         </div>
-      </div>
-    </form>
+      </form>
+    </FormPageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
+import FormPageLayout from '@/components/page/FormPageLayout.vue'
+import FormPageHeader from '@/components/page/FormPageHeader.vue'
+import FormSection from '@/components/page/FormSection.vue'
+import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import CustomerFormFields from '@/components/customers/CustomerFormFields.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
@@ -98,17 +88,15 @@ const form = useForm({
 })
 
 const submit = () => {
-  // Effacer les erreurs précédentes
   clientErrors.value = {}
-  
+
   const validationErrors = validateCustomerForm(form)
-  
+
   if (validationErrors) {
-    // Afficher les erreurs dans le formulaire
     clientErrors.value = validationErrors
     return
   }
-  
+
   form.post(route('customers.store'), {
     onSuccess: () => {
       success('Client créé avec succès !')
@@ -117,7 +105,7 @@ const submit = () => {
     },
     onError: () => {
       error('Erreur lors de la création du client.')
-    }
+    },
   })
 }
 

@@ -3,7 +3,7 @@
     <div class="mb-4">
       <h6 class="text-uppercase text-muted small fw-semibold mb-3">Informations personnelles</h6>
       <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-12 col-md-6">
           <label class="form-label" :for="fieldId('name')">
             Nom complet <span class="text-danger">*</span>
           </label>
@@ -23,7 +23,7 @@
           <div v-if="clientErrors.name" class="invalid-feedback">{{ clientErrors.name }}</div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-12 col-md-6">
           <label class="form-label" :for="fieldId('birthday')">Date d'anniversaire</label>
           <input
             :id="fieldId('birthday')"
@@ -37,7 +37,7 @@
           <div v-if="clientErrors.birthday" class="invalid-feedback">{{ clientErrors.birthday }}</div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-12 col-md-6">
           <label class="form-label" :for="fieldId('phone')">Téléphone</label>
           <input
             :id="fieldId('phone')"
@@ -54,7 +54,7 @@
           <div v-if="clientErrors.phone" class="invalid-feedback">{{ clientErrors.phone }}</div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-12 col-md-6">
           <label class="form-label" :for="fieldId('email')">Email</label>
           <input
             :id="fieldId('email')"
@@ -75,7 +75,7 @@
     <div class="mb-4">
       <h6 class="text-uppercase text-muted small fw-semibold mb-3">Identité</h6>
       <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-12 col-md-6">
           <label class="form-label" :for="fieldId('identity_document_type')">Type de pièce</label>
           <select
             :id="fieldId('identity_document_type')"
@@ -97,7 +97,7 @@
           <div v-if="clientErrors.identity_document_type" class="invalid-feedback">{{ clientErrors.identity_document_type }}</div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-12 col-md-6">
           <label class="form-label" :for="fieldId('identity_document_number')">Numéro de pièce</label>
           <input
             :id="fieldId('identity_document_number')"
@@ -151,7 +151,7 @@
           <div v-if="errors.address" class="invalid-feedback">{{ errors.address }}</div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-12 col-md-4">
           <label class="form-label" :for="fieldId('city')">Ville</label>
           <input
             :id="fieldId('city')"
@@ -164,7 +164,7 @@
           <div v-if="errors.city" class="invalid-feedback">{{ errors.city }}</div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-12 col-md-4">
           <label class="form-label" :for="fieldId('postal_code')">Code postal</label>
           <input
             :id="fieldId('postal_code')"
@@ -177,7 +177,7 @@
           <div v-if="errors.postal_code" class="invalid-feedback">{{ errors.postal_code }}</div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-12 col-md-4">
           <label class="form-label" :for="fieldId('country')">Pays</label>
           <input
             :id="fieldId('country')"

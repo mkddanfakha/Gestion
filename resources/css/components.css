@@ -1076,6 +1076,205 @@ a:not(.btn):not(.nav-link):not(.page-link):not(.dropdown-item):focus-visible {
 }
 
 /* --------------------------------------------------------------------------
+   Form pages (Create / Edit)
+   -------------------------------------------------------------------------- */
+.form-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.form-page--sticky-actions {
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+.form-page__body {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.form-page--wide .form-page__body {
+    max-width: 1200px;
+}
+
+.form-page .form-section {
+    margin-bottom: 0;
+}
+
+.form-page-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.form-page-header__main {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.form-page-header__back {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding-inline: 0.75rem;
+}
+
+.form-page-header__intro {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.form-page-header__subtitle {
+    font-size: 0.95rem;
+    margin-top: 0.25rem;
+}
+
+.form-page-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.form-section__header .card-title {
+    color: var(--color-text-primary);
+}
+
+.form-section__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.form-line-item-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: var(--color-surface-elevated);
+}
+
+.form-line-item-card:last-child {
+    margin-bottom: 0;
+}
+
+.form-line-item-card__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+.form-actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 0.25rem;
+}
+
+.form-actions-bar .btn {
+    min-height: 2.75rem;
+}
+
+.form-actions-bar--primary-first {
+    flex-direction: row;
+}
+
+@media (min-width: 992px) {
+    .form-page--sticky-actions {
+        padding-bottom: 0;
+    }
+
+    .form-page-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .form-page-header__actions {
+        justify-content: flex-end;
+    }
+
+    .form-actions-bar {
+        justify-content: flex-start;
+        border-top: 1px solid var(--color-border);
+        padding-top: 1rem;
+        margin-top: 0.25rem;
+    }
+
+    .form-actions-bar--split {
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .form-page-header__subtitle {
+        font-size: 0.875rem;
+    }
+
+    .form-section__header {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+
+    .form-section__actions {
+        width: 100%;
+    }
+
+    .form-section__actions .btn {
+        flex: 1 1 auto;
+        min-height: 2.75rem;
+    }
+
+    .form-actions-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 850;
+        margin: 0;
+        padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+        background: var(--color-surface-header);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border-top: 1px solid var(--color-border);
+        box-shadow: var(--shadow-md);
+        flex-direction: column;
+    }
+
+    .form-actions-bar--primary-first {
+        flex-direction: column-reverse;
+    }
+
+    .form-actions-bar .btn {
+        width: 100%;
+    }
+
+    .form-actions-bar .btn-group,
+    .form-actions-bar .d-flex {
+        width: 100%;
+        flex-direction: column;
+    }
+}
+
+@media (min-width: 992px) {
+    .form-page .row > [class*='col-md-'],
+    .form-page .row > [class*='col-lg-'] {
+        min-width: 0;
+    }
+}
+
+/* --------------------------------------------------------------------------
    Customer CRM
    -------------------------------------------------------------------------- */
 .customer-crm {

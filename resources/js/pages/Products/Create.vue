@@ -1,31 +1,20 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">Nouveau produit</h1>
-        <p class="text-muted mb-0">Ajoutez un nouveau produit à votre inventaire</p>
-      </div>
-      <Link
-        :href="route('products.index')"
-        class="btn btn-outline-secondary"
-      >
-        <i class="bi bi-arrow-left me-1"></i>
-        Retour à la liste
-      </Link>
-    </div>
+    <FormPageLayout wide>
+      <FormPageHeader
+        title="Nouveau produit"
+        subtitle="Ajoutez un nouveau produit à votre inventaire"
+        :back-href="route('products.index')"
+        back-label="Retour à la liste"
+      />
 
-    <form>
-      <div class="row">
-        <div class="col-lg-8">
-          <!-- Informations générales -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Informations générales</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-6">
+      <form>
+        <div class="form-page__body">
+          <div class="row">
+            <div class="col-lg-8">
+              <FormSection title="Informations générales">
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
                   <label class="form-label">
                     Nom du produit <span class="text-danger">*</span>
                   </label>
@@ -42,10 +31,10 @@
                 <div v-if="clientErrors.name" class="invalid-feedback">{{ clientErrors.name }}</div>
                 </div>
 
-                <div class="col-md-6">
-                  <label class="form-label">
-                    Catégorie <span class="text-danger">*</span>
-                  </label>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label">
+                      Catégorie <span class="text-danger">*</span>
+                    </label>
                   <select
                     v-model="form.category_id"
                     required
@@ -73,18 +62,12 @@
                   :class="{ 'is-invalid': errors.description }"
                 ></textarea>
                 <div v-if="errors.description" class="invalid-feedback">{{ errors.description }}</div>
-              </div>
-            </div>
-          </div>
+                </div>
+              </FormSection>
 
-          <!-- Codes et identification -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Codes et identification</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-6">
+              <FormSection title="Codes et identification">
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
                   <label class="form-label">SKU (Code produit)</label>
                   <div class="input-group">
                     <input
@@ -107,8 +90,8 @@
                   <div v-if="errors.sku" class="text-danger small">{{ errors.sku }}</div>
                 </div>
 
-                <div class="col-md-6">
-                  <label class="form-label">Code-barres</label>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label">Code-barres</label>
                   <input
                     v-model="form.barcode"
                     type="text"
@@ -117,18 +100,12 @@
                   />
                   <div v-if="errors.barcode" class="invalid-feedback">{{ errors.barcode }}</div>
                 </div>
-              </div>
-            </div>
-          </div>
+                </div>
+              </FormSection>
 
-          <!-- Prix et stock -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Prix et stock</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-4">
+              <FormSection title="Prix et stock">
+                <div class="row g-3">
+                  <div class="col-12 col-md-4">
                   <label class="form-label">
                     Prix de vente <span class="text-danger">*</span>
                   </label>
@@ -150,8 +127,8 @@
                   <div v-if="clientErrors.price" class="invalid-feedback">{{ clientErrors.price }}</div>
                 </div>
 
-                <div class="col-md-4">
-                  <label class="form-label">Prix de revient</label>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label">Prix de revient</label>
                   <div class="input-group">
                     <span class="input-group-text">FCFA</span>
                     <input
@@ -169,10 +146,10 @@
                   <div v-if="clientErrors.cost_price" class="invalid-feedback">{{ clientErrors.cost_price }}</div>
                 </div>
 
-                <div class="col-md-4">
-                  <label class="form-label">
-                    Stock initial <span class="text-danger">*</span>
-                  </label>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label">
+                      Stock initial <span class="text-danger">*</span>
+                    </label>
                   <input
                     v-model.number="form.stock_quantity"
                     type="number"
@@ -187,8 +164,8 @@
                   <div v-if="clientErrors.stock_quantity" class="invalid-feedback">{{ clientErrors.stock_quantity }}</div>
                 </div>
 
-                <div class="col-md-4">
-                  <label class="form-label">Unité</label>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label">Unité</label>
                   <select
                     v-model="form.unit"
                     class="form-select"
@@ -212,9 +189,9 @@
                 </div>
               </div>
 
-              <div class="row g-3 mt-2">
-                <div class="col-md-6">
-                  <label class="form-label">Emplacement (optionnel)</label>
+                <div class="row g-3 mt-2">
+                  <div class="col-12 col-md-6">
+                    <label class="form-label">Emplacement (optionnel)</label>
                   <input
                     v-model="form.location"
                     type="text"
@@ -227,9 +204,9 @@
                 </div>
               </div>
 
-              <div class="row g-3 mt-2">
-                <div class="col-md-6">
-                  <label class="form-label">Stock minimum</label>
+                <div class="row g-3 mt-2">
+                  <div class="col-12 col-md-6">
+                    <label class="form-label">Stock minimum</label>
                   <input
                     v-model.number="form.min_stock_level"
                     type="number"
@@ -243,8 +220,8 @@
                   <div v-if="clientErrors.min_stock_level" class="invalid-feedback">{{ clientErrors.min_stock_level }}</div>
                 </div>
 
-                <div class="col-md-6">
-                  <label class="form-label">Statut</label>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label">Statut</label>
                   <select
                     v-model="form.is_active"
                     class="form-select"
@@ -255,18 +232,12 @@
                   </select>
                   <div v-if="errors.is_active" class="invalid-feedback">{{ errors.is_active }}</div>
                 </div>
-              </div>
-            </div>
-          </div>
+                </div>
+              </FormSection>
 
-          <!-- Date d'expiration et alerte -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Date d'expiration et alerte</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-6">
+              <FormSection title="Date d'expiration et alerte">
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
                   <label class="form-label">Date d'expiration (optionnel)</label>
                   <input
                     v-model="form.expiration_date"
@@ -278,7 +249,7 @@
                   <small class="form-text text-muted">Date à laquelle le produit expire</small>
                 </div>
 
-                <div class="col-md-6" v-if="form.expiration_date">
+                  <div class="col-12 col-md-6" v-if="form.expiration_date">
                   <label class="form-label">Seuil d'alerte</label>
                   <div class="row g-2">
                     <div class="col-6">
@@ -308,19 +279,13 @@
                   </div>
                   <small class="form-text text-muted">Alerter X jours/semaines/mois avant l'expiration</small>
                 </div>
-              </div>
+                </div>
+              </FormSection>
             </div>
-          </div>
-        </div>
 
-        <!-- Sidebar -->
-        <div class="col-lg-4">
-          <!-- Image du produit -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Image du produit</h5>
-            </div>
-            <div class="card-body">
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+              <FormSection title="Image du produit">
               <FilePondImageUpload
                 ref="filePondRef"
                 name="images"
@@ -341,41 +306,9 @@
               <small class="form-text text-muted mt-2 d-block">
                 Formats acceptés: JPG, PNG, GIF, WEBP. Taille max: 5 Mo.
               </small>
-            </div>
-          </div>
+              </FormSection>
 
-          <div class="card">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Actions</h5>
-            </div>
-            <div class="card-body">
-              <div class="d-grid gap-2">
-                <button
-                  type="button"
-                  @click="submit"
-                  class="btn btn-primary"
-                  :disabled="processing"
-                >
-                  <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
-                  <i v-else class="bi bi-check-circle me-1"></i>
-                  {{ processing ? 'Création...' : 'Créer le produit' }}
-                </button>
-                <Link
-                  :href="route('products.index')"
-                  class="btn btn-outline-secondary"
-                >
-                  Annuler
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <!-- Aperçu -->
-          <div class="card mt-3">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Aperçu</h5>
-            </div>
-            <div class="card-body">
+              <FormSection title="Aperçu">
               <div class="text-center">
                 <!-- Image preview -->
                 <div class="mb-3 surface-muted d-flex align-items-center justify-content-center" style="min-height: 200px; padding: 1rem;">
@@ -404,17 +337,41 @@
                   <p class="small text-muted">Aperçu du produit</p>
                 </template>
               </div>
+              </FormSection>
             </div>
           </div>
+
+          <FormActionsBar class="form-actions-bar--split">
+            <Link
+              :href="route('products.index')"
+              class="btn btn-outline-secondary"
+            >
+              Annuler
+            </Link>
+            <button
+              type="button"
+              @click="submit"
+              class="btn btn-primary"
+              :disabled="processing"
+            >
+              <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
+              <i v-else class="bi bi-check-circle me-1"></i>
+              {{ processing ? 'Création...' : 'Créer le produit' }}
+            </button>
+          </FormActionsBar>
         </div>
-      </div>
-    </form>
+      </form>
+    </FormPageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { formatCurrency, formatPrice } from '@/utils/currencyFormatter'
 import AppLayout from '@/layouts/AppLayout.vue'
+import FormPageLayout from '@/components/page/FormPageLayout.vue'
+import FormPageHeader from '@/components/page/FormPageHeader.vue'
+import FormSection from '@/components/page/FormSection.vue'
+import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { ref, watch, nextTick } from 'vue'
 import { route } from '@/lib/routes'

@@ -1,40 +1,30 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">Modifier le bon de livraison</h1>
-        <p class="text-muted mb-0">{{ deliveryNote.delivery_number }}</p>
-      </div>
-      <div class="d-flex gap-2">
-        <Link
-          :href="route('delivery-notes.show', { id: deliveryNote.id })"
-          class="btn btn-outline-primary"
-        >
-          <i class="bi bi-eye me-1"></i>
-          Voir le bon de livraison
-        </Link>
-        <Link
-          :href="route('delivery-notes.index')"
-          class="btn btn-outline-secondary"
-        >
-          <i class="bi bi-arrow-left me-1"></i>
-          Retour à la liste
-        </Link>
-      </div>
-    </div>
+    <FormPageLayout wide>
+      <FormPageHeader
+        title="Modifier le bon de livraison"
+        :subtitle="deliveryNote.delivery_number"
+        :back-href="route('delivery-notes.index')"
+        back-label="Retour à la liste"
+      >
+        <template #actions>
+          <Link
+            :href="route('delivery-notes.show', { id: deliveryNote.id })"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-eye me-1"></i>
+            Voir le bon de livraison
+          </Link>
+        </template>
+      </FormPageHeader>
 
-    <form>
-      <div class="row">
-        <div class="col-lg-8">
-          <!-- Informations générales -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Informations générales</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-6">
+      <form>
+        <div class="form-page__body">
+          <div class="row g-3">
+            <div class="col-12 col-lg-8 d-flex flex-column gap-3">
+              <FormSection title="Informations générales">
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
                   <label class="form-label">
                     Fournisseur <span class="text-danger">*</span>
                   </label>
@@ -54,7 +44,7 @@
                   <div v-if="clientErrors.supplier_id" class="invalid-feedback">{{ clientErrors.supplier_id }}</div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                   <label class="form-label">
                     Bon de commande <span class="text-danger">*</span>
                   </label>
@@ -123,7 +113,7 @@
                   </div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                   <label class="form-label">
                     Date de livraison <span class="text-danger">*</span>
                   </label>
@@ -138,7 +128,7 @@
                   <div v-if="clientErrors.delivery_date" class="invalid-feedback">{{ clientErrors.delivery_date }}</div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                   <label class="form-label">Numéro de facture fournisseur</label>
                   <input
                     v-model="form.invoice_number"
@@ -161,25 +151,22 @@
                   ></textarea>
                   <div v-if="errors.notes" class="invalid-feedback">{{ errors.notes }}</div>
                 </div>
-              </div>
-            </div>
-          </div>
+                </div>
+              </FormSection>
 
-          <!-- Articles -->
-          <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <h5 class="card-title mb-0">Articles livrés</h5>
-              <button
-                type="button"
-                @click="addItem"
-                class="btn btn-primary btn-sm"
-              >
-                <i class="bi bi-plus-circle me-1"></i>
-                Ajouter un article
-              </button>
-            </div>
-            <div class="card-body">
-              <div v-if="form.items.length === 0" class="text-center py-4 text-muted">
+              <FormSection title="Articles livrés">
+                <template #actions>
+                  <button
+                    type="button"
+                    @click="addItem"
+                    class="btn btn-primary btn-sm"
+                  >
+                    <i class="bi bi-plus-circle me-1"></i>
+                    Ajouter un article
+                  </button>
+                </template>
+
+                <div v-if="form.items.length === 0" class="text-center py-4 text-muted">
                 <i class="bi bi-cart-x fs-1 mb-3"></i>
                 <p>Aucun article ajouté. Cliquez sur "Ajouter un article" pour commencer.</p>
               </div>
@@ -188,10 +175,10 @@
                 <div
                   v-for="(item, index) in form.items"
                   :key="index"
-                  class="border rounded p-3 mb-3"
+                  class="border rounded p-3 mb-3 form-line-item-card"
                 >
                   <div class="row g-3">
-                    <div class="col-md-5">
+                    <div class="col-12 col-md-5">
                       <label class="form-label">Produit <span class="text-danger">*</span></label>
                       <ProductAutocomplete
                         v-model="item.product_id"
@@ -209,7 +196,7 @@
                       </div>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                       <label class="form-label">Quantité <span class="text-danger">*</span></label>
                       <input
                         v-model.number="item.quantity"
@@ -226,7 +213,7 @@
                       </div>
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-12 col-md-3">
                       <label class="form-label">Prix d'achat unitaire <span class="text-danger">*</span></label>
                       <input
                         v-model.number="item.unit_price"
@@ -244,7 +231,7 @@
                       </div>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                       <label class="form-label">Total</label>
                       <input
                         :value="formatCurrency(item.total_price)"
@@ -253,31 +240,24 @@
                         readonly
                       />
                     </div>
-
-                    <div class="col-12 text-end">
-                      <button
-                        type="button"
-                        @click="removeItem(index)"
-                        class="btn btn-sm btn-outline-danger"
-                      >
-                        <i class="bi bi-trash me-1"></i>
-                        Supprimer
-                      </button>
-                    </div>
+                  </div>
+                  <div class="form-line-item-card__toolbar">
+                    <button
+                      type="button"
+                      @click="removeItem(index)"
+                      class="btn btn-outline-danger w-100"
+                    >
+                      <i class="bi bi-trash me-1"></i>
+                      Supprimer
+                    </button>
                   </div>
                 </div>
               </div>
+              </FormSection>
             </div>
-          </div>
-        </div>
 
-        <!-- Résumé -->
-        <div class="col-lg-4">
-          <div class="card sticky-top" style="top: 20px;">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Résumé</h5>
-            </div>
-            <div class="card-body">
+            <div class="col-12 col-lg-4">
+              <FormSection title="Résumé">
               <div class="mb-3">
                 <div class="d-flex justify-content-between mb-2">
                   <span>Articles:</span>
@@ -322,47 +302,54 @@
                 <i class="bi bi-exclamation-triangle me-1"></i>
                 Attention : Modifier ce bon de livraison après validation ne modifiera pas le stock. Seul un nouveau BL peut ajuster le stock.
               </div>
-
-              <div class="d-grid gap-2">
-                <button
-                  v-if="canPreviewDeliveryNote"
-                  type="button"
-                  class="btn btn-outline-primary"
-                  :disabled="processing || isPreviewing || form.items.length === 0"
-                  @click="previewDeliveryNote"
-                >
-                  <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-2"></span>
-                  <i v-else class="bi bi-eye me-1"></i>
-                  Aperçu
-                </button>
-                <button
-                  type="button"
-                  @click="submit"
-                  class="btn btn-success"
-                  :disabled="processing || form.items.length === 0"
-                >
-                  <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
-                  <i v-else class="bi bi-check-circle me-1"></i>
-                  {{ processing ? 'Modification...' : 'Modifier le bon de livraison' }}
-                </button>
-                <Link
-                  :href="route('delivery-notes.index')"
-                  class="btn btn-outline-secondary"
-                >
-                  Annuler
-                </Link>
-              </div>
+              </FormSection>
             </div>
           </div>
+
+          <FormActionsBar class="form-actions-bar--split">
+            <Link
+              :href="route('delivery-notes.index')"
+              class="btn btn-outline-secondary"
+            >
+              Annuler
+            </Link>
+            <div class="d-flex flex-wrap gap-2">
+              <button
+                v-if="canPreviewDeliveryNote"
+                type="button"
+                class="btn btn-outline-primary"
+                :disabled="processing || isPreviewing || form.items.length === 0"
+                @click="previewDeliveryNote"
+              >
+                <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-eye me-1"></i>
+                Aperçu
+              </button>
+              <button
+                type="button"
+                @click="submit"
+                class="btn btn-success"
+                :disabled="processing || form.items.length === 0"
+              >
+                <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check-circle me-1"></i>
+                {{ processing ? 'Modification...' : 'Modifier le bon de livraison' }}
+              </button>
+            </div>
+          </FormActionsBar>
         </div>
-      </div>
-    </form>
+      </form>
+    </FormPageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { formatCurrency } from '@/utils/currencyFormatter'
 import AppLayout from '@/layouts/AppLayout.vue'
+import FormPageLayout from '@/components/page/FormPageLayout.vue'
+import FormPageHeader from '@/components/page/FormPageHeader.vue'
+import FormSection from '@/components/page/FormSection.vue'
+import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { route } from '@/lib/routes'

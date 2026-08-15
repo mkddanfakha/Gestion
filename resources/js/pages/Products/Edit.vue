@@ -1,40 +1,28 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">Modifier le produit</h1>
-        <p class="text-muted mb-0">{{ product.name }}</p>
-      </div>
-      <div class="d-flex gap-2">
-        <Link
-          :href="route('products.show', { id: product.id })"
-          class="btn btn-outline-primary"
-        >
-          <i class="bi bi-eye me-1"></i>
-          Voir le produit
-        </Link>
-        <Link
-          :href="route('products.index')"
-          class="btn btn-outline-secondary"
-        >
-          <i class="bi bi-arrow-left me-1"></i>
-          Retour à la liste
-        </Link>
-      </div>
-    </div>
+    <FormPageLayout wide>
+      <FormPageHeader
+        title="Modifier le produit"
+        :subtitle="product.name"
+        :back-href="route('products.index')"
+        back-label="Retour à la liste"
+      >
+        <template #actions>
+          <Link
+            :href="route('products.show', { id: product.id })"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-eye me-1"></i>
+            Voir le produit
+          </Link>
+        </template>
+      </FormPageHeader>
 
-    <form>
-      <div class="row justify-content-center">
-        <div class="col-lg-10">
-          <!-- Informations générales -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Informations générales</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-6">
+      <form>
+        <div class="form-page__body">
+          <FormSection title="Informations générales">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
                   <label class="form-label">
                     Nom du produit <span class="text-danger">*</span>
                   </label>
@@ -51,10 +39,10 @@
                   <div v-if="clientErrors.name" class="invalid-feedback">{{ clientErrors.name }}</div>
                 </div>
 
-                <div class="col-md-6">
-                  <label class="form-label">
-                    Catégorie <span class="text-danger">*</span>
-                  </label>
+              <div class="col-12 col-md-6">
+                <label class="form-label">
+                  Catégorie <span class="text-danger">*</span>
+                </label>
                   <select
                     v-model="form.category_id"
                     required
@@ -76,10 +64,10 @@
                   <div v-if="clientErrors.category_id" class="invalid-feedback">{{ clientErrors.category_id }}</div>
                 </div>
 
-                <div class="col-md-6">
-                  <label class="form-label">
-                    SKU <span class="text-danger">*</span>
-                  </label>
+              <div class="col-12 col-md-6">
+                <label class="form-label">
+                  SKU <span class="text-danger">*</span>
+                </label>
                   <div class="input-group">
                     <input
                       v-model="form.sku"
@@ -101,8 +89,8 @@
                   <div v-if="errors.sku" class="text-danger small">{{ errors.sku }}</div>
                 </div>
 
-                <div class="col-md-6">
-                  <label class="form-label">Code-barres</label>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Code-barres</label>
                   <input
                     v-model="form.barcode"
                     type="text"
@@ -122,18 +110,12 @@
                   ></textarea>
                   <div v-if="errors.description" class="invalid-feedback">{{ errors.description }}</div>
                 </div>
-              </div>
             </div>
-          </div>
+          </FormSection>
 
-          <!-- Prix et stock -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Prix et stock</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-4">
+          <FormSection title="Prix et stock">
+            <div class="row g-3">
+              <div class="col-12 col-md-4">
                   <label class="form-label">
                     Prix de vente <span class="text-danger">*</span>
                   </label>
@@ -155,8 +137,8 @@
                   <div v-if="clientErrors.price" class="invalid-feedback">{{ clientErrors.price }}</div>
                 </div>
 
-                <div class="col-md-4">
-                  <label class="form-label">Prix de revient</label>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Prix de revient</label>
                   <div class="input-group">
                     <input
                       v-model="form.cost_price"
@@ -171,8 +153,8 @@
                   <div v-if="errors.cost_price" class="invalid-feedback">{{ errors.cost_price }}</div>
                 </div>
 
-                <div class="col-md-4">
-                  <label class="form-label">Unité</label>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Unité</label>
                   <select
                     v-model="form.unit"
                     class="form-select"
@@ -194,10 +176,10 @@
                   <div v-if="errors.unit" class="invalid-feedback">{{ errors.unit }}</div>
                 </div>
 
-                <div v-if="!isVendeur" class="col-md-6">
-                  <label class="form-label">
-                    Stock actuel <span class="text-danger">*</span>
-                  </label>
+              <div v-if="!isVendeur" class="col-12 col-md-6">
+                <label class="form-label">
+                  Stock actuel <span class="text-danger">*</span>
+                </label>
                   <input
                     v-model.number="form.stock_quantity"
                     type="number"
@@ -212,10 +194,10 @@
                   <div v-if="clientErrors.stock_quantity" class="invalid-feedback">{{ clientErrors.stock_quantity }}</div>
                 </div>
 
-                <div v-if="!isVendeur" class="col-md-6">
-                  <label class="form-label">
-                    Stock minimum <span class="text-danger">*</span>
-                  </label>
+              <div v-if="!isVendeur" class="col-12 col-md-6">
+                <label class="form-label">
+                  Stock minimum <span class="text-danger">*</span>
+                </label>
                   <input
                     v-model.number="form.min_stock_level"
                     type="number"
@@ -230,8 +212,8 @@
                   <div v-if="clientErrors.min_stock_level" class="invalid-feedback">{{ clientErrors.min_stock_level }}</div>
                 </div>
                 
-                <div v-if="isVendeur" class="col-md-6">
-                  <label class="form-label">Stock actuel</label>
+              <div v-if="isVendeur" class="col-12 col-md-6">
+                <label class="form-label">Stock actuel</label>
                   <input
                     :value="product.stock_quantity"
                     type="number"
@@ -241,8 +223,8 @@
                   <small class="form-text text-muted">Vous ne pouvez pas modifier le stock</small>
                 </div>
 
-                <div v-if="isVendeur" class="col-md-6">
-                  <label class="form-label">Stock minimum</label>
+              <div v-if="isVendeur" class="col-12 col-md-6">
+                <label class="form-label">Stock minimum</label>
                   <input
                     :value="product.min_stock_level"
                     type="number"
@@ -253,9 +235,9 @@
                 </div>
               </div>
 
-              <div class="row g-3 mt-2">
-                <div class="col-md-6">
-                  <label class="form-label">Emplacement (optionnel)</label>
+            <div class="row g-3 mt-2">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Emplacement (optionnel)</label>
                   <input
                     v-model="form.location"
                     type="text"
@@ -267,69 +249,57 @@
                   <small class="form-text text-muted">Emplacement du produit dans le magasin</small>
                 </div>
               </div>
-            </div>
-          </div>
+          </FormSection>
 
-          <!-- Date d'expiration et alerte -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Date d'expiration et alerte</h5>
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="form-label">Date d'expiration (optionnel)</label>
-                  <input
-                    v-model="form.expiration_date"
-                    type="date"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.expiration_date }"
-                  />
-                  <div v-if="errors.expiration_date" class="invalid-feedback">{{ errors.expiration_date }}</div>
-                  <small class="form-text text-muted">Date à laquelle le produit expire</small>
-                </div>
+          <FormSection title="Date d'expiration et alerte">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Date d'expiration (optionnel)</label>
+                <input
+                  v-model="form.expiration_date"
+                  type="date"
+                  class="form-control"
+                  :class="{ 'is-invalid': errors.expiration_date }"
+                />
+                <div v-if="errors.expiration_date" class="invalid-feedback">{{ errors.expiration_date }}</div>
+                <small class="form-text text-muted">Date à laquelle le produit expire</small>
+              </div>
 
-                <div class="col-md-6" v-if="form.expiration_date">
-                  <label class="form-label">Seuil d'alerte</label>
-                  <div class="row g-2">
-                    <div class="col-6">
-                      <input
-                        v-model.number="form.alert_threshold_value"
-                        type="number"
-                        min="1"
-                        class="form-control"
-                        placeholder="Nombre"
-                        :class="{ 'is-invalid': errors.alert_threshold_value }"
-                      />
-                      <div v-if="errors.alert_threshold_value" class="invalid-feedback">{{ errors.alert_threshold_value }}</div>
-                    </div>
-                    <div class="col-6">
-                      <select
-                        v-model="form.alert_threshold_unit"
-                        class="form-select"
-                        :class="{ 'is-invalid': errors.alert_threshold_unit }"
-                      >
-                        <option value="">Unité</option>
-                        <option value="days">Jours</option>
-                        <option value="weeks">Semaines</option>
-                        <option value="months">Mois</option>
-                      </select>
-                      <div v-if="errors.alert_threshold_unit" class="invalid-feedback">{{ errors.alert_threshold_unit }}</div>
-                    </div>
+              <div class="col-12 col-md-6" v-if="form.expiration_date">
+                <label class="form-label">Seuil d'alerte</label>
+                <div class="row g-2">
+                  <div class="col-6">
+                    <input
+                      v-model.number="form.alert_threshold_value"
+                      type="number"
+                      min="1"
+                      class="form-control"
+                      placeholder="Nombre"
+                      :class="{ 'is-invalid': errors.alert_threshold_value }"
+                    />
+                    <div v-if="errors.alert_threshold_value" class="invalid-feedback">{{ errors.alert_threshold_value }}</div>
                   </div>
-                  <small class="form-text text-muted">Alerter X jours/semaines/mois avant l'expiration</small>
+                  <div class="col-6">
+                    <select
+                      v-model="form.alert_threshold_unit"
+                      class="form-select"
+                      :class="{ 'is-invalid': errors.alert_threshold_unit }"
+                    >
+                      <option value="">Unité</option>
+                      <option value="days">Jours</option>
+                      <option value="weeks">Semaines</option>
+                      <option value="months">Mois</option>
+                    </select>
+                    <div v-if="errors.alert_threshold_unit" class="invalid-feedback">{{ errors.alert_threshold_unit }}</div>
+                  </div>
                 </div>
+                <small class="form-text text-muted">Alerter X jours/semaines/mois avant l'expiration</small>
               </div>
             </div>
-          </div>
+          </FormSection>
 
-          <!-- Image du produit -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Image du produit</h5>
-            </div>
-            <div class="card-body">
-              <FilePondImageUpload
+          <FormSection title="Image du produit">
+            <FilePondImageUpload
                 ref="filePondRef"
                 name="images"
                 :accepted-file-types="['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']"
@@ -348,17 +318,11 @@
               />
               <small class="form-text text-muted mt-2 d-block">
                 Formats acceptés: JPG, PNG, GIF, WEBP. Taille max: 5 Mo. Utilisez « Changer l'image » ou glissez-déposez une nouvelle image.
-              </small>
-            </div>
-          </div>
+            </small>
+          </FormSection>
 
-          <!-- Statut -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Statut</h5>
-            </div>
-            <div class="card-body">
-              <div class="form-check form-switch">
+          <FormSection title="Statut">
+            <div class="form-check form-switch">
                 <input
                   v-model="form.is_active"
                   class="form-check-input"
@@ -371,12 +335,16 @@
                 <div class="form-text">
                   Un produit inactif ne sera pas visible dans les ventes
                 </div>
-              </div>
             </div>
-          </div>
+          </FormSection>
 
-          <!-- Boutons -->
-          <div class="d-flex gap-2">
+          <FormActionsBar class="form-actions-bar--split">
+            <Link
+              :href="route('products.show', { id: product.id })"
+              class="btn btn-outline-secondary"
+            >
+              Annuler
+            </Link>
             <button
               type="button"
               @click="submit"
@@ -387,21 +355,19 @@
               <i v-else class="bi bi-check-circle me-1"></i>
               {{ processing ? 'Modification...' : 'Modifier le produit' }}
             </button>
-            <Link
-              :href="route('products.index')"
-              class="btn btn-outline-secondary"
-            >
-              Annuler
-            </Link>
-          </div>
+          </FormActionsBar>
         </div>
-      </div>
-    </form>
+      </form>
+    </FormPageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue'
+import FormPageLayout from '@/components/page/FormPageLayout.vue'
+import FormPageHeader from '@/components/page/FormPageHeader.vue'
+import FormSection from '@/components/page/FormSection.vue'
+import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import { Link, useForm, router } from '@inertiajs/vue3'
 import { ref, computed, toRefs } from 'vue'
 import { route } from '@/lib/routes'
