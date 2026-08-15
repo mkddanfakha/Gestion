@@ -29,6 +29,13 @@
           {{ isExportingExcel ? 'Export en cours...' : 'Exporter Excel' }}
         </button>
         <Link
+          :href="route('customers.potential-duplicates')"
+          class="btn btn-outline-warning"
+        >
+          <i class="bi bi-people-fill me-1"></i>
+          Doublons potentiels
+        </Link>
+        <Link
           :href="route('customers.create')"
           class="btn btn-primary"
           :class="{ 'disabled': isExportingPdf || isExportingExcel }"
@@ -49,7 +56,7 @@
             <input
               v-model="filters.search"
               type="text"
-              placeholder="Nom, email ou téléphone..."
+              placeholder="Nom, email, téléphone ou n° de pièce..."
               class="form-control"
               @input="search"
             />
@@ -99,6 +106,13 @@
                 <div class="small">
                   <div class="fw-medium">{{ customer.email || 'Aucun email' }}</div>
                   <div class="text-muted">{{ customer.phone || 'Aucun téléphone' }}</div>
+                  <div
+                    v-if="customer.identity_document_type && customer.identity_document_number"
+                    class="text-muted"
+                  >
+                    {{ getIdentityTypeShort(customer.identity_document_type) }}
+                    • {{ maskIdentityNumber(customer.identity_document_number) }}
+                  </div>
                 </div>
               </td>
               <td>
@@ -192,6 +206,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { getIdentityTypeShort, maskIdentityNumber } from '@/utils/customerIdentity'
 
 const isExportingPdf = ref(false)
 const isExportingExcel = ref(false)
@@ -201,6 +216,8 @@ interface Customer {
   name: string
   email?: string
   phone?: string
+  identity_document_type?: string | null
+  identity_document_number?: string | null
   address?: string
   city?: string
   postal_code?: string

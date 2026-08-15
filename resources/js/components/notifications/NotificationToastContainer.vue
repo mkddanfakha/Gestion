@@ -21,17 +21,19 @@ const containerClass = computed(() => {
 </script>
 
 <template>
-    <div :class="containerClass" aria-live="polite" aria-relevant="additions">
-        <TransitionGroup :name="notificationConfig.animations.toast">
-            <NotificationToast
-                v-for="toast in toasts"
-                :key="toast.id"
-                :toast="toast"
-                @close="store.dismissToast(toast.id)"
-                @view="store.dismissToast(toast.id)"
-            />
-        </TransitionGroup>
-    </div>
+    <Teleport to="body">
+        <div :class="containerClass" aria-live="polite" aria-relevant="additions">
+            <TransitionGroup :name="notificationConfig.animations.toast">
+                <NotificationToast
+                    v-for="toast in toasts"
+                    :key="toast.id"
+                    :toast="toast"
+                    @close="store.dismissToast(toast.id)"
+                    @view="store.dismissToast(toast.id)"
+                />
+            </TransitionGroup>
+        </div>
+    </Teleport>
 </template>
 
 <style scoped>

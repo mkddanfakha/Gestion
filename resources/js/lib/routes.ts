@@ -20,6 +20,8 @@ export function route(name: string, params: any = {}) {
         'categories.update': '/categories/{id}',
         'categories.destroy': '/categories/{id}',
         'customers.autocomplete': '/customers/autocomplete',
+        'customers.check-duplicates': '/customers/check-duplicates',
+        'customers.potential-duplicates': '/customers/potential-duplicates',
         'customers.index': '/customers',
         'customers.create': '/customers/create',
         'customers.store': '/customers',

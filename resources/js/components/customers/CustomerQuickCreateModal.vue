@@ -35,8 +35,12 @@
                   :form="form"
                   :errors="serverErrors"
                   :client-errors="clientErrors"
+                  :allow-select-existing="true"
+                  :can-view-customer="canViewCustomer"
                   id-prefix="customer-quick-create"
                   @validate-field="handleValidateField"
+                  @select-existing="handleSelectExisting"
+                  @duplicate-analysis-changed="handleDuplicateAnalysis"
                 />
               </div>
 
@@ -52,10 +56,10 @@
                 <button
                   type="submit"
                   class="btn btn-primary"
-                  :disabled="isSubmitting"
+                  :disabled="isSubmitting || hasBlockingDuplicate"
                 >
                   <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  {{ isSubmitting ? 'Enregistrement...' : 'Enregistrer' }}
+                  {{ isSubmitting ? 'Création...' : 'Créer le client' }}
                 </button>
               </div>
             </form>
@@ -67,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, nextTick, onUnmounted } from 'vue'
+import { ref, reactive, watch, nextTick, onUnmounted, computed } from 'vue'
 import CustomerFormFields from '@/components/customers/CustomerFormFields.vue'
 import {
   createEmptyCustomerForm,
@@ -77,12 +81,17 @@ import {
 } from '@/composables/useCustomerFormValidation'
 import { route } from '@/lib/routes'
 import { getCsrfToken } from '@/lib/csrf'
+import { usePermissions } from '@/composables/usePermissions'
+import type { CustomerDuplicateAnalysis, CustomerDuplicateMatch } from '@/utils/customerIdentity'
 
 export interface CreatedCustomer {
   id: number
   name: string
   email?: string | null
   phone?: string | null
+  identity_document_type?: string | null
+  identity_document_type_short?: string | null
+  identity_document_number_masked?: string | null
 }
 
 const props = defineProps<{
@@ -96,6 +105,9 @@ const emit = defineEmits<{
   (e: 'cancel'): void
 }>()
 
+const { canView } = usePermissions()
+const canViewCustomer = computed(() => canView('customers'))
+
 const titleId = 'customerQuickCreateModalTitle'
 const dialogRef = ref<HTMLElement | null>(null)
 const fieldsRef = ref<InstanceType<typeof CustomerFormFields> | null>(null)
@@ -104,6 +116,9 @@ const clientErrors = ref<Record<string, string>>({})
 const serverErrors = ref<Record<string, string>>({})
 const serverMessage = ref('')
 const isSubmitting = ref(false)
+const duplicateAnalysis = ref<CustomerDuplicateAnalysis | null>(null)
+
+const hasBlockingDuplicate = computed(() => Boolean(duplicateAnalysis.value?.identity_conflict))
 
 const resetForm = (initialName = '') => {
   Object.assign(form, createEmptyCustomerForm())
@@ -111,6 +126,7 @@ const resetForm = (initialName = '') => {
   clientErrors.value = {}
   serverErrors.value = {}
   serverMessage.value = ''
+  duplicateAnalysis.value = null
 }
 
 const handleValidateField = (fieldName: string, value: unknown) => {
@@ -122,6 +138,23 @@ const handleValidateField = (fieldName: string, value: unknown) => {
   if (errorMessage) {
     clientErrors.value[fieldName] = errorMessage
   }
+}
+
+const handleDuplicateAnalysis = (analysis: CustomerDuplicateAnalysis) => {
+  duplicateAnalysis.value = analysis
+}
+
+const handleSelectExisting = (match: CustomerDuplicateMatch) => {
+  emit('created', {
+    id: match.id,
+    name: match.name,
+    email: match.email,
+    phone: match.phone,
+    identity_document_type: match.identity_document_type,
+    identity_document_type_short: match.identity_document_type_short,
+    identity_document_number_masked: match.identity_document_number_masked,
+  })
+  emit('update:open', false)
 }
 
 const flattenValidationErrors = (errors: Record<string, string[] | string>): Record<string, string> => {
@@ -144,7 +177,7 @@ const handleCancel = () => {
 }
 
 const submit = async () => {
-  if (isSubmitting.value) {
+  if (isSubmitting.value || hasBlockingDuplicate.value) {
     return
   }
 
@@ -176,12 +209,20 @@ const submit = async () => {
     if (response.status === 422) {
       const payload = await response.json()
       serverErrors.value = flattenValidationErrors(payload.errors ?? {})
-      serverMessage.value = payload.message || 'Veuillez corriger les erreurs du formulaire.'
+
+      if (payload.existing_customer?.id) {
+        serverMessage.value = payload.message || 'Ce client existe déjà.'
+      } else {
+        serverMessage.value =
+          payload.message && payload.message !== 'The given data was invalid.'
+            ? payload.message
+            : 'Impossible de créer le client. Veuillez vérifier les informations saisies.'
+      }
       return
     }
 
     if (!response.ok) {
-      serverMessage.value = 'Une erreur est survenue lors de la création du client. Veuillez réessayer.'
+      serverMessage.value = 'Impossible de créer le client. Veuillez vérifier les informations saisies.'
       return
     }
 

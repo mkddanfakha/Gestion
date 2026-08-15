@@ -65,6 +65,12 @@
                   <span v-if="customer.email && customer.phone"> • </span>
                   <span v-if="customer.phone">{{ customer.phone }}</span>
                 </div>
+                <div
+                  v-if="customer.identity_document_type_short && customer.identity_document_number_masked"
+                  class="text-muted small mt-1 text-truncate customer-autocomplete__identity"
+                >
+                  {{ customer.identity_document_type_short }} : {{ customer.identity_document_number_masked }}
+                </div>
               </div>
             </div>
           </div>
@@ -88,7 +94,7 @@
           @mouseenter="selectedIndex = createOptionIndex"
         >
           <i class="bi bi-plus-circle me-2"></i>
-          Nouveau client
+          + Nouveau client
         </div>
       </div>
     </Teleport>
@@ -105,6 +111,9 @@ interface Customer {
   name: string
   email?: string | null
   phone?: string | null
+  identity_document_type?: string | null
+  identity_document_type_short?: string | null
+  identity_document_number_masked?: string | null
 }
 
 interface Props {
@@ -167,7 +176,13 @@ function customerMatchesQuery(customer: Customer, query: string): boolean {
     return true
   }
 
-  const fields = [customer.name, customer.email, customer.phone]
+  const fields = [
+    customer.name,
+    customer.email,
+    customer.phone,
+    customer.identity_document_type_short,
+    customer.identity_document_number_masked,
+  ]
 
   return fields.some((field) => field && normalizeSearchText(String(field)).includes(query))
 }

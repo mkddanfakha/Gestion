@@ -1,6 +1,11 @@
 <template>
   <AppLayout>
-    <SaleForm mode="create" :customers="customers" :products="products" />
+    <SaleForm
+      mode="create"
+      :customers="customers"
+      :products="products"
+      :initial-customer-id="initialCustomerId"
+    />
   </AppLayout>
 </template>
 
@@ -12,5 +17,6 @@ import type { SaleFormCustomer, SaleFormProduct } from '@/composables/useSaleFor
 defineProps<{
   customers: SaleFormCustomer[]
   products: SaleFormProduct[]
+  initialCustomerId?: number | null
 }>()
 </script>

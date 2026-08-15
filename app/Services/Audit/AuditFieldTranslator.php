@@ -21,6 +21,10 @@ class AuditFieldTranslator
             return '—';
         }
 
+        if (in_array($field, config('audit.masked_fields', []), true) && is_string($value)) {
+            return app(\App\Services\CustomerIdentityService::class)->maskDocumentNumber($value) ?? '—';
+        }
+
         if (is_bool($value)) {
             return $value ? 'Oui' : 'Non';
         }

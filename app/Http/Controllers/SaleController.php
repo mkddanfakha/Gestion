@@ -91,10 +91,16 @@ class SaleController extends Controller
         });
         
         $customers = Customer::orderBy('name')->get();
+
+        $initialCustomerId = $request->integer('customer_id') ?: null;
+        if ($initialCustomerId && ! Customer::whereKey($initialCustomerId)->exists()) {
+            $initialCustomerId = null;
+        }
         
         return Inertia::render('Sales/Create', [
             'products' => $products,
             'customers' => $customers,
+            'initialCustomerId' => $initialCustomerId,
         ]);
     }
 

@@ -1,243 +1,127 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">{{ customer.name }}</h1>
-        <p class="text-muted mb-0">Détails du client</p>
-      </div>
-      <div>
-        <Link
-          :href="route('customers.index')"
-          class="btn btn-outline-secondary"
-        >
-          <i class="bi bi-arrow-left me-1"></i>
-          Retour à la liste
-        </Link>
-      </div>
-    </div>
+    <div class="customer-crm">
+      <CustomerCrmHeader
+        :customer="customer"
+        :can-create-sale="canCreate('sales')"
+        :can-edit-customer="canAny('customers', ['edit', 'update'])"
+        :can-delete-customer="canDelete('customers')"
+        @delete="deleteCustomer"
+      />
 
-    <div class="row g-4">
-      <!-- Informations du client -->
-      <div class="col-lg-8">
-        <div class="card mb-4">
-          <div class="card-header">
-            <h5 class="card-title mb-0">Informations générales</h5>
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label text-muted">Nom complet</label>
-                <p class="mb-0">{{ customer.name }}</p>
-              </div>
-              
-              <div class="col-md-6">
-                <label class="form-label text-muted">Email</label>
-                <p class="mb-0">{{ customer.email || 'Non renseigné' }}</p>
-              </div>
-              
-              <div class="col-md-6">
-                <label class="form-label text-muted">Téléphone</label>
-                <p class="mb-0">{{ customer.phone || 'Non renseigné' }}</p>
-              </div>
-              
-              <div class="col-md-6">
-                <label class="form-label text-muted">Statut</label>
-                <p class="mb-0">
-                  <span 
-                    :class="[
-                      'badge',
-                      customer.is_active ? 'bg-success' : 'bg-danger'
-                    ]"
-                  >
-                    <i :class="['me-1', customer.is_active ? 'bi bi-check-circle' : 'bi bi-x-circle']"></i>
-                    {{ customer.is_active ? 'Actif' : 'Inactif' }}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
+      <CustomerCrmKpiGrid :summary="crm" />
+
+      <div class="customer-crm__middle row g-4">
+        <div class="col-lg-7">
+          <CustomerCrmSummary
+            ref="summaryRef"
+            :summary="crm"
+            :unpaid-invoices="unpaidInvoices"
+            :pending-quotes="pendingQuotes"
+            @show-unpaid="summaryRef?.scrollToUnpaid()"
+            @show-quotes="summaryRef?.scrollToQuotes()"
+          />
         </div>
-
-        <div class="card mb-4">
-          <div class="card-header">
-            <h5 class="card-title mb-0">Adresse</h5>
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-12">
-                <label class="form-label text-muted">Adresse</label>
-                <p class="mb-0">{{ customer.address || 'Non renseignée' }}</p>
+        <div class="col-lg-5">
+          <section class="customer-crm-notes card h-100">
+            <div class="card-header">
+              <h2 class="card-title h6 mb-0">Remarques</h2>
+            </div>
+            <div class="card-body">
+              <div v-if="customer.notes" class="customer-crm-notes__content">
+                <i class="bi bi-chat-left-quote customer-crm-notes__icon"></i>
+                <p class="mb-0">{{ customer.notes }}</p>
               </div>
-              
-              <div class="col-md-4">
-                <label class="form-label text-muted">Ville</label>
-                <p class="mb-0">{{ customer.city || 'Non renseignée' }}</p>
-              </div>
-              
-              <div class="col-md-4">
-                <label class="form-label text-muted">Code postal</label>
-                <p class="mb-0">{{ customer.postal_code || 'Non renseigné' }}</p>
-              </div>
-              
-              <div class="col-md-4">
-                <label class="form-label text-muted">Pays</label>
-                <p class="mb-0">{{ customer.country || 'Non renseigné' }}</p>
+              <div v-else class="customer-crm-empty text-center py-4">
+                <i class="bi bi-chat-left-text customer-crm-empty__icon"></i>
+                <p class="customer-crm-empty__message mb-0">Aucune remarque</p>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h5 class="card-title mb-0">Activité</h5>
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label text-muted">Nombre de ventes</label>
-                <p class="mb-0">{{ customer.sales_count || 0 }} vente(s)</p>
-              </div>
-            </div>
-          </div>
+          </section>
         </div>
       </div>
 
-      <!-- Sidebar -->
-      <div class="col-lg-4">
-        <!-- Dernières ventes -->
-        <div class="card mb-4">
-          <div class="card-header">
-            <h5 class="card-title mb-0">Dernières ventes</h5>
-          </div>
-          <div class="card-body">
-            <div v-if="customer.sales && customer.sales.length > 0">
-              <div 
-                v-for="sale in customer.sales.slice(0, 3)" 
-                :key="sale.id"
-                class="border rounded p-3 mb-3"
-              >
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <p class="fw-medium mb-1">{{ sale.sale_number }}</p>
-                    <p class="text-muted small mb-0">{{ formatDate(sale.created_at) }}</p>
-                  </div>
-                  <div class="text-end">
-                    <p class="fw-medium text-success mb-1">{{ formatCurrency(sale.total_amount) }}</p>
-                    <p class="text-muted small mb-0">{{ getPaymentMethodLabel(sale.payment_method) }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div v-else class="text-center py-4">
-              <i class="bi bi-cart-x fs-1 text-muted mb-3"></i>
-              <p class="text-muted mb-0">Aucune vente enregistrée</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Actions rapides -->
-        <div class="card">
-          <div class="card-header">
-            <h5 class="card-title mb-0">Actions rapides</h5>
-          </div>
-          <div class="card-body">
-            <div class="d-grid gap-2">
-              <Link
-                :href="route('customers.edit', { id: customer.id })"
-                class="btn btn-primary"
-              >
-                <i class="bi bi-pencil me-1"></i>
-                Modifier
-              </Link>
-              <Link
-                :href="route('sales.create')"
-                class="btn btn-success"
-              >
-                <i class="bi bi-cart-plus me-1"></i>
-                Nouvelle vente
-              </Link>
-              
-              <button
-                @click="deleteCustomer"
-                class="btn btn-outline-danger"
-              >
-                <i class="bi bi-trash me-1"></i>
-                Supprimer le client
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <CustomerCrmHistory
+        :active-tab="activeTab"
+        :sales="salesHistory"
+        :payments="paymentsHistory"
+        :invoices="invoicesHistory"
+        :quotes="quotesHistory"
+        :activity="activityHistory"
+        @change-tab="changeTab"
+        @paginate="followPagination"
+      />
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
+import { router } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { Link, router } from '@inertiajs/vue3'
+import CustomerCrmHeader from '@/components/customers/CustomerCrmHeader.vue'
+import CustomerCrmKpiGrid from '@/components/customers/CustomerCrmKpiGrid.vue'
+import CustomerCrmSummary from '@/components/customers/CustomerCrmSummary.vue'
+import CustomerCrmHistory from '@/components/customers/CustomerCrmHistory.vue'
+import type { CustomerCrmProfile } from '@/components/customers/CustomerCrmHeader.vue'
+import type { CustomerCrmSummaryProps, PendingQuoteItem, UnpaidInvoiceItem } from '@/components/customers/CustomerCrmSummary.vue'
+import type { CrmPaginator } from '@/components/customers/CustomerCrmHistory.vue'
 import { route } from '@/lib/routes'
+import { usePermissions } from '@/composables/usePermissions'
 import { useSweetAlert } from '@/composables/useSweetAlert'
-import { formatCurrency } from '@/utils/currencyFormatter'
 
-interface Sale {
-  id: number
-  sale_number: string
-  total_amount: number
-  payment_method: string
-  created_at: string
+interface CustomerShowProps {
+  customer: CustomerCrmProfile & { notes?: string | null }
+  crm: CustomerCrmSummaryProps
+  unpaidInvoices: UnpaidInvoiceItem[]
+  pendingQuotes: PendingQuoteItem[]
+  activeTab: string
+  salesHistory: CrmPaginator<Record<string, unknown>>
+  paymentsHistory: CrmPaginator<Record<string, unknown>>
+  invoicesHistory: CrmPaginator<Record<string, unknown>>
+  quotesHistory: CrmPaginator<Record<string, unknown>>
+  activityHistory: CrmPaginator<Record<string, unknown>>
 }
 
-interface Customer {
-  id: number
-  name: string
-  email?: string
-  phone?: string
-  address?: string
-  city?: string
-  postal_code?: string
-  country?: string
-  is_active: boolean
-  sales_count?: number
-  sales?: Sale[]
-}
+const props = defineProps<CustomerShowProps>()
 
-interface Props {
-  customer: Customer
-}
-
-const props = defineProps<Props>()
-
+const { canCreate, canAny, canDelete } = usePermissions()
 const { success, error, confirm } = useSweetAlert()
+const summaryRef = ref<InstanceType<typeof CustomerCrmSummary> | null>(null)
 
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('fr-FR')
+const changeTab = (tab: string) => {
+  router.get(
+    route('customers.show', { id: props.customer.id }),
+    { tab },
+    { preserveScroll: true, replace: true },
+  )
 }
 
-const getPaymentMethodLabel = (method: string) => {
-  const labels: Record<string, string> = {
-    cash: 'Espèces',
-    card: 'Carte',
-    transfer: 'Virement'
-  }
-  return labels[method] || method
+const followPagination = (url: string) => {
+  const target = new URL(url, window.location.origin)
+  target.searchParams.set('tab', props.activeTab)
+
+  router.get(
+    `${target.pathname}${target.search}`,
+    {},
+    { preserveScroll: true },
+  )
 }
 
 const deleteCustomer = async () => {
   const confirmed = await confirm(`Êtes-vous sûr de vouloir supprimer le client "${props.customer.name}" ?`)
-  
-  if (confirmed) {
-    router.delete(route('customers.destroy', { id: props.customer.id }), {
-      onSuccess: () => {
-        success(`Client "${props.customer.name}" supprimé avec succès !`)
-      },
-      onError: (errors) => {
-        // En cas d'erreur 422, afficher le message d'erreur du serveur
-        const errorMessage = errors.message || 'Erreur lors de la suppression du client.'
-        error(errorMessage)
-      }
-    })
+
+  if (!confirmed) {
+    return
   }
+
+  router.delete(route('customers.destroy', { id: props.customer.id }), {
+    onSuccess: () => {
+      success(`Client "${props.customer.name}" supprimé avec succès !`)
+    },
+    onError: (errors) => {
+      error(errors.message || 'Erreur lors de la suppression du client.')
+    },
+  })
 }
 </script>

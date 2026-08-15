@@ -1,1 +1,0 @@
-import{_ as a}from"./BootstrapLayout.vue_vue_type_script_setup_true_lang-TYHZtSCs.js";import{d as s,c as t,w as o,G as c,o as m}from"./app-CRlQ-CfP.js";const p=s({__name:"AppLayout",props:{breadcrumbs:{default:()=>[]}},setup(e){return(r,n)=>(m(),t(a,{breadcrumbs:e.breadcrumbs},{default:o(()=>[c(r.$slots,"default")]),_:3},8,["breadcrumbs"]))}});export{p as _};

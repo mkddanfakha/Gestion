@@ -21,6 +21,8 @@ return [
         'invoice_file_name',
         'invoice_file_mime',
         'invoice_file_size',
+        'identity_document_number_normalized',
+        'phone_normalized',
     ],
 
     'foreign_keys' => [
@@ -54,6 +56,8 @@ return [
         'alert_threshold_unit' => 'Unité d\'alerte',
         'email' => 'Email',
         'phone' => 'Téléphone',
+        'identity_document_type' => 'Type de pièce d\'identité',
+        'identity_document_number' => 'Numéro de pièce d\'identité',
         'phone1' => 'Téléphone 1',
         'phone2' => 'Téléphone 2',
         'phone3' => 'Téléphone 3',
@@ -163,5 +167,14 @@ return [
             'vendeur' => 'Vendeur',
             'gestionnaire' => 'Gestionnaire',
         ],
+        'identity_document_type' => [
+            'national_id' => 'Carte d\'identité',
+            'passport' => 'Passeport',
+            'other' => 'Autre',
+        ],
+    ],
+
+    'masked_fields' => [
+        'identity_document_number',
     ],
 ];

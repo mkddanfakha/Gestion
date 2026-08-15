@@ -62,6 +62,24 @@ export const formatDateLong = (date: string | Date): string => {
   }).format(dateObj)
 }
 
+/** Alias CRM */
+export const formatLongDate = (value?: string | null): string => {
+  if (!value) {
+    return ''
+  }
+
+  return formatDateLong(value)
+}
+
+/** Alias CRM */
+export const formatShortDate = (value?: string | null): string => {
+  if (!value) {
+    return ''
+  }
+
+  return formatDate(value)
+}
+
 /**
  * Formater une date au format court avec mois abrégé (ex: 15 jan. 2025)
  */
@@ -154,3 +172,16 @@ export const getCurrentMonthName = (): string => {
   }).format(now)
 }
 
+export function getCustomerInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+
+  if (parts.length === 0) {
+    return '?'
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase()
+  }
+
+  return `${parts[0][0] ?? ''}${parts[parts.length - 1][0] ?? ''}`.toUpperCase()
+}

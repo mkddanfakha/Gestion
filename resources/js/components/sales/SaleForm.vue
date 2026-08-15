@@ -322,6 +322,15 @@
                   :allow-create="canCreateCustomer"
                   @create-request="openCustomerCreateModal"
                 />
+                <div v-if="form.customer_id && canView('customers')" class="mt-2">
+                  <Link
+                    :href="route('customers.show', { id: form.customer_id })"
+                    class="customer-profile-link"
+                  >
+                    <i class="bi bi-person-lines-fill me-1"></i>
+                    Voir la fiche client
+                  </Link>
+                </div>
                 <div v-if="errors.customer_id" class="invalid-feedback d-block">{{ errors.customer_id }}</div>
               </div>
 
@@ -679,7 +688,7 @@
 
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
-import { ref, toRef } from 'vue'
+import { onMounted, ref, toRef } from 'vue'
 import { route } from '@/lib/routes'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 import CustomerAutocomplete from '@/components/CustomerAutocomplete.vue'
@@ -687,6 +696,7 @@ import CustomerQuickCreateModal from '@/components/customers/CustomerQuickCreate
 import type { CreatedCustomer } from '@/components/customers/CustomerQuickCreateModal.vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import { useNotificationStore } from '@/modules/NotificationCenter/stores/NotificationStore'
 import {
   useSaleForm,
   type SaleFormCustomer,
@@ -700,13 +710,15 @@ const props = defineProps<{
   sale?: SaleFormSale
   customers: SaleFormCustomer[]
   products: SaleFormProduct[]
+  initialCustomerId?: number | null
 }>()
 
-const { canCreate, canAny } = usePermissions()
+const { canCreate, canAny, canView } = usePermissions()
 const canCreateCustomer = canCreate('customers')
 const canPreviewInvoice = canAny('sales', ['invoice', 'create', 'update'])
 const { openFromPayload } = useDocumentPdfPreview()
 const isPreviewing = ref(false)
+const notificationStore = useNotificationStore()
 
 const localCustomers = ref<SaleFormCustomer[]>([...props.customers])
 const customerAutocompleteRef = ref<InstanceType<typeof CustomerAutocomplete> | null>(null)
@@ -811,5 +823,31 @@ const handleCustomerCreated = (customer: CreatedCustomer) => {
 
   form.customer_id = normalizedCustomer.id
   customerAutocompleteRef.value?.selectCustomer(normalizedCustomer)
+
+  notificationStore.pushToast({
+    id: `customer-created-${customer.id}-${Date.now()}`,
+    title: 'Client créé avec succès',
+    description: `${customer.name} a été ajouté et sélectionné pour cette vente.`,
+    priority: 'info',
+    duration: 6000,
+  })
 }
+
+const applyInitialCustomer = () => {
+  if (props.mode !== 'create' || !props.initialCustomerId) {
+    return
+  }
+
+  const customer = localCustomers.value.find((item) => item.id === props.initialCustomerId)
+  if (!customer) {
+    return
+  }
+
+  form.customer_id = customer.id
+  customerAutocompleteRef.value?.selectCustomer(customer)
+}
+
+onMounted(() => {
+  applyInitialCustomer()
+})
 </script>

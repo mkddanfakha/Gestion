@@ -86,10 +86,14 @@ const form = useForm({
   name: '',
   email: '',
   phone: '',
+  identity_document_type: '',
+  identity_document_number: '',
+  birthday: '',
   address: '',
   city: '',
   postal_code: '',
   country: '',
+  notes: '',
   is_active: true,
 })
 

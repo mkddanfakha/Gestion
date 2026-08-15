@@ -41,6 +41,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('categories', CategoryController::class);
     
     // Clients
+    Route::get('/customers/check-duplicates', [CustomerController::class, 'checkDuplicates'])->name('customers.check-duplicates');
+    Route::get('/customers/potential-duplicates', [CustomerController::class, 'potentialDuplicates'])->name('customers.potential-duplicates');
     Route::get('/customers/autocomplete', [CustomerController::class, 'autocomplete'])->name('customers.autocomplete');
     Route::resource('customers', CustomerController::class);
     Route::get('/customers/export/excel', [CustomerController::class, 'exportExcel'])->name('customers.export.excel');
