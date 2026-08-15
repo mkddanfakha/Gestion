@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
-use App\Models\Company;
+use App\Support\Countries;
 use App\Services\ActivityLogger;
 use App\Services\CustomerCrmService;
 use App\Services\CustomerIdentityService;
@@ -102,6 +102,7 @@ class CustomerController extends Controller
                 'name' => $customer->name,
                 'email' => $customer->email,
                 'phone' => $customer->phone,
+                'nationality' => $customer->nationality,
                 'identity_document_type' => $customer->identity_document_type,
                 'identity_document_type_label' => $this->customerIdentityService->typeLabel($customer->identity_document_type),
                 'identity_document_number' => $customer->identity_document_number,
@@ -158,6 +159,7 @@ class CustomerController extends Controller
                 'name' => $customer->name,
                 'email' => $customer->email,
                 'phone' => $customer->phone,
+                'nationality' => $customer->nationality,
                 'identity_document_type' => $customer->identity_document_type,
                 'identity_document_number' => $customer->identity_document_number,
                 'birthday' => $customer->birthday?->toDateString(),
@@ -313,6 +315,7 @@ class CustomerController extends Controller
                 'name' => $customer->name,
                 'email' => $customer->email,
                 'phone' => $customer->phone,
+                'nationality' => $customer->nationality,
                 'identity_document_type' => $customer->identity_document_type,
                 'identity_document_type_short' => $this->customerIdentityService->typeShortLabel($customer->identity_document_type),
                 'identity_document_number_masked' => $this->customerIdentityService->maskDocumentNumber($customer->identity_document_number),
@@ -388,6 +391,7 @@ class CustomerController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255|unique:customers,email,' . ($customer?->id ?? 'NULL'),
             'phone' => 'nullable|string|max:20',
+            'nationality' => ['nullable', Rule::in(Countries::codes())],
             'identity_document_type' => ['nullable', Rule::in(CustomerIdentityService::TYPE_VALUES)],
             'identity_document_number' => 'nullable|string|max:50',
             'birthday' => 'nullable|date|before_or_equal:today',
@@ -401,6 +405,10 @@ class CustomerController extends Controller
 
         if (($validated['birthday'] ?? '') === '') {
             $validated['birthday'] = null;
+        }
+
+        if (($validated['nationality'] ?? '') === '') {
+            $validated['nationality'] = null;
         }
 
         if (($validated['identity_document_type'] ?? '') === '') {

@@ -82,6 +82,7 @@ const customerCreateBaseline = {
   name: '',
   email: '',
   phone: '',
+  nationality: 'SN',
   identity_document_type: '',
   identity_document_number: '',
   birthday: '',
@@ -98,7 +99,7 @@ const validateField = (fieldName: string, value: unknown) => {
     delete clientErrors.value[fieldName]
   }
 
-  const errorMessage = validateCustomerField(fieldName, value)
+  const errorMessage = validateCustomerField(fieldName, value, form)
   if (errorMessage) {
     clientErrors.value[fieldName] = errorMessage
   }

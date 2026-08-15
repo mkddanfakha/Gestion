@@ -1,7 +1,14 @@
+import { COUNTRY_CODES, SENEGAL_COUNTRY_CODE } from '@/data/countries'
+import {
+  IDENTITY_DOCUMENT_TYPE_VALUES,
+  validateIdentityDocumentNumber,
+} from '@/utils/customerIdentity'
+
 export interface CustomerFormData {
   name: string
   email: string
   phone: string
+  nationality: string
   identity_document_type: string
   identity_document_number: string
   birthday: string
@@ -18,6 +25,7 @@ export function createEmptyCustomerForm(): CustomerFormData {
     name: '',
     email: '',
     phone: '',
+    nationality: SENEGAL_COUNTRY_CODE,
     identity_document_type: '',
     identity_document_number: '',
     birthday: '',
@@ -30,7 +38,7 @@ export function createEmptyCustomerForm(): CustomerFormData {
   }
 }
 
-export function validateCustomerField(fieldName: string, value: unknown): string {
+export function validateCustomerField(fieldName: string, value: unknown, form?: CustomerFormData): string {
   switch (fieldName) {
     case 'name':
       if (!value || String(value).trim().length < 2) {
@@ -50,17 +58,31 @@ export function validateCustomerField(fieldName: string, value: unknown): string
       }
       break
 
+    case 'nationality':
+      if (value && !COUNTRY_CODES.has(String(value))) {
+        return 'Nationalité invalide'
+      }
+      break
+
     case 'identity_document_type':
-      if (value && !['national_id', 'passport', 'other'].includes(String(value))) {
+      if (value && !IDENTITY_DOCUMENT_TYPE_VALUES.includes(String(value))) {
         return 'Type de pièce invalide'
       }
       break
 
     case 'identity_document_number':
-      if (value && String(value).trim().length < 3) {
-        return 'Le numéro de pièce doit contenir au moins 3 caractères'
+      if (!form) {
+        if (value && String(value).trim().length < 3) {
+          return 'Le numéro de pièce doit contenir au moins 3 caractères'
+        }
+        break
       }
-      break
+
+      return validateIdentityDocumentNumber(
+        form.nationality,
+        form.identity_document_type,
+        value,
+      )
   }
 
   return ''
@@ -69,8 +91,15 @@ export function validateCustomerField(fieldName: string, value: unknown): string
 export function validateCustomerForm(form: CustomerFormData): Record<string, string> | null {
   const errors: Record<string, string> = {}
 
-  for (const field of ['name', 'email', 'phone', 'identity_document_type', 'identity_document_number'] as const) {
-    const error = validateCustomerField(field, form[field])
+  for (const field of [
+    'name',
+    'email',
+    'phone',
+    'nationality',
+    'identity_document_type',
+    'identity_document_number',
+  ] as const) {
+    const error = validateCustomerField(field, form[field], form)
     if (error) {
       errors[field] = error
     }

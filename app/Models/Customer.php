@@ -15,12 +15,15 @@ class Customer extends Model
 
     public const IDENTITY_TYPE_PASSPORT = 'passport';
 
+    public const IDENTITY_TYPE_RESIDENCE_PERMIT = 'residence_permit';
+
     public const IDENTITY_TYPE_OTHER = 'other';
 
     protected $fillable = [
         'name',
         'email',
         'phone',
+        'nationality',
         'identity_document_type',
         'identity_document_number',
         'birthday',

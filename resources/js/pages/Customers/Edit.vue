@@ -78,6 +78,7 @@ interface Customer {
   name: string
   email?: string | null
   phone?: string | null
+  nationality?: string | null
   identity_document_type?: string | null
   identity_document_number?: string | null
   birthday?: string | null
@@ -101,7 +102,7 @@ const validateField = (fieldName: string, value: unknown) => {
     delete clientErrors.value[fieldName]
   }
 
-  const errorMessage = validateCustomerField(fieldName, value)
+  const errorMessage = validateCustomerField(fieldName, value, form)
   if (errorMessage) {
     clientErrors.value[fieldName] = errorMessage
   }
@@ -111,6 +112,7 @@ const customerEditBaseline = {
   name: props.customer.name,
   email: props.customer.email || '',
   phone: props.customer.phone || '',
+  nationality: props.customer.nationality || '',
   identity_document_type: props.customer.identity_document_type || '',
   identity_document_number: props.customer.identity_document_number || '',
   birthday: props.customer.birthday || '',

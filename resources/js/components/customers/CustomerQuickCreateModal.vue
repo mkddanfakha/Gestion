@@ -134,7 +134,7 @@ const handleValidateField = (fieldName: string, value: unknown) => {
     delete clientErrors.value[fieldName]
   }
 
-  const errorMessage = validateCustomerField(fieldName, value)
+  const errorMessage = validateCustomerField(fieldName, value, form)
   if (errorMessage) {
     clientErrors.value[fieldName] = errorMessage
   }

@@ -76,6 +76,24 @@
       <h6 class="text-uppercase text-muted small fw-semibold mb-3">Identité</h6>
       <div class="row g-3">
         <div class="col-12 col-md-6">
+          <label class="form-label" :for="fieldId('nationality')">Nationalité</label>
+          <select
+            :id="fieldId('nationality')"
+            v-model="form.nationality"
+            class="form-select"
+            :class="{ 'is-invalid': errors.nationality || clientErrors.nationality }"
+            @change="handleNationalityChange"
+          >
+            <option value="">Sélectionner...</option>
+            <option v-for="country in countries" :key="country.code" :value="country.code">
+              {{ country.name }}
+            </option>
+          </select>
+          <div v-if="errors.nationality" class="invalid-feedback">{{ errors.nationality }}</div>
+          <div v-if="clientErrors.nationality" class="invalid-feedback">{{ clientErrors.nationality }}</div>
+        </div>
+
+        <div class="col-12 col-md-6">
           <label class="form-label" :for="fieldId('identity_document_type')">Type de pièce</label>
           <select
             :id="fieldId('identity_document_type')"
@@ -106,15 +124,23 @@
             class="form-control"
             :class="{
               'is-invalid': errors.identity_document_number || clientErrors.identity_document_number || Boolean(analysis.identity_conflict),
-              'is-valid': identityFieldsComplete && analysis.identity_available && !analysis.identity_conflict,
+              'is-valid': identityFieldsComplete && analysis.identity_available && !analysis.identity_conflict && !clientErrors.identity_document_number,
             }"
+            :aria-describedby="identityNumberHintId"
             autocomplete="off"
             @blur="handleIdentityBlur"
             @input="handleIdentityInput"
           />
           <div v-if="errors.identity_document_number" class="invalid-feedback">{{ errors.identity_document_number }}</div>
           <div v-if="clientErrors.identity_document_number" class="invalid-feedback">{{ clientErrors.identity_document_number }}</div>
-          <div class="form-text">
+          <div
+            v-if="identityFormatHint && !clientErrors.identity_document_number && !errors.identity_document_number"
+            :id="identityNumberHintId"
+            class="form-text"
+          >
+            {{ identityFormatHint }}
+          </div>
+          <div v-else-if="!identityFormatHint" class="form-text">
             Le numéro de pièce permet d'identifier le client et d'éviter les doublons.
           </div>
         </div>
@@ -178,7 +204,7 @@
         </div>
 
         <div class="col-12 col-md-4">
-          <label class="form-label" :for="fieldId('country')">Pays</label>
+          <label class="form-label" :for="fieldId('country')">Pays de résidence</label>
           <input
             :id="fieldId('country')"
             v-model="form.country"
@@ -230,7 +256,8 @@ import { computed, ref, watch } from 'vue'
 import CustomerDuplicateAlerts from '@/components/customers/CustomerDuplicateAlerts.vue'
 import { useCustomerDuplicateCheck } from '@/composables/useCustomerDuplicateCheck'
 import type { CustomerFormData } from '@/composables/useCustomerFormValidation'
-import { IDENTITY_DOCUMENT_TYPES } from '@/utils/customerIdentity'
+import { COUNTRIES } from '@/data/countries'
+import { getIdentityFormatHint, IDENTITY_DOCUMENT_TYPES } from '@/utils/customerIdentity'
 import type { CustomerDuplicateMatch } from '@/utils/customerIdentity'
 
 const props = withDefaults(defineProps<{
@@ -260,9 +287,16 @@ const emit = defineEmits<{
 
 const nameInputRef = ref<HTMLInputElement | null>(null)
 const identityTypes = IDENTITY_DOCUMENT_TYPES
+const countries = COUNTRIES
 const { analysis, isChecking, debouncedCheck, runCheck } = useCustomerDuplicateCheck(props.excludeId)
 
 const today = computed(() => new Date().toISOString().split('T')[0])
+
+const identityNumberHintId = computed(() => `${props.idPrefix}-identity-number-hint`)
+
+const identityFormatHint = computed(() =>
+  getIdentityFormatHint(props.form.nationality, props.form.identity_document_type),
+)
 
 const identityFieldsComplete = computed(() =>
   Boolean(props.form.identity_document_type && props.form.identity_document_number?.trim()),
@@ -326,12 +360,14 @@ const handleEmailBlur = () => {
 }
 
 const handleIdentityInput = () => {
+  emitValidate('nationality', props.form.nationality)
   emitValidate('identity_document_type', props.form.identity_document_type)
   emitValidate('identity_document_number', props.form.identity_document_number)
   triggerDuplicateCheck()
 }
 
 const handleIdentityBlur = () => {
+  emitValidate('nationality', props.form.nationality)
   emitValidate('identity_document_type', props.form.identity_document_type)
   emitValidate('identity_document_number', props.form.identity_document_number)
   runImmediateDuplicateCheck()
@@ -340,7 +376,18 @@ const handleIdentityBlur = () => {
 const handleIdentityChange = () => {
   emitValidate('identity_document_type', props.form.identity_document_type)
   if (props.form.identity_document_number?.trim()) {
+    emitValidate('identity_document_number', props.form.identity_document_number)
     runImmediateDuplicateCheck()
+  }
+}
+
+const handleNationalityChange = () => {
+  emitValidate('nationality', props.form.nationality)
+  if (props.form.identity_document_number?.trim()) {
+    emitValidate('identity_document_number', props.form.identity_document_number)
+  }
+  if (props.form.identity_document_type) {
+    emitValidate('identity_document_type', props.form.identity_document_type)
   }
 }
 

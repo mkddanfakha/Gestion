@@ -71,12 +71,24 @@ class QuoteController extends Controller
     {
         $this->checkPermission($request, 'quotes', 'create');
         
-        $products = Product::with('category')->where('is_active', true)->orderBy('name')->get();
+        $products = Product::with(['category', 'media'])->where('is_active', true)->orderBy('name')->get();
+
+        $products->transform(function ($product) {
+            $product->image_url = $product->getThumbImageUrl();
+            return $product;
+        });
+
         $customers = Customer::orderBy('name')->get();
-        
+
+        $initialCustomerId = $request->integer('customer_id') ?: null;
+        if ($initialCustomerId && ! Customer::whereKey($initialCustomerId)->exists()) {
+            $initialCustomerId = null;
+        }
+
         return Inertia::render('Quotes/Create', [
             'products' => $products,
             'customers' => $customers,
+            'initialCustomerId' => $initialCustomerId,
         ]);
     }
 
@@ -193,7 +205,12 @@ class QuoteController extends Controller
         $quoteItems = $quote->quoteItems()->with('product.category')->get();
         
         // Charger les produits
-        $products = Product::with('category')->where('is_active', true)->orderBy('name')->get();
+        $products = Product::with(['category', 'media'])->where('is_active', true)->orderBy('name')->get();
+
+        $products->transform(function ($product) {
+            $product->image_url = $product->getThumbImageUrl();
+            return $product;
+        });
         
         $customers = Customer::orderBy('name')->get();
         

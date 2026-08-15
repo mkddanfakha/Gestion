@@ -56,6 +56,7 @@ return [
         'alert_threshold_unit' => 'Unité d\'alerte',
         'email' => 'Email',
         'phone' => 'Téléphone',
+        'nationality' => 'Nationalité',
         'identity_document_type' => 'Type de pièce d\'identité',
         'identity_document_number' => 'Numéro de pièce d\'identité',
         'phone1' => 'Téléphone 1',
@@ -168,8 +169,9 @@ return [
             'gestionnaire' => 'Gestionnaire',
         ],
         'identity_document_type' => [
-            'national_id' => 'Carte d\'identité',
+            'national_id' => 'Carte nationale d\'identité',
             'passport' => 'Passeport',
+            'residence_permit' => 'Carte de séjour',
             'other' => 'Autre',
         ],
     ],
