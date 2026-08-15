@@ -367,7 +367,237 @@ test('customer identity service validates foreign document formats flexibly', fu
 
     $service->assertDocumentFormat('FR', Customer::IDENTITY_TYPE_PASSPORT, '21AB45678');
     $service->assertDocumentFormat('ML', Customer::IDENTITY_TYPE_OTHER, 'XK-123456');
+    $service->assertDocumentFormat('US', Customer::IDENTITY_TYPE_NATIONAL_ID, '477788555224155');
 
     expect(fn () => $service->assertDocumentFormat('FR', Customer::IDENTITY_TYPE_PASSPORT, '12'))
         ->toThrow(Illuminate\Validation\ValidationException::class);
+
+    expect(fn () => $service->assertDocumentFormat('US', Customer::IDENTITY_TYPE_NATIONAL_ID, '@@@@@@'))
+        ->toThrow(Illuminate\Validation\ValidationException::class);
+});
+
+test('valid identity document number rule delegates to customer identity service', function () {
+    $rule = new App\Rules\ValidIdentityDocumentNumber(Countries::SENEGAL_CODE, Customer::IDENTITY_TYPE_NATIONAL_ID);
+
+    $failMessage = null;
+    $rule->validate('identity_document_number', '1234567890123', function (string $message) use (&$failMessage) {
+        $failMessage = $message;
+    });
+
+    expect($failMessage)->toBeNull();
+
+    $rule->validate('identity_document_number', '123456789012', function (string $message) use (&$failMessage) {
+        $failMessage = $message;
+    });
+
+    expect($failMessage)->toBe('Le numéro de CNI sénégalaise doit comporter exactement 13 chiffres.');
+});
+
+test('senegalese national id must contain exactly 13 digits on update', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = Customer::factory()->create([
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '1234567890123',
+    ]);
+
+    $response = $this->actingAs($admin)->putJson(route('customers.update', $customer), [
+        'name' => $customer->name,
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '123456789012',
+        'is_active' => true,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['identity_document_number']);
+});
+
+test('senegalese national id with 14 digits is rejected on update', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = Customer::factory()->create([
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '1234567890123',
+    ]);
+
+    $response = $this->actingAs($admin)->putJson(route('customers.update', $customer), [
+        'name' => $customer->name,
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '12345678901234',
+        'is_active' => true,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['identity_document_number']);
+});
+
+test('senegalese passport must match A plus eight digits on update', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = Customer::factory()->create([
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_PASSPORT,
+        'identity_document_number' => 'A12345678',
+    ]);
+
+    $response = $this->actingAs($admin)->put(route('customers.update', $customer), [
+        'name' => $customer->name,
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_PASSPORT,
+        'identity_document_number' => 'A12345678',
+        'is_active' => true,
+    ]);
+
+    $response->assertRedirect(route('customers.show', $customer));
+});
+
+test('invalid senegalese passport is rejected on update', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = Customer::factory()->create([
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_PASSPORT,
+        'identity_document_number' => 'A12345678',
+    ]);
+
+    $response = $this->actingAs($admin)->putJson(route('customers.update', $customer), [
+        'name' => $customer->name,
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_PASSPORT,
+        'identity_document_number' => 'A1234567',
+        'is_active' => true,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['identity_document_number']);
+});
+
+test('foreign national id is accepted on update without senegalese format rules', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = Customer::factory()->create([
+        'nationality' => 'US',
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '477788555224155',
+    ]);
+
+    $response = $this->actingAs($admin)->put(route('customers.update', $customer), [
+        'name' => $customer->name,
+        'nationality' => 'US',
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '477788555224155',
+        'is_active' => true,
+    ]);
+
+    $response->assertRedirect(route('customers.show', $customer));
+});
+
+test('changing nationality from senegal to foreign revalidates identity with foreign rules', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = Customer::factory()->create([
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '1234567890123',
+    ]);
+
+    $response = $this->actingAs($admin)->put(route('customers.update', $customer), [
+        'name' => $customer->name,
+        'nationality' => 'US',
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '1234567890123',
+        'is_active' => true,
+    ]);
+
+    $response->assertRedirect(route('customers.show', $customer));
+
+    expect($customer->fresh())
+        ->nationality->toBe('US')
+        ->identity_document_number->toBe('1234567890123');
+});
+
+test('changing nationality from foreign to senegal applies senegalese rules', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = Customer::factory()->create([
+        'nationality' => 'US',
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '477788555224155',
+    ]);
+
+    $response = $this->actingAs($admin)->putJson(route('customers.update', $customer), [
+        'name' => $customer->name,
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '477788555224155',
+        'is_active' => true,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['identity_document_number']);
+});
+
+test('changing document type from national id to passport revalidates format', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = Customer::factory()->create([
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '1234567890123',
+    ]);
+
+    $response = $this->actingAs($admin)->put(route('customers.update', $customer), [
+        'name' => $customer->name,
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_PASSPORT,
+        'identity_document_number' => 'A12345678',
+        'is_active' => true,
+    ]);
+
+    $response->assertRedirect(route('customers.show', $customer));
+
+    expect($customer->fresh())
+        ->identity_document_type->toBe(Customer::IDENTITY_TYPE_PASSPORT)
+        ->identity_document_number->toBe('A12345678');
+});
+
+test('senegalese passport rejects national id number format', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->postJson(route('customers.store'), [
+        'name' => 'Test Client',
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_PASSPORT,
+        'identity_document_number' => '1234567890123',
+        'is_active' => true,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['identity_document_number']);
+});
+
+test('senegalese national id rejects passport number format', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->postJson(route('customers.store'), [
+        'name' => 'Test Client',
+        'nationality' => Countries::SENEGAL_CODE,
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => 'A12345678',
+        'is_active' => true,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['identity_document_number']);
+});
+
+test('senegalese national id remains valid when country of residence differs', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->post(route('customers.store'), [
+        'name' => 'Client expatrié',
+        'nationality' => Countries::SENEGAL_CODE,
+        'country' => 'États-Unis',
+        'identity_document_type' => Customer::IDENTITY_TYPE_NATIONAL_ID,
+        'identity_document_number' => '1234567890123',
+        'is_active' => true,
+    ]);
+
+    $response->assertRedirect(route('customers.index'));
 });

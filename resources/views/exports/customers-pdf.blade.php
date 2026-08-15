@@ -10,131 +10,127 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'DejaVu Sans', sans-serif;
-            font-size: 9px;
+            font-size: 8px;
             color: #212529;
-            line-height: 1.4;
-            padding: 15px;
+            line-height: 1.35;
+            padding: 12px;
             background: #ffffff;
         }
-        
+
         .header {
             border-bottom: 3px solid #212529;
             padding-bottom: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
-        
+
         .header h1 {
-            font-size: 20px;
+            font-size: 18px;
             color: #212529;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             font-weight: bold;
         }
-        
+
         .header .company-info {
             font-size: 8px;
             color: #6c757d;
-            margin-top: 5px;
+            margin-top: 4px;
         }
-        
+
         .header .date {
             font-size: 8px;
             color: #495057;
-            margin-top: 5px;
+            margin-top: 4px;
         }
-        
+
         .info-section {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             font-size: 8px;
             color: #495057;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 8px;
+            table-layout: fixed;
         }
-        
+
         thead {
             background: #212529;
             color: white;
         }
-        
+
         th {
-            padding: 8px 6px;
+            padding: 6px 4px;
             text-align: left;
-            font-size: 8px;
+            font-size: 7px;
             font-weight: bold;
             text-transform: uppercase;
             border-right: 1px solid #495057;
+            word-wrap: break-word;
         }
-        
+
         th:last-child {
             border-right: none;
         }
-        
+
         th.text-center {
             text-align: center;
         }
-        
-        th.text-right {
-            text-align: right;
-        }
-        
+
         td {
-            padding: 6px;
+            padding: 5px 4px;
             border-bottom: 1px solid #dee2e6;
             border-right: 1px solid #dee2e6;
-            font-size: 8px;
+            font-size: 7px;
             color: #212529;
+            vertical-align: top;
+            word-wrap: break-word;
         }
-        
+
         td:last-child {
             border-right: none;
         }
-        
+
         tbody tr:nth-child(even) {
             background-color: #f8f9fa;
         }
-        
+
         tbody tr:last-child td {
             border-bottom: none;
         }
-        
-        .text-right {
-            text-align: right;
-        }
-        
+
         .text-center {
             text-align: center;
         }
-        
+
         .badge {
             display: inline-block;
-            padding: 2px 6px;
+            padding: 2px 5px;
             border: 1px solid #212529;
-            font-size: 7px;
+            font-size: 6px;
             font-weight: bold;
             border-radius: 3px;
         }
-        
+
         .badge-success {
             background: #d4edda;
             color: #155724;
             border-color: #155724;
         }
-        
+
         .badge-danger {
             background: #f8d7da;
             color: #721c24;
             border-color: #721c24;
         }
-        
+
         .footer {
-            margin-top: 20px;
-            padding-top: 10px;
+            margin-top: 16px;
+            padding-top: 8px;
             border-top: 1px solid #dee2e6;
             font-size: 7px;
             color: #6c757d;
@@ -144,49 +140,51 @@
 </head>
 <body>
     <div class="header">
-        <h1>{{ $company->name ?? 'Liste des clients' }}</h1>
+        <h1>LISTE DES CLIENTS</h1>
         @if($company->tagline)
-            <div class="company-info">{{ $company->tagline }}</div>
+            <div class="company-info">{{ $company->name }} — {{ $company->tagline }}</div>
+        @else
+            <div class="company-info">{{ $company->name ?? 'MKD-Pro' }}</div>
         @endif
-        <div class="date">Généré le {{ now()->format('d/m/Y à H:i') }}</div>
+        <div class="date">Exporté le {{ now()->format('d/m/Y à H:i') }}</div>
     </div>
 
     <div class="info-section">
-        <strong>Total de clients:</strong> {{ $customers->count() }}
+        <strong>Total de clients :</strong> {{ $rows->count() }}
     </div>
 
     <table>
         <thead>
             <tr>
-                <th style="width: 5%;">ID</th>
-                <th style="width: 15%;">Nom</th>
-                <th style="width: 15%;">Email</th>
-                <th style="width: 12%;">Téléphone</th>
-                <th style="width: 15%;">Adresse</th>
-                <th style="width: 10%;">Ville</th>
-                <th style="width: 8%;">Code postal</th>
-                <th style="width: 10%;">Pays</th>
-                <th class="text-center" style="width: 5%;">Statut</th>
+                <th style="width: 4%;">ID</th>
+                <th style="width: 14%;">Nom</th>
+                <th style="width: 10%;">Téléphone</th>
+                <th style="width: 12%;">Email</th>
+                <th style="width: 9%;">Nationalité</th>
+                <th style="width: 9%;">Pays résidence</th>
+                <th style="width: 10%;">Type pièce</th>
+                <th style="width: 12%;">N° pièce</th>
+                <th class="text-center" style="width: 6%;">Statut</th>
                 <th class="text-center" style="width: 5%;">Ventes</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($customers as $customer)
+            @forelse($rows as $row)
                 <tr>
-                    <td>{{ $customer->id }}</td>
-                    <td><strong>{{ $customer->name }}</strong></td>
-                    <td>{{ $customer->email ?? '-' }}</td>
-                    <td>{{ $customer->phone ?? '-' }}</td>
-                    <td>{{ $customer->address ?? '-' }}</td>
-                    <td>{{ $customer->city ?? '-' }}</td>
-                    <td>{{ $customer->postal_code ?? '-' }}</td>
-                    <td>{{ $customer->country ?? '-' }}</td>
+                    <td>{{ $row['id'] }}</td>
+                    <td><strong>{{ $row['name'] }}</strong></td>
+                    <td>{{ $row['phone'] }}</td>
+                    <td>{{ $row['email'] }}</td>
+                    <td>{{ $row['nationality'] }}</td>
+                    <td>{{ $row['country'] }}</td>
+                    <td>{{ $row['identity_type'] }}</td>
+                    <td>{{ $row['identity_number'] }}</td>
                     <td class="text-center">
-                        <span class="badge {{ $customer->is_active ? 'badge-success' : 'badge-danger' }}">
-                            {{ $customer->is_active ? 'Actif' : 'Inactif' }}
+                        <span class="badge {{ $row['status'] === 'Actif' ? 'badge-success' : 'badge-danger' }}">
+                            {{ $row['status'] }}
                         </span>
                     </td>
-                    <td class="text-center">{{ $customer->sales_count ?? 0 }}</td>
+                    <td class="text-center">{{ $row['sales_count'] }}</td>
                 </tr>
             @empty
                 <tr>
@@ -201,4 +199,3 @@
     </div>
 </body>
 </html>
-

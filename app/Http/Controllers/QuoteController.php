@@ -7,6 +7,7 @@ use App\Models\Sale;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Company;
+use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Traits\GeneratesPdf;

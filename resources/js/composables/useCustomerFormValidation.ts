@@ -72,8 +72,8 @@ export function validateCustomerField(fieldName: string, value: unknown, form?: 
 
     case 'identity_document_number':
       if (!form) {
-        if (value && String(value).trim().length < 3) {
-          return 'Le numéro de pièce doit contenir au moins 3 caractères'
+        if (value && String(value).trim().length < 5) {
+          return 'Veuillez saisir un numéro de pièce d\'identité valide.'
         }
         break
       }

@@ -20,9 +20,9 @@ class CustomerIdentityService
 
     public const SENEGAL_COUNTRY_CODE = 'SN';
 
-    public const FOREIGN_DOCUMENT_MIN_LENGTH = 3;
+    public const FOREIGN_DOCUMENT_MIN_LENGTH = 5;
 
-    public const FOREIGN_DOCUMENT_MAX_LENGTH = 50;
+    public const FOREIGN_DOCUMENT_MAX_LENGTH = 30;
 
     /** @var array<string, string> */
     public const TYPE_LABELS = [
@@ -404,52 +404,55 @@ class CustomerIdentityService
             || $normalized !== $customer->identity_document_number_normalized;
     }
 
-    /**
-     * @throws ValidationException
-     */
-    public function assertDocumentFormat(?string $nationality, string $type, string $number): void
+    public function getDocumentFormatError(?string $nationality, string $type, string $number): ?string
     {
         $trimmed = trim($number);
         $nationality = $nationality ? strtoupper($nationality) : null;
 
         if ($nationality === self::SENEGAL_COUNTRY_CODE && $type === self::TYPE_NATIONAL_ID) {
             if (!preg_match('/^[0-9]{13}$/', $trimmed)) {
-                throw ValidationException::withMessages([
-                    'identity_document_number' => ['Le numéro de CNI sénégalaise doit comporter exactement 13 chiffres.'],
-                ]);
+                return 'Le numéro de CNI sénégalaise doit comporter exactement 13 chiffres.';
             }
 
-            return;
+            return null;
         }
 
         if ($nationality === self::SENEGAL_COUNTRY_CODE && $type === self::TYPE_PASSPORT) {
             if (preg_match('/\s/', $trimmed) || !preg_match('/^A[0-9]{8}$/i', $trimmed)) {
-                throw ValidationException::withMessages([
-                    'identity_document_number' => ['Le numéro de passeport sénégalais doit commencer par A et être suivi de 8 chiffres. Exemple : A12345678.'],
-                ]);
+                return 'Le numéro de passeport sénégalais doit commencer par A et être suivi de 8 chiffres. Exemple : A12345678.';
             }
 
-            return;
+            return null;
         }
 
         if (
             strlen($trimmed) < self::FOREIGN_DOCUMENT_MIN_LENGTH
             || strlen($trimmed) > self::FOREIGN_DOCUMENT_MAX_LENGTH
         ) {
-            throw ValidationException::withMessages([
-                'identity_document_number' => ['Veuillez saisir un numéro de pièce d\'identité valide.'],
-            ]);
+            return 'Veuillez saisir un numéro de pièce d\'identité valide.';
         }
 
         if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9 .\/_-]*$/', $trimmed)) {
-            throw ValidationException::withMessages([
-                'identity_document_number' => ['Veuillez saisir un numéro de pièce d\'identité valide.'],
-            ]);
+            return 'Veuillez saisir un numéro de pièce d\'identité valide.';
         }
 
         if (preg_match('/[\x00-\x1F\x7F]/', $trimmed)) {
+            return 'Veuillez saisir un numéro de pièce d\'identité valide.';
+        }
+
+        return null;
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    public function assertDocumentFormat(?string $nationality, string $type, string $number): void
+    {
+        $error = $this->getDocumentFormatError($nationality, $type, $number);
+
+        if ($error !== null) {
             throw ValidationException::withMessages([
-                'identity_document_number' => ['Veuillez saisir un numéro de pièce d\'identité valide.'],
+                'identity_document_number' => [$error],
             ]);
         }
     }

@@ -11,8 +11,8 @@ export type IdentityDocumentType = typeof IDENTITY_DOCUMENT_TYPES[number]['value
 
 export const IDENTITY_DOCUMENT_TYPE_VALUES = IDENTITY_DOCUMENT_TYPES.map((item) => item.value)
 
-export const FOREIGN_DOCUMENT_MIN_LENGTH = 3
-export const FOREIGN_DOCUMENT_MAX_LENGTH = 50
+export const FOREIGN_DOCUMENT_MIN_LENGTH = 5
+export const FOREIGN_DOCUMENT_MAX_LENGTH = 30
 
 export interface CustomerDuplicateMatch {
   id: number

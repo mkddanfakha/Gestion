@@ -3,88 +3,85 @@
 namespace App\Exports;
 
 use App\Models\Customer;
+use App\Services\CustomerExportService;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class CustomersExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
+class CustomersExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithEvents
 {
-    protected $search;
+    private const IDENTITY_NUMBER_COLUMN = 'K';
 
-    public function __construct($search = null)
+    protected ?string $search;
+
+    protected CustomerExportService $exportService;
+
+    public function __construct(?string $search = null, ?CustomerExportService $exportService = null)
     {
         $this->search = $search;
+        $this->exportService = $exportService ?? app(CustomerExportService::class);
     }
 
     /**
-     * @return \Illuminate\Support\Collection
+     * @return \Illuminate\Support\Collection<int, Customer>
      */
     public function collection()
     {
-        $query = Customer::query()->withCount('sales');
-
-        if ($this->search) {
-            $search = $this->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
-            });
-        }
-
-        return $query->orderBy('name')->get();
+        return $this->exportService->getCustomers($this->search);
     }
 
     /**
-     * @return array
+     * @return list<string>
      */
     public function headings(): array
     {
-        return [
-            'ID',
-            'Nom',
-            'Email',
-            'Téléphone',
-            'Adresse',
-            'Ville',
-            'Code postal',
-            'Pays',
-            'Statut',
-            'Nombre de ventes',
-        ];
+        return $this->exportService->excelHeadings();
     }
 
     /**
-     * @param Customer $customer
-     * @return array
+     * @param  Customer  $customer
+     * @return list<int|string|null>
      */
     public function map($customer): array
     {
+        return $this->exportService->mapCustomerForExcel($customer);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function styles(Worksheet $sheet): array
+    {
         return [
-            $customer->id,
-            $customer->name,
-            $customer->email ?? '',
-            $customer->phone ?? '',
-            $customer->address ?? '',
-            $customer->city ?? '',
-            $customer->postal_code ?? '',
-            $customer->country ?? '',
-            $customer->is_active ? 'Actif' : 'Inactif',
-            $customer->sales_count ?? 0,
+            1 => ['font' => ['bold' => true]],
         ];
     }
 
     /**
-     * @param Worksheet $sheet
-     * @return array
+     * @return array<class-string, callable>
      */
-    public function styles(Worksheet $sheet)
+    public function registerEvents(): array
     {
         return [
-            1 => ['font' => ['bold' => true]],
+            AfterSheet::class => function (AfterSheet $event): void {
+                $sheet = $event->sheet->getDelegate();
+                $highestRow = max(2, $sheet->getHighestRow());
+                $column = self::IDENTITY_NUMBER_COLUMN;
+
+                $sheet->getStyle("{$column}2:{$column}{$highestRow}")
+                    ->getNumberFormat()
+                    ->setFormatCode(NumberFormat::FORMAT_TEXT);
+
+                $sheet->setAutoFilter('A1:' . Coordinate::stringFromColumnIndex(count($this->headings())) . '1');
+                $sheet->freezePane('A2');
+            },
         ];
     }
 }

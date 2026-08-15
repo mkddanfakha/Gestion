@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Company;
 use App\Support\Countries;
 use App\Services\ActivityLogger;
 use App\Services\CustomerCrmService;
+use App\Services\CustomerExportService;
 use App\Services\CustomerIdentityService;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
@@ -22,6 +24,7 @@ class CustomerController extends Controller
     public function __construct(
         private CustomerCrmService $customerCrmService,
         private CustomerIdentityService $customerIdentityService,
+        private CustomerExportService $customerExportService,
     ) {}
 
     /**
@@ -223,8 +226,8 @@ class CustomerController extends Controller
         
         $search = $request->get('search');
         $filename = 'clients_' . date('Y-m-d_His') . '.xlsx';
-        
-        return Excel::download(new CustomersExport($search), $filename);
+
+        return Excel::download(new CustomersExport($search, $this->customerExportService), $filename);
     }
 
     /**
@@ -235,14 +238,9 @@ class CustomerController extends Controller
         $this->checkPermission($request, 'customers', 'export');
         
         try {
-            $query = Customer::query()->withCount('sales');
-
-            // Appliquer les mêmes filtres que la page index
-            if ($request->filled('search')) {
-                $this->customerIdentityService->applySearchFilter($query, (string) $request->search);
-            }
-
-            $customers = $query->orderBy('name')->get();
+            $search = $request->filled('search') ? (string) $request->search : null;
+            $customers = $this->customerExportService->getCustomers($search);
+            $rows = $customers->map(fn (Customer $customer) => $this->customerExportService->mapCustomerForPdfList($customer));
             $company = Company::getInstance();
 
             $options = new Options();
@@ -253,7 +251,7 @@ class CustomerController extends Controller
             $options->set('chroot', base_path());
 
             $dompdf = new Dompdf($options);
-            $html = view('exports.customers-pdf', compact('customers', 'company'))->render();
+            $html = view('exports.customers-pdf', compact('rows', 'company'))->render();
             $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
             $dompdf->loadHtml($html, 'UTF-8');
             $dompdf->setPaper('A4', 'landscape');
