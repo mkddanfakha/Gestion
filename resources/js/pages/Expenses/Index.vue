@@ -1,168 +1,157 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">
-          <i class="bi bi-receipt me-2"></i>
-          Gestion des dépenses
-        </h1>
-        <p class="text-muted mb-0">Suivez et gérez toutes vos dépenses</p>
-      </div>
-      <Link
-        :href="route('expenses.create')"
-        class="btn btn-primary"
+    <IndexPageLayout>
+      <PageHeader
+        title="Gestion des dépenses"
+        subtitle="Suivez et gérez toutes vos dépenses"
+        icon="bi-receipt"
       >
-        <i class="bi bi-plus-circle me-1"></i>
-        Nouvelle dépense
-      </Link>
-    </div>
+        <template #actions-primary>
+          <Link
+            :href="route('expenses.create')"
+            class="btn btn-primary"
+          >
+            <i class="bi bi-plus-circle me-1"></i>
+            Nouvelle dépense
+          </Link>
+        </template>
+      </PageHeader>
 
-    <!-- Statistiques rapides -->
-    <div class="row mb-4">
-      <div class="col-md-3">
-        <div class="card bg-primary text-white">
-          <div class="card-body">
-            <div class="d-flex justify-content-between">
-              <div>
-                <h6 class="card-title">Total dépenses</h6>
-                <h4 class="mb-0">{{ formatCurrency(totalExpenses) }}</h4>
+      <div class="row page-stats">
+        <div class="col-md-3">
+          <div class="card bg-primary text-white">
+            <div class="card-body">
+              <div class="d-flex justify-content-between">
+                <div>
+                  <h6 class="card-title">Total dépenses</h6>
+                  <h4 class="mb-0">{{ formatCurrency(totalExpenses) }}</h4>
+                </div>
+                <div class="align-self-center">
+                  <i class="bi bi-currency-exchange fs-1"></i>
+                </div>
               </div>
-              <div class="align-self-center">
-                <i class="bi bi-currency-exchange fs-1"></i>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-info text-white">
+            <div class="card-body">
+              <div class="d-flex justify-content-between">
+                <div>
+                  <h6 class="card-title">Ce mois ({{ currentMonthName }})</h6>
+                  <h4 class="mb-0">{{ formatCurrency(monthlyExpenses) }}</h4>
+                </div>
+                <div class="align-self-center">
+                  <i class="bi bi-calendar-month fs-1"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-warning text-white">
+            <div class="card-body">
+              <div class="d-flex justify-content-between">
+                <div>
+                  <h6 class="card-title">Cette semaine</h6>
+                  <h4 class="mb-0">{{ formatCurrency(weeklyExpenses) }}</h4>
+                </div>
+                <div class="align-self-center">
+                  <i class="bi bi-calendar-week fs-1"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-success text-white">
+            <div class="card-body">
+              <div class="d-flex justify-content-between">
+                <div>
+                  <h6 class="card-title">Nombre total</h6>
+                  <h4 class="mb-0">{{ expenses.meta?.total || expenses.data.length }}</h4>
+                </div>
+                <div class="align-self-center">
+                  <i class="bi bi-list-ul fs-1"></i>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card bg-info text-white">
-          <div class="card-body">
-            <div class="d-flex justify-content-between">
-              <div>
-                <h6 class="card-title">Ce mois ({{ currentMonthName }})</h6>
-                <h4 class="mb-0">{{ formatCurrency(monthlyExpenses) }}</h4>
-              </div>
-              <div class="align-self-center">
-                <i class="bi bi-calendar-month fs-1"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card bg-warning text-white">
-          <div class="card-body">
-            <div class="d-flex justify-content-between">
-              <div>
-                <h6 class="card-title">Cette semaine</h6>
-                <h4 class="mb-0">{{ formatCurrency(weeklyExpenses) }}</h4>
-              </div>
-              <div class="align-self-center">
-                <i class="bi bi-calendar-week fs-1"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card bg-success text-white">
-          <div class="card-body">
-            <div class="d-flex justify-content-between">
-              <div>
-                <h6 class="card-title">Nombre total</h6>
-                <h4 class="mb-0">{{ expenses.meta?.total || expenses.data.length }}</h4>
-              </div>
-              <div class="align-self-center">
-                <i class="bi bi-list-ul fs-1"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Filtres -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-3">
-            <label class="form-label">Rechercher</label>
-            <input
-              v-model="searchQuery"
-              type="text"
-              class="form-control"
-              placeholder="Titre, description..."
-              @input="debouncedSearch"
-            />
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Catégorie</label>
-            <select v-model="selectedCategory" class="form-select" @change="applyFilters">
-              <option value="">Toutes les catégories</option>
-              <option value="fournitures">Fournitures</option>
-              <option value="equipement">Équipement</option>
-              <option value="marketing">Marketing</option>
-              <option value="transport">Transport</option>
-              <option value="formation">Formation</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="utilities">Services publics</option>
-              <option value="autres">Autres</option>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Méthode de paiement</label>
-            <select v-model="selectedPaymentMethod" class="form-select" @change="applyFilters">
-              <option value="">Toutes les méthodes</option>
-              <option value="cash">Espèces</option>
-              <option value="bank_transfer">Virement bancaire</option>
-              <option value="credit_card">Carte de crédit</option>
-              <option value="mobile_money">Mobile Money</option>
-              <option value="orange_money">Orange Money</option>
-              <option value="wave">Wave</option>
-              <option value="check">Chèque</option>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Date de début</label>
-            <input
-              v-model="startDate"
-              type="date"
-              class="form-control"
-              @change="applyFilters"
-            />
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Date de fin</label>
-            <input
-              v-model="endDate"
-              type="date"
-              class="form-control"
-              @change="applyFilters"
-            />
-          </div>
-          <div class="col-md-1 d-flex align-items-end">
-            <button
-              @click="clearFilters"
-              class="btn btn-outline-secondary"
-              title="Effacer les filtres"
-            >
-              <i class="bi bi-x-circle"></i>
-            </button>
+      <section class="page-filters card">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label">Rechercher</label>
+              <input
+                v-model="searchQuery"
+                type="text"
+                class="form-control"
+                placeholder="Titre, description..."
+                @input="debouncedSearch"
+              />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Catégorie</label>
+              <select v-model="selectedCategory" class="form-select" @change="applyFilters">
+                <option value="">Toutes les catégories</option>
+                <option value="fournitures">Fournitures</option>
+                <option value="equipement">Équipement</option>
+                <option value="marketing">Marketing</option>
+                <option value="transport">Transport</option>
+                <option value="formation">Formation</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="utilities">Services publics</option>
+                <option value="autres">Autres</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Méthode de paiement</label>
+              <select v-model="selectedPaymentMethod" class="form-select" @change="applyFilters">
+                <option value="">Toutes les méthodes</option>
+                <option value="cash">Espèces</option>
+                <option value="bank_transfer">Virement bancaire</option>
+                <option value="credit_card">Carte de crédit</option>
+                <option value="mobile_money">Mobile Money</option>
+                <option value="orange_money">Orange Money</option>
+                <option value="wave">Wave</option>
+                <option value="check">Chèque</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Date de début</label>
+              <input
+                v-model="startDate"
+                type="date"
+                class="form-control"
+                @change="applyFilters"
+              />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Date de fin</label>
+              <input
+                v-model="endDate"
+                type="date"
+                class="form-control"
+                @change="applyFilters"
+              />
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+              <button
+                @click="clearFilters"
+                class="btn btn-outline-secondary"
+                title="Effacer les filtres"
+              >
+                <i class="bi bi-x-circle"></i>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- Liste des dépenses -->
-    <div class="card">
-      <div class="card-header">
-        <h5 class="card-title mb-0">
-          <i class="bi bi-list-ul me-2"></i>
-          Liste des dépenses
-        </h5>
-      </div>
-      <div class="card-body p-0">
+      <section class="page-table card">
         <div v-if="filteredExpenses.length === 0" class="text-center py-5">
           <i class="bi bi-receipt fs-1 text-muted"></i>
           <p class="text-muted mt-3">Aucune dépense trouvée</p>
@@ -244,30 +233,23 @@
             </tbody>
           </table>
         </div>
-      </div>
-    </div>
 
-    <!-- Pagination -->
-    <div v-if="expenses.links" class="d-flex justify-content-center mt-4">
-      <nav>
-        <ul class="pagination">
-          <li v-for="link in expenses.links" :key="link.label" class="page-item" :class="{ active: link.active, disabled: !link.url }">
-            <Link
-              v-if="link.url"
-              :href="link.url"
-              class="page-link"
-              v-html="link.label"
-            />
-            <span v-else class="page-link" v-html="link.label"></span>
-          </li>
-        </ul>
-      </nav>
-    </div>
+        <PagePagination
+          :links="expenses.links"
+          :from="expenses.from ?? expenses.meta?.from"
+          :to="expenses.to ?? expenses.meta?.to"
+          :total="expenses.total ?? expenses.meta?.total"
+        />
+      </section>
+    </IndexPageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue'
+import IndexPageLayout from '@/components/page/IndexPageLayout.vue'
+import PageHeader from '@/components/page/PageHeader.vue'
+import PagePagination from '@/components/page/PagePagination.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
 import { route } from '@/lib/routes'

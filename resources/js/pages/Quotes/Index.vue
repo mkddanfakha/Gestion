@@ -1,28 +1,26 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">
-          <i class="bi bi-file-earmark-check me-2"></i>
-          Devis
-        </h1>
-        <p class="text-muted mb-0">Gérez vos devis et propositions commerciales</p>
-      </div>
-      <Link
-        :href="route('quotes.create')"
-        class="btn btn-primary"
+    <IndexPageLayout>
+      <PageHeader
+        title="Devis"
+        subtitle="Gérez vos devis et propositions commerciales"
+        icon="bi-file-earmark-check"
       >
-        <i class="bi bi-plus-circle me-1"></i>
-        Nouveau devis
-      </Link>
-    </div>
+        <template #actions-primary>
+          <Link
+            :href="route('quotes.create')"
+            class="btn btn-primary"
+          >
+            <i class="bi bi-plus-circle me-1"></i>
+            Nouveau devis
+          </Link>
+        </template>
+      </PageHeader>
 
-    <!-- Filtres -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-3">
+      <section class="page-filters card">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-3">
             <label class="form-label">Recherche</label>
             <div class="input-group">
               <span class="input-group-text">
@@ -45,7 +43,7 @@
               </button>
             </div>
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-md-2">
             <label class="form-label">Client</label>
             <select
               v-model="filters.customer_id"
@@ -58,7 +56,7 @@
               </option>
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-md-2">
             <label class="form-label">Statut</label>
             <select
               v-model="filters.status"
@@ -73,7 +71,7 @@
               <option value="expired">Expiré</option>
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-md-2">
             <label class="form-label">Date de début</label>
             <input
               v-model="filters.date_from"
@@ -82,7 +80,7 @@
               @change="search"
             />
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-md-2">
             <label class="form-label">Date de fin</label>
             <input
               v-model="filters.date_to"
@@ -91,7 +89,8 @@
               @change="search"
             />
           </div>
-          <div class="col-md-1 d-flex align-items-end">
+          <div class="col-12 col-md-1 d-grid d-md-block">
+            <label class="form-label d-md-none">Actions</label>
             <button
               @click="clearFilters"
               class="btn btn-outline-secondary w-100"
@@ -101,10 +100,9 @@
           </div>
         </div>
       </div>
-    </div>
+      </section>
 
-    <!-- Tableau des devis -->
-    <div class="card">
+      <section class="page-table card">
       <div class="table-responsive">
         <table class="table table-hover mb-0">
           <thead class="table-light">
@@ -219,47 +217,22 @@
         </table>
       </div>
 
-      <!-- Pagination -->
-      <div v-if="quotes.links" class="card-footer">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="d-none d-md-block">
-            <p class="text-muted mb-0">
-              Affichage de
-              <span class="fw-medium">{{ quotes.from }}</span>
-              à
-              <span class="fw-medium">{{ quotes.to }}</span>
-              sur
-              <span class="fw-medium">{{ quotes.total }}</span>
-              résultats
-            </p>
-          </div>
-          <nav>
-            <ul class="pagination pagination-sm mb-0">
-              <template v-for="link in quotes.links" :key="link.label">
-                <li class="page-item" :class="{ active: link.active, disabled: !link.url }">
-                  <Link
-                    v-if="link.url"
-                    :href="link.url"
-                    class="page-link"
-                    v-html="link.label"
-                  />
-                  <span
-                    v-else
-                    class="page-link"
-                    v-html="link.label"
-                  />
-                </li>
-              </template>
-            </ul>
-          </nav>
-        </div>
-      </div>
-    </div>
+      <PagePagination
+        :links="quotes.links"
+        :from="quotes.from"
+        :to="quotes.to"
+        :total="quotes.total"
+      />
+      </section>
+    </IndexPageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue'
+import IndexPageLayout from '@/components/page/IndexPageLayout.vue'
+import PageHeader from '@/components/page/PageHeader.vue'
+import PagePagination from '@/components/page/PagePagination.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { route } from '@/lib/routes'

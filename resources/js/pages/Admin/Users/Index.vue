@@ -1,142 +1,126 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">
-          <i class="bi bi-shield-lock me-2"></i>
-          Gestion des utilisateurs
-        </h1>
-        <p class="text-muted mb-0">Gérez les utilisateurs et leurs rôles</p>
-      </div>
-      <Link
-        :href="route('admin.users.create')"
-        class="btn btn-primary"
+    <IndexPageLayout>
+      <PageHeader
+        title="Gestion des utilisateurs"
+        subtitle="Gérez les utilisateurs et leurs rôles"
+        icon="bi-shield-lock"
       >
-        <i class="bi bi-plus-circle me-1"></i>
-        Ajouter un utilisateur
-      </Link>
-    </div>
+        <template #actions-primary>
+          <Link
+            :href="route('admin.users.create')"
+            class="btn btn-primary"
+          >
+            <i class="bi bi-plus-circle me-1"></i>
+            Ajouter un utilisateur
+          </Link>
+        </template>
+      </PageHeader>
 
-    <!-- Tableau des utilisateurs -->
-    <div class="card">
-      <div class="table-responsive">
-        <table class="table table-hover mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Utilisateur</th>
-              <th>Email</th>
-              <th>Rôle</th>
-              <th>Email vérifié</th>
-              <th>Statut</th>
-              <th>Date de création</th>
-              <th class="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users.data" :key="user.id">
-              <td>
-                <div class="d-flex align-items-center">
-                  <div class="flex-shrink-0 me-3">
-                    <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                      <i class="bi bi-person text-primary"></i>
+      <section class="page-table card">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Utilisateur</th>
+                <th>Email</th>
+                <th>Rôle</th>
+                <th>Email vérifié</th>
+                <th>Statut</th>
+                <th>Date de création</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in users.data" :key="user.id">
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                      <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        <i class="bi bi-person text-primary"></i>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="fw-medium">{{ user.name }}</div>
+                      <div class="text-muted small">ID: {{ user.id }}</div>
                     </div>
                   </div>
-                  <div>
-                    <div class="fw-medium">{{ user.name }}</div>
-                    <div class="text-muted small">ID: {{ user.id }}</div>
+                </td>
+                <td>{{ user.email }}</td>
+                <td>
+                  <span 
+                    class="badge"
+                    :class="{
+                      'bg-danger': user.role === 'admin',
+                      'bg-primary': user.role === 'vendeur',
+                      'bg-info': user.role === 'gestionnaire',
+                      'bg-secondary': user.role === 'user'
+                    }"
+                  >
+                    {{ getRoleLabel(user.role) }}
+                  </span>
+                </td>
+                <td>
+                  <span 
+                    class="badge"
+                    :class="user.email_verified_at ? 'bg-success' : 'bg-warning text-dark'"
+                  >
+                    <i :class="user.email_verified_at ? 'bi bi-check-circle' : 'bi bi-exclamation-triangle'" class="me-1"></i>
+                    {{ user.email_verified_at ? 'Vérifié' : 'Non vérifié' }}
+                  </span>
+                </td>
+                <td>
+                  <span 
+                    class="badge"
+                    :class="user.is_active ? 'bg-success' : 'bg-secondary'"
+                  >
+                    {{ user.is_active ? 'Actif' : 'Inactif' }}
+                  </span>
+                </td>
+                <td>{{ formatDate(user.created_at) }}</td>
+                <td class="text-end">
+                  <div class="btn-group" role="group">
+                    <Link
+                      :href="route('admin.users.edit', user.id)"
+                      class="btn btn-sm btn-outline-primary"
+                    >
+                      <i class="bi bi-pencil"></i>
+                    </Link>
+                    <button
+                      v-if="isAdmin && user.id !== $page.props.auth.user?.id"
+                      @click="confirmDelete(user)"
+                      class="btn btn-sm btn-outline-danger"
+                      title="Seuls les administrateurs peuvent supprimer des utilisateurs"
+                    >
+                      <i class="bi bi-trash"></i>
+                    </button>
                   </div>
-                </div>
-              </td>
-              <td>{{ user.email }}</td>
-              <td>
-                <span 
-                  class="badge"
-                  :class="{
-                    'bg-danger': user.role === 'admin',
-                    'bg-primary': user.role === 'vendeur',
-                    'bg-info': user.role === 'gestionnaire',
-                    'bg-secondary': user.role === 'user'
-                  }"
-                >
-                  {{ getRoleLabel(user.role) }}
-                </span>
-              </td>
-              <td>
-                <span 
-                  class="badge"
-                  :class="user.email_verified_at ? 'bg-success' : 'bg-warning text-dark'"
-                >
-                  <i :class="user.email_verified_at ? 'bi bi-check-circle' : 'bi bi-exclamation-triangle'" class="me-1"></i>
-                  {{ user.email_verified_at ? 'Vérifié' : 'Non vérifié' }}
-                </span>
-              </td>
-              <td>
-                <span 
-                  class="badge"
-                  :class="user.is_active ? 'bg-success' : 'bg-secondary'"
-                >
-                  {{ user.is_active ? 'Actif' : 'Inactif' }}
-                </span>
-              </td>
-              <td>{{ formatDate(user.created_at) }}</td>
-              <td class="text-end">
-                <div class="btn-group" role="group">
-                  <Link
-                    :href="route('admin.users.edit', user.id)"
-                    class="btn btn-sm btn-outline-primary"
-                  >
-                    <i class="bi bi-pencil"></i>
-                  </Link>
-                  <button
-                    v-if="isAdmin && user.id !== $page.props.auth.user?.id"
-                    @click="confirmDelete(user)"
-                    class="btn btn-sm btn-outline-danger"
-                    title="Seuls les administrateurs peuvent supprimer des utilisateurs"
-                  >
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="users.data.length === 0">
-              <td colspan="7" class="text-center text-muted py-4">
-                Aucun utilisateur trouvé
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Pagination -->
-      <div v-if="users.links && users.links.length > 3" class="card-footer">
-        <div class="d-flex justify-content-center">
-          <nav>
-            <ul class="pagination mb-0">
-              <li
-                v-for="(link, index) in users.links"
-                :key="index"
-                class="page-item"
-                :class="{ active: link.active, disabled: !link.url }"
-              >
-                <Link
-                  v-if="link.url"
-                  :href="link.url"
-                  class="page-link"
-                  v-html="link.label"
-                ></Link>
-                <span v-else class="page-link" v-html="link.label"></span>
-              </li>
-            </ul>
-          </nav>
+                </td>
+              </tr>
+              <tr v-if="users.data.length === 0">
+                <td colspan="7" class="text-center text-muted py-4">
+                  Aucun utilisateur trouvé
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
-    </div>
+
+        <PagePagination
+          :links="users.links"
+          centered
+          :min-links="3"
+        />
+      </section>
+    </IndexPageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/layouts/BootstrapLayout.vue'
+import IndexPageLayout from '@/components/page/IndexPageLayout.vue'
+import PageHeader from '@/components/page/PageHeader.vue'
+import PagePagination from '@/components/page/PagePagination.vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { ref } from 'vue'
@@ -221,5 +205,3 @@ const confirmDelete = (user: User) => {
   })
 }
 </script>
-
-

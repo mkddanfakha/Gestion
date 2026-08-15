@@ -1,156 +1,156 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">
-          <i class="bi bi-database me-2"></i>
-          Gestion des sauvegardes
-        </h1>
-        <p class="text-muted mb-0">Gérez les sauvegardes de votre application</p>
+    <IndexPageLayout>
+      <PageHeader
+        title="Gestion des sauvegardes"
+        subtitle="Gérez les sauvegardes de votre application"
+        icon="bi-database"
+      >
+        <template #actions-primary>
+          <button
+            v-if="canCreate('backups')"
+            @click="createBackup"
+            class="btn btn-primary"
+            :disabled="processing"
+          >
+            <span v-if="processing" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            <i v-else class="bi bi-plus-circle me-1"></i>
+            {{ processing ? 'Création en cours...' : 'Créer une sauvegarde' }}
+          </button>
+        </template>
+
+        <template #actions-secondary>
+          <button
+            v-if="canCreate('backups')"
+            @click="createBackupDbOnly"
+            class="btn btn-outline-primary"
+            :disabled="processing"
+          >
+            <i class="bi bi-database me-1"></i>
+            Sauvegarde DB uniquement
+          </button>
+          <button
+            v-if="canCreate('backups')"
+            @click="showImportModal"
+            class="btn btn-outline-success"
+            :disabled="processing"
+          >
+            <i class="bi bi-upload me-1"></i>
+            Importer une sauvegarde
+          </button>
+        </template>
+      </PageHeader>
+
+      <div v-if="$page.props.flash?.success" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>
+        {{ $page.props.flash.success }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
-      <div class="d-flex gap-2">
-        <button
-          v-if="canCreate('backups')"
-          @click="createBackup"
-          class="btn btn-primary"
-          :disabled="processing"
-        >
-          <span v-if="processing" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-          <i v-else class="bi bi-plus-circle me-1"></i>
-          {{ processing ? 'Création en cours...' : 'Créer une sauvegarde' }}
-        </button>
-        <button
-          v-if="canCreate('backups')"
-          @click="createBackupDbOnly"
-          class="btn btn-outline-primary"
-          :disabled="processing"
-        >
-          <i class="bi bi-database me-1"></i>
-          Sauvegarde DB uniquement
-        </button>
-        <button
-          v-if="canCreate('backups')"
-          @click="showImportModal"
-          class="btn btn-outline-success"
-          :disabled="processing"
-        >
-          <i class="bi bi-upload me-1"></i>
-          Importer une sauvegarde
-        </button>
+
+      <div v-if="$page.props.flash?.error" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        {{ $page.props.flash.error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
-    </div>
 
-    <!-- Messages de succès/erreur -->
-    <div v-if="$page.props.flash?.success" class="alert alert-success alert-dismissible fade show" role="alert">
-      <i class="bi bi-check-circle me-2"></i>
-      {{ $page.props.flash.success }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-
-    <div v-if="$page.props.flash?.error" class="alert alert-danger alert-dismissible fade show" role="alert">
-      <i class="bi bi-exclamation-triangle me-2"></i>
-      {{ $page.props.flash.error }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-
-    <!-- Tableau des sauvegardes -->
-    <div class="card">
-      <div class="table-responsive">
-        <table class="table table-hover mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Nom du fichier</th>
-              <th>Taille</th>
-              <th>Date de création</th>
-              <th class="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="backup in backups" :key="backup.name">
-              <td>
-                <div class="d-flex align-items-center">
-                  <div class="flex-shrink-0 me-3">
-                    <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                      <i class="bi bi-file-zip text-success"></i>
+      <section class="page-table card">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Nom du fichier</th>
+                <th>Taille</th>
+                <th>Date de création</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="backup in backups" :key="backup.name">
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                      <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        <i class="bi bi-file-zip text-success"></i>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="fw-medium">{{ backup.name }}</div>
+                      <div class="text-muted small">{{ backup.path }}</div>
                     </div>
                   </div>
-                  <div>
-                    <div class="fw-medium">{{ backup.name }}</div>
-                    <div class="text-muted small">{{ backup.path }}</div>
+                </td>
+                <td>
+                  <span class="badge bg-secondary">{{ backup.size }}</span>
+                </td>
+                <td>
+                  <div>{{ formatDate(backup.date) }}</div>
+                  <div class="text-muted small">{{ formatTime(backup.date) }}</div>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group" role="group">
+                    <button
+                      v-if="canDownload('backups')"
+                      @click="downloadBackup(backup.name)"
+                      class="btn btn-sm btn-outline-primary"
+                      title="Télécharger"
+                    >
+                      <i class="bi bi-download"></i>
+                    </button>
+                    <button
+                      v-if="canRestore('backups')"
+                      @click="confirmRestore(backup.name)"
+                      class="btn btn-sm btn-outline-warning"
+                      title="Restaurer"
+                    >
+                      <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                    <button
+                      v-if="canDelete('backups')"
+                      @click="confirmDelete(backup.name)"
+                      class="btn btn-sm btn-outline-danger"
+                      title="Supprimer"
+                    >
+                      <i class="bi bi-trash"></i>
+                    </button>
                   </div>
-                </div>
-              </td>
-              <td>
-                <span class="badge bg-secondary">{{ backup.size }}</span>
-              </td>
-              <td>
-                <div>{{ formatDate(backup.date) }}</div>
-                <div class="text-muted small">{{ formatTime(backup.date) }}</div>
-              </td>
-              <td class="text-end">
-                <div class="btn-group" role="group">
-                  <button
-                    v-if="canDownload('backups')"
-                    @click="downloadBackup(backup.name)"
-                    class="btn btn-sm btn-outline-primary"
-                    title="Télécharger"
-                  >
-                    <i class="bi bi-download"></i>
-                  </button>
-                  <button
-                    v-if="canRestore('backups')"
-                    @click="confirmRestore(backup.name)"
-                    class="btn btn-sm btn-outline-warning"
-                    title="Restaurer"
-                  >
-                    <i class="bi bi-arrow-counterclockwise"></i>
-                  </button>
-                  <button
-                    v-if="canDelete('backups')"
-                    @click="confirmDelete(backup.name)"
-                    class="btn btn-sm btn-outline-danger"
-                    title="Supprimer"
-                  >
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="backups.length === 0">
-              <td colspan="4" class="text-center text-muted py-4">
-                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                Aucune sauvegarde trouvée
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+                </td>
+              </tr>
+              <tr v-if="backups.length === 0">
+                <td colspan="4" class="text-center text-muted py-4">
+                  <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                  Aucune sauvegarde trouvée
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-    <!-- Informations -->
-    <div class="card mt-4">
-      <div class="card-header">
-        <h5 class="card-title mb-0">
-          <i class="bi bi-info-circle me-2"></i>
-          Informations
-        </h5>
+      <div class="card mt-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            Informations
+          </h5>
+        </div>
+        <div class="card-body">
+          <ul class="mb-0">
+            <li>Les sauvegardes incluent la base de données et les fichiers de l'application.</li>
+            <li>Les sauvegardes sont stockées sur le disque: <strong>{{ disk }}</strong></li>
+            <li>Les anciennes sauvegardes sont automatiquement nettoyées selon la stratégie configurée.</li>
+            <li class="text-danger"><strong>Attention:</strong> La restauration remplacera toutes les données actuelles. Assurez-vous d'avoir une sauvegarde récente avant de restaurer.</li>
+          </ul>
+        </div>
       </div>
-      <div class="card-body">
-        <ul class="mb-0">
-          <li>Les sauvegardes incluent la base de données et les fichiers de l'application.</li>
-          <li>Les sauvegardes sont stockées sur le disque: <strong>{{ disk }}</strong></li>
-          <li>Les anciennes sauvegardes sont automatiquement nettoyées selon la stratégie configurée.</li>
-          <li class="text-danger"><strong>Attention:</strong> La restauration remplacera toutes les données actuelles. Assurez-vous d'avoir une sauvegarde récente avant de restaurer.</li>
-        </ul>
-      </div>
-    </div>
+    </IndexPageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppLayout from '@/layouts/BootstrapLayout.vue'
+import IndexPageLayout from '@/components/page/IndexPageLayout.vue'
+import PageHeader from '@/components/page/PageHeader.vue'
 import { router, useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { usePermissions } from '@/composables/usePermissions'
@@ -621,4 +621,3 @@ const showImportModal = () => {
 }
 
 </script>
-

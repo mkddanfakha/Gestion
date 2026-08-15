@@ -1,81 +1,80 @@
 <template>
   <AppLayout>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h2 mb-1">
-          <i class="bi bi-people me-2"></i>
-          Clients
-        </h1>
-        <p class="text-muted mb-0">Gérez votre base de clients</p>
-      </div>
-      <div class="d-flex gap-2">
-        <button
-          @click="exportPdf"
-          class="btn btn-danger"
-          :disabled="isExportingPdf || isExportingExcel"
-        >
-          <span v-if="isExportingPdf" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-          <i v-else class="bi bi-file-pdf me-1"></i>
-          {{ isExportingPdf ? 'Export en cours...' : 'Exporter PDF' }}
-        </button>
-        <button
-          @click="exportExcel"
-          class="btn btn-success"
-          :disabled="isExportingExcel || isExportingPdf"
-        >
-          <span v-if="isExportingExcel" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-          <i v-else class="bi bi-file-excel me-1"></i>
-          {{ isExportingExcel ? 'Export en cours...' : 'Exporter Excel' }}
-        </button>
-        <Link
-          :href="route('customers.potential-duplicates')"
-          class="btn btn-outline-warning"
-        >
-          <i class="bi bi-people-fill me-1"></i>
-          Doublons potentiels
-        </Link>
-        <Link
-          :href="route('customers.create')"
-          class="btn btn-primary"
-          :class="{ 'disabled': isExportingPdf || isExportingExcel }"
-          :tabindex="(isExportingPdf || isExportingExcel) ? -1 : 0"
-        >
-          <i class="bi bi-plus-circle me-1"></i>
-          Ajouter un client
-        </Link>
-      </div>
-    </div>
+    <IndexPageLayout>
+      <PageHeader
+        title="Clients"
+        subtitle="Gérez votre base de clients"
+        icon="bi-people"
+      >
+        <template #actions-primary>
+          <Link
+            :href="route('customers.create')"
+            class="btn btn-primary"
+            :class="{ 'disabled': isExportingPdf || isExportingExcel }"
+            :tabindex="(isExportingPdf || isExportingExcel) ? -1 : 0"
+          >
+            <i class="bi bi-plus-circle me-1"></i>
+            Ajouter un client
+          </Link>
+        </template>
 
-    <!-- Filtres -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label class="form-label">Recherche</label>
-            <input
-              v-model="filters.search"
-              type="text"
-              placeholder="Nom, email, téléphone ou n° de pièce..."
-              class="form-control"
-              @input="search"
-            />
-          </div>
-          <div class="col-md-2 d-flex align-items-end">
-            <button
-              @click="clearFilters"
-              class="btn btn-outline-secondary w-100"
-            >
-              <i class="bi bi-x-circle me-1"></i>
-              Effacer les filtres
-            </button>
+        <template #actions-secondary>
+          <button
+            @click="exportPdf"
+            class="btn btn-danger"
+            :disabled="isExportingPdf || isExportingExcel"
+          >
+            <span v-if="isExportingPdf" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            <i v-else class="bi bi-file-pdf me-1"></i>
+            {{ isExportingPdf ? 'Export en cours...' : 'Exporter PDF' }}
+          </button>
+          <button
+            @click="exportExcel"
+            class="btn btn-success"
+            :disabled="isExportingExcel || isExportingPdf"
+          >
+            <span v-if="isExportingExcel" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            <i v-else class="bi bi-file-excel me-1"></i>
+            {{ isExportingExcel ? 'Export en cours...' : 'Exporter Excel' }}
+          </button>
+          <Link
+            :href="route('customers.potential-duplicates')"
+            class="btn btn-outline-warning page-header__action--wide"
+          >
+            <i class="bi bi-people-fill me-1"></i>
+            Doublons potentiels
+          </Link>
+        </template>
+      </PageHeader>
+
+      <section class="page-filters card">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label">Recherche</label>
+              <input
+                v-model="filters.search"
+                type="search"
+                placeholder="Nom, email, téléphone ou n° de pièce..."
+                class="form-control"
+                @input="search"
+              />
+            </div>
+            <div class="col-12 col-md-2 d-grid d-md-block">
+              <label class="form-label d-md-none">Actions</label>
+              <button
+                @click="clearFilters"
+                class="btn btn-outline-secondary w-100"
+              >
+                <i class="bi bi-x-circle me-1"></i>
+                Effacer les filtres
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- Tableau des clients -->
-    <div class="card">
+      <section class="page-table card">
       <div class="table-responsive">
         <table class="table table-hover mb-0">
           <thead class="table-light">
@@ -156,52 +155,22 @@
         </table>
       </div>
 
-      <!-- Pagination -->
-      <div v-if="customers.links" class="card-footer">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="d-none d-md-block">
-            <p class="text-muted mb-0">
-              Affichage de
-              <span class="fw-medium">{{ customers.from }}</span>
-              à
-              <span class="fw-medium">{{ customers.to }}</span>
-              sur
-              <span class="fw-medium">{{ customers.total }}</span>
-              résultats
-            </p>
-          </div>
-          <nav>
-            <ul class="pagination pagination-sm mb-0">
-              <template v-for="link in customers.links" :key="link.label">
-                <li class="page-item" :class="{ active: link.active, disabled: !link.url }">
-                  <Link
-                    v-if="link.url"
-                    :href="link.url"
-                    class="page-link"
-                    v-html="link.label"
-                  />
-                  <span
-                    v-else
-                    class="page-link"
-                    v-html="link.label"
-                  />
-                </li>
-              </template>
-            </ul>
-          </nav>
-        </div>
-      </div>
-    </div>
+      <PagePagination
+        :links="customers.links"
+        :from="customers.from"
+        :to="customers.to"
+        :total="customers.total"
+      />
+      </section>
+    </IndexPageLayout>
   </AppLayout>
-
-  <!-- Modals Bootstrap -->
-  
-
-  
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue'
+import IndexPageLayout from '@/components/page/IndexPageLayout.vue'
+import PageHeader from '@/components/page/PageHeader.vue'
+import PagePagination from '@/components/page/PagePagination.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { route } from '@/lib/routes'
