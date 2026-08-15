@@ -7,6 +7,9 @@
         :back-href="route('purchase-orders.index')"
         back-label="Retour à la liste"
       >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
         <template #actions>
           <Link
             :href="route('purchase-orders.show', { id: purchaseOrder.id })"
@@ -17,6 +20,15 @@
           </Link>
         </template>
       </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="edit"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
+      />
 
       <form>
         <div class="form-page__body">
@@ -286,6 +298,10 @@ import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
 import { usePermissions } from '@/composables/usePermissions'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 
 interface Supplier {
   id: number
@@ -359,6 +375,18 @@ const form = useForm({
     unit_price: Number(item.unit_price) || 0,
     total_price: Number(item.total_price) || 0
   }))
+})
+
+const poEditBaseline = { ...form.data() } as Record<string, unknown>
+
+const draft = useFormDraft({
+  formType: 'purchase_order',
+  mode: 'edit',
+  entityId: props.purchaseOrder.id,
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => poEditBaseline,
 })
 
 const addItem = () => {
@@ -497,7 +525,8 @@ const submit = () => {
   form.total_amount = totalAmount.value
 
   form.put(route('purchase-orders.update', { id: props.purchaseOrder.id }), {
-    onSuccess: () => {
+    onSuccess: async () => {
+      await draft.markSubmitted()
       success('Bon de commande modifié avec succès !')
     },
     onError: () => {

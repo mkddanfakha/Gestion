@@ -6,6 +6,19 @@
         subtitle="Enregistrez une nouvelle livraison fournisseur"
         :back-href="route('delivery-notes.index')"
         back-label="Retour à la liste"
+      >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
+      </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="create"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
       />
 
       <form>
@@ -335,6 +348,10 @@
 
 <script setup lang="ts">
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 import AppLayout from '@/layouts/AppLayout.vue'
 import FormPageLayout from '@/components/page/FormPageLayout.vue'
 import FormPageHeader from '@/components/page/FormPageHeader.vue'
@@ -409,6 +426,17 @@ const form = useForm({
     unit_price: Number(item.unit_price) || 0,
     total_price: Number(item.quantity || 1) * Number(item.unit_price || 0)
   })) || [] as DNItem[]
+})
+
+const dnCreateBaseline = { ...form.data() } as Record<string, unknown>
+
+const draft = useFormDraft({
+  formType: 'delivery_note',
+  mode: 'create',
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => dnCreateBaseline,
 })
 
 // Filtrer les bons de commande par fournisseur et par recherche
@@ -617,7 +645,8 @@ const submit = () => {
   updateTotals()
   
   form.post(route('delivery-notes.store'), {
-    onSuccess: () => {
+    onSuccess: async () => {
+      await draft.markSubmitted()
       success('Bon de livraison créé avec succès !')
       clientErrors.value = {}
     },

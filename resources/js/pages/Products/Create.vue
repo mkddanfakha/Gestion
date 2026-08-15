@@ -6,6 +6,19 @@
         subtitle="Ajoutez un nouveau produit à votre inventaire"
         :back-href="route('products.index')"
         back-label="Retour à la liste"
+      >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
+      </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="create"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
       />
 
       <form>
@@ -378,6 +391,10 @@ import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import FilePondImageUpload from '@/components/FilePondImageUpload.vue'
 import { useCsrfToken } from '@/lib/csrf'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 
 interface Category {
   id: number
@@ -558,6 +575,17 @@ const form = useForm({
   alert_threshold_unit: '' as 'days' | 'weeks' | 'months' | '',
 })
 
+const productCreateBaseline = { ...form.data() } as Record<string, unknown>
+
+const draft = useFormDraft({
+  formType: 'product',
+  mode: 'create',
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => productCreateBaseline,
+})
+
 const filePondRef = ref<InstanceType<typeof FilePondImageUpload> | null>(null)
 const uploadedFiles = ref<File[]>([])
 const previewImageUrl = ref<string | null>(null)
@@ -733,6 +761,9 @@ const submit = () => {
   // Envoyer avec Inertia
   form.transform(() => formData).post(route('products.store'), {
     forceFormData: true,
+    onSuccess: async () => {
+      await draft.markSubmitted()
+    },
     onError: () => {
       error('Erreur lors de la création du produit.')
     }

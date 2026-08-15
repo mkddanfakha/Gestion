@@ -7,6 +7,9 @@
         :back-href="route('delivery-notes.index')"
         back-label="Retour à la liste"
       >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
         <template #actions>
           <Link
             :href="route('delivery-notes.show', { id: deliveryNote.id })"
@@ -17,6 +20,15 @@
           </Link>
         </template>
       </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="edit"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
+      />
 
       <form>
         <div class="form-page__body">
@@ -345,6 +357,10 @@
 
 <script setup lang="ts">
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 import AppLayout from '@/layouts/AppLayout.vue'
 import FormPageLayout from '@/components/page/FormPageLayout.vue'
 import FormPageHeader from '@/components/page/FormPageHeader.vue'
@@ -446,6 +462,18 @@ const form = useForm({
     unit_price: Number(item.unit_price) || 0,
     total_price: Number(item.quantity || 1) * Number(item.unit_price || 0)
   }))
+})
+
+const dnEditBaseline = { ...form.data() } as Record<string, unknown>
+
+const draft = useFormDraft({
+  formType: 'delivery_note',
+  mode: 'edit',
+  entityId: props.deliveryNote.id,
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => dnEditBaseline,
 })
 
 // Filtrer les bons de commande par fournisseur et par recherche
@@ -766,7 +794,8 @@ const submit = () => {
   updateTotals()
   
   form.put(route('delivery-notes.update', { id: props.deliveryNote.id }), {
-    onSuccess: () => {
+    onSuccess: async () => {
+      await draft.markSubmitted()
       success('Bon de livraison modifié avec succès !')
       clientErrors.value = {}
     },

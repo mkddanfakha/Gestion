@@ -7,6 +7,9 @@
         :back-href="route('products.index')"
         back-label="Retour à la liste"
       >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
         <template #actions>
           <Link
             :href="route('products.show', { id: product.id })"
@@ -17,6 +20,15 @@
           </Link>
         </template>
       </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="edit"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
+      />
 
       <form>
         <div class="form-page__body">
@@ -374,6 +386,10 @@ import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { usePermissions } from '@/composables/usePermissions'
 import FilePondImageUpload from '@/components/FilePondImageUpload.vue'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 
 const { isVendeur } = usePermissions()
 
@@ -438,6 +454,18 @@ const form = useForm({
   expiration_date: props.product.expiration_date ? new Date(props.product.expiration_date).toISOString().split('T')[0] : '',
   alert_threshold_value: props.product.alert_threshold_value || null,
   alert_threshold_unit: props.product.alert_threshold_unit || '' as 'days' | 'weeks' | 'months' | '',
+})
+
+const productEditBaseline = { ...form.data() } as Record<string, unknown>
+
+const draft = useFormDraft({
+  formType: 'product',
+  mode: 'edit',
+  entityId: props.product.id,
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => productEditBaseline,
 })
 
 // Computed pour les erreurs du formulaire
@@ -835,7 +863,8 @@ const submit = () => {
     router.post(route('products.update', { id: props.product.id }), formData, {
       forceFormData: true,
       preserveScroll: true,
-      onSuccess: (page) => {
+      onSuccess: async (page) => {
+        await draft.markSubmitted()
         // Afficher le message de succès
         const flash = (page.props as any)?.flash
         if (flash?.success) {

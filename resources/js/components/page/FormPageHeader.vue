@@ -31,6 +31,9 @@ withDefaults(
         <p v-if="subtitle" class="form-page-header__subtitle text-muted mb-0">
           {{ subtitle }}
         </p>
+        <div v-if="$slots.meta" class="form-page-header__meta">
+          <slot name="meta" />
+        </div>
       </div>
     </div>
 

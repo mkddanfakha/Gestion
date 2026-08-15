@@ -1535,3 +1535,104 @@ a:not(.btn):not(.nav-link):not(.page-link):not(.dropdown-item):focus-visible {
 [data-bs-theme='dark'] .customer-duplicate-alerts__match {
     background: rgba(255, 255, 255, 0.05);
 }
+
+/* --------------------------------------------------------------------------
+   Form drafts (auto-save)
+   -------------------------------------------------------------------------- */
+.form-page-header__meta {
+    margin-top: 0.35rem;
+}
+
+.draft-save-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    max-width: 100%;
+}
+
+.draft-save-status__icon--spin {
+    animation: draft-save-spin 0.9s linear infinite;
+}
+
+@keyframes draft-save-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.draft-save-status__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.draft-restore-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 1080;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.draft-restore-dialog__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.draft-restore-dialog__panel {
+    position: relative;
+    width: min(100%, 28rem);
+    background: var(--bs-body-bg, #fff);
+    border-radius: 0.75rem 0.75rem 0 0;
+    padding: 1.25rem;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.15);
+}
+
+@media (min-width: 576px) {
+    .draft-restore-dialog {
+        align-items: center;
+    }
+
+    .draft-restore-dialog__panel {
+        border-radius: 0.75rem;
+    }
+}
+
+.draft-restore-dialog__title {
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+}
+
+.draft-restore-dialog__message {
+    margin-bottom: 0.5rem;
+}
+
+.draft-restore-dialog__date {
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.draft-restore-dialog__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.draft-restore-dialog__actions .btn {
+    min-height: 2.75rem;
+}
+
+@media (min-width: 576px) {
+    .draft-restore-dialog__actions {
+        flex-direction: row;
+    }
+
+    .draft-restore-dialog__actions .btn {
+        flex: 1 1 0;
+    }
+}
+

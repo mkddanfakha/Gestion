@@ -6,6 +6,7 @@ import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 import { createPinia } from 'pinia';
 import { initializeTheme } from './composables/useAppearance';
+import { cleanupExpiredDrafts } from './drafts/draftStorage';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
 // Bootstrap JavaScript
@@ -94,3 +95,7 @@ document.addEventListener('inertia:success', (event) => {
 
 // This will set light / dark mode on page load...
 initializeTheme();
+
+if (typeof window !== 'undefined') {
+    void cleanupExpiredDrafts();
+}

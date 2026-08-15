@@ -6,6 +6,19 @@
         subtitle="Créez un nouveau bon de commande"
         :back-href="route('purchase-orders.index')"
         back-label="Retour à la liste"
+      >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
+      </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="create"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
       />
 
       <form>
@@ -301,6 +314,10 @@ import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
 import { usePermissions } from '@/composables/usePermissions'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 
 const { success, error } = useSweetAlert()
 const { openFromPayload } = useDocumentPdfPreview()
@@ -454,6 +471,17 @@ const form = useForm({
   items: [] as POItem[]
 })
 
+const poCreateBaseline = { ...form.data() } as Record<string, unknown>
+
+const draft = useFormDraft({
+  formType: 'purchase_order',
+  mode: 'create',
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => poCreateBaseline,
+})
+
 const addItem = () => {
   form.items.push({
     product_id: 0,
@@ -587,7 +615,8 @@ const submit = () => {
   form.total_amount = totalAmount.value
 
   form.post(route('purchase-orders.store'), {
-    onSuccess: () => {
+    onSuccess: async () => {
+      await draft.markSubmitted()
       success('Bon de commande créé avec succès !')
     },
     onError: () => {

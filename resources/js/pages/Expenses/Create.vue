@@ -6,6 +6,19 @@
         subtitle="Enregistrez une nouvelle dépense"
         :back-href="route('expenses.index')"
         back-label="Retour à la liste"
+      >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
+      </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="create"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
       />
 
       <form>
@@ -263,6 +276,10 @@ import { ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { formatDateForInput } from '@/utils/dateFormatter'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 
 const { success, error } = useSweetAlert()
 
@@ -277,6 +294,17 @@ const form = useForm({
   receipt_number: '',
   vendor: '',
   notes: ''
+})
+
+const expenseCreateBaseline = { ...form.data() } as Record<string, unknown>
+
+const draft = useFormDraft({
+  formType: 'expense',
+  mode: 'create',
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => expenseCreateBaseline,
 })
 
 // Client-side validation errors
@@ -375,7 +403,8 @@ const submit = () => {
   }
 
   form.post(route('expenses.store'), {
-    onSuccess: () => {
+    onSuccess: async () => {
+      await draft.markSubmitted()
       success('Dépense créée avec succès !')
     },
     onError: () => {

@@ -5,6 +5,19 @@
       :subtitle="mode === 'edit' ? 'Modifiez les informations de la vente' : undefined"
       :back-href="route('sales.index')"
       back-label="Ventes"
+    >
+      <template #meta>
+        <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+      </template>
+    </FormPageHeader>
+
+    <DraftRestoreDialog
+      :visible="draft.showRestoreDialog"
+      :mode="mode"
+      :config="draft.config"
+      :draft="draft.pendingDraft"
+      @restore="draft.restoreDraft()"
+      @dismiss="draft.dismissDraft()"
     />
 
     <form novalidate @submit.prevent="submit">
@@ -686,6 +699,8 @@ import { onMounted, ref, toRef } from 'vue'
 import { route } from '@/lib/routes'
 import FormPageHeader from '@/components/page/FormPageHeader.vue'
 import FormActionsBar from '@/components/page/FormActionsBar.vue'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 import CustomerAutocomplete from '@/components/CustomerAutocomplete.vue'
 import CustomerQuickCreateModal from '@/components/customers/CustomerQuickCreateModal.vue'
@@ -782,6 +797,7 @@ const {
   validateField,
   preparePreview,
   submit,
+  draft,
 } = useSaleForm({
   mode: props.mode,
   sale: props.sale,

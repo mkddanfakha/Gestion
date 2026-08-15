@@ -6,6 +6,19 @@
         subtitle="Créez un nouveau devis"
         :back-href="route('quotes.index')"
         back-label="Retour à la liste"
+      >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
+      </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="create"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
       />
 
       <form>
@@ -285,6 +298,10 @@ import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
 import { usePermissions } from '@/composables/usePermissions'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 
 interface Customer {
   id: number
@@ -325,6 +342,17 @@ const form = useForm({
   tax_amount: 0,
   discount_amount: 0,
   items: [] as QuoteItem[]
+})
+
+const quoteCreateBaseline = { ...form.data() } as Record<string, unknown>
+
+const draft = useFormDraft({
+  formType: 'quote',
+  mode: 'create',
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => quoteCreateBaseline,
 })
 
 const addItem = () => {
@@ -498,7 +526,8 @@ const submit = () => {
   }
 
   form.transform(() => formData).post(route('quotes.store'), {
-    onSuccess: () => {
+    onSuccess: async () => {
+      await draft.markSubmitted()
       success('Devis créé avec succès !')
       form.reset()
     },

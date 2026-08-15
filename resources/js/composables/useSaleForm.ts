@@ -3,6 +3,8 @@ import { useForm } from '@inertiajs/vue3'
 import { computed, onMounted, ref, watch, type Ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { useFormDraft } from '@/composables/useFormDraft'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 import {
   calculateSalePaymentState,
   getPaymentStatusBadgeClass,
@@ -143,6 +145,64 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
   const cashReceivedAmount = ref(0)
 
   const form = useForm(buildInitialForm(mode, sale))
+
+  const saleDraftBaseline = {
+    ...buildInitialForm(mode, sale),
+    ui: {
+      taxMode: mode === 'edit' ? (toNumber(sale?.tax_amount) > 0 ? 'amount' : 'amount') : 'amount',
+      discountMode: mode === 'edit' ? 'amount' : 'amount',
+      taxPercent: 0,
+      discountPercent: 0,
+      taxEnabled: mode === 'edit' ? toNumber(sale?.tax_amount) > 0 : true,
+      discountEnabled: mode === 'edit' ? toNumber(sale?.discount_amount) > 0 : true,
+      cashReceivedAmount: 0,
+    },
+  }
+
+  const getSaleDraftData = () => ({
+    ...(form.data() as Record<string, unknown>),
+    ui: {
+      taxMode: taxMode.value,
+      discountMode: discountMode.value,
+      taxPercent: taxPercent.value,
+      discountPercent: discountPercent.value,
+      taxEnabled: taxEnabled.value,
+      discountEnabled: discountEnabled.value,
+      cashReceivedAmount: cashReceivedAmount.value,
+    },
+  })
+
+  const restoreSaleDraftData = (data: Record<string, unknown>) => {
+    const { ui, ...formData } = data
+    restoreInertiaFormData(form as unknown as Record<string, unknown>, formData)
+
+    if (ui && typeof ui === 'object') {
+      const uiState = ui as Record<string, unknown>
+      if (uiState.taxMode === 'amount' || uiState.taxMode === 'percent') {
+        taxMode.value = uiState.taxMode
+      }
+      if (uiState.discountMode === 'amount' || uiState.discountMode === 'percent') {
+        discountMode.value = uiState.discountMode
+      }
+      taxPercent.value = toNumber(uiState.taxPercent)
+      discountPercent.value = toNumber(uiState.discountPercent)
+      taxEnabled.value = Boolean(uiState.taxEnabled)
+      discountEnabled.value = Boolean(uiState.discountEnabled)
+      cashReceivedAmount.value = toNumber(uiState.cashReceivedAmount)
+    }
+  }
+
+  const saleDraftSnapshot = computed(() => getSaleDraftData())
+
+  const draft = useFormDraft({
+    formType: 'sale',
+    mode,
+    entityId: sale?.id ?? null,
+    watchSource: saleDraftSnapshot,
+    getData: () => getSaleDraftData(),
+    restoreData: (data) => restoreSaleDraftData(data as Record<string, unknown>),
+    getBaseline: () => saleDraftBaseline,
+  })
 
   const productsList = computed(() => (Array.isArray(products) ? products : products.value))
 
@@ -715,7 +775,8 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
 
     if (mode === 'create') {
       form.transform(() => formData).post(route('sales.store'), {
-        onSuccess: () => {
+        onSuccess: async () => {
+          await draft.markSubmitted()
           success('Vente enregistrée avec succès !')
           form.reset()
           clientErrors.value = {}
@@ -730,7 +791,8 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     if (!sale) return
 
     form.transform(() => formData).put(route('sales.update', { id: sale.id }), {
-      onSuccess: () => {
+      onSuccess: async () => {
+        await draft.markSubmitted()
         success('Vente modifiée avec succès !')
         clientErrors.value = {}
       },
@@ -798,5 +860,6 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     updateDiscountFromPercent,
     preparePreview,
     submit,
+    draft,
   }
 }

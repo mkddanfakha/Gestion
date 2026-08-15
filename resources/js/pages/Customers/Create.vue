@@ -6,6 +6,19 @@
         subtitle="Ajoutez un nouveau client à votre base"
         :back-href="route('customers.index')"
         back-label="Retour à la liste"
+      >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
+      </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="create"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
       />
 
       <form>
@@ -56,23 +69,16 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { validateCustomerField, validateCustomerForm } from '@/composables/useCustomerFormValidation'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 
 const { success, error } = useSweetAlert()
 
 const clientErrors = ref<Record<string, string>>({})
 
-const validateField = (fieldName: string, value: unknown) => {
-  if (clientErrors.value[fieldName]) {
-    delete clientErrors.value[fieldName]
-  }
-
-  const errorMessage = validateCustomerField(fieldName, value)
-  if (errorMessage) {
-    clientErrors.value[fieldName] = errorMessage
-  }
-}
-
-const form = useForm({
+const customerCreateBaseline = {
   name: '',
   email: '',
   phone: '',
@@ -85,6 +91,28 @@ const form = useForm({
   country: '',
   notes: '',
   is_active: true,
+}
+
+const validateField = (fieldName: string, value: unknown) => {
+  if (clientErrors.value[fieldName]) {
+    delete clientErrors.value[fieldName]
+  }
+
+  const errorMessage = validateCustomerField(fieldName, value)
+  if (errorMessage) {
+    clientErrors.value[fieldName] = errorMessage
+  }
+}
+
+const form = useForm({ ...customerCreateBaseline })
+
+const draft = useFormDraft({
+  formType: 'customer',
+  mode: 'create',
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => customerCreateBaseline,
 })
 
 const submit = () => {
@@ -98,7 +126,8 @@ const submit = () => {
   }
 
   form.post(route('customers.store'), {
-    onSuccess: () => {
+    onSuccess: async () => {
+      await draft.markSubmitted()
       success('Client créé avec succès !')
       form.reset()
       clientErrors.value = {}

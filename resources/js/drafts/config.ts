@@ -1,0 +1,122 @@
+import type { DraftFormConfig, DraftFormType } from './types'
+
+export const DRAFT_EXPIRATION_DAYS = 7
+
+export const DRAFT_LOCAL_SAVE_DEBOUNCE_MS = 300
+export const DRAFT_SERVER_SYNC_DEBOUNCE_MS = 2000
+
+export const DEFAULT_EXCLUDED_FIELDS = [
+  'password',
+  'password_confirmation',
+  'token',
+  'remember_token',
+  'two_factor_secret',
+  'two_factor_recovery_codes',
+  'api_key',
+  'secret',
+]
+
+export const draftConfigs: Record<DraftFormType, DraftFormConfig> = {
+  customer: {
+    enabled: true,
+    storage: 'local',
+    serverSync: false,
+    expirationDays: DRAFT_EXPIRATION_DAYS,
+    excludedFields: [...DEFAULT_EXCLUDED_FIELDS],
+    label: 'client',
+    createRestoreTitle: 'Un brouillon de client a été retrouvé.',
+    createRestoreContinue: 'Continuer la saisie',
+    createRestoreDiscard: 'Commencer un nouveau client',
+    editRestoreTitle: 'Une version non enregistrée de ce client a été retrouvée.',
+    editRestoreContinue: 'Restaurer',
+    editRestoreDiscard: 'Utiliser les données enregistrées',
+  },
+  product: {
+    enabled: true,
+    storage: 'local',
+    serverSync: false,
+    expirationDays: DRAFT_EXPIRATION_DAYS,
+    excludedFields: [...DEFAULT_EXCLUDED_FIELDS, 'image', 'images', 'uploadedFiles'],
+    label: 'produit',
+    createRestoreTitle: 'Un brouillon de produit a été retrouvé.',
+    createRestoreContinue: 'Continuer la saisie',
+    createRestoreDiscard: 'Commencer un nouveau produit',
+    editRestoreTitle: 'Une version non enregistrée de ce produit a été retrouvée.',
+    editRestoreContinue: 'Restaurer',
+    editRestoreDiscard: 'Utiliser les données enregistrées',
+  },
+  expense: {
+    enabled: true,
+    storage: 'local',
+    serverSync: false,
+    expirationDays: DRAFT_EXPIRATION_DAYS,
+    excludedFields: [...DEFAULT_EXCLUDED_FIELDS],
+    label: 'dépense',
+    createRestoreTitle: 'Un brouillon de dépense a été retrouvé.',
+    createRestoreContinue: 'Continuer la saisie',
+    createRestoreDiscard: 'Commencer une nouvelle dépense',
+    editRestoreTitle: 'Une version non enregistrée de cette dépense a été retrouvée.',
+    editRestoreContinue: 'Restaurer',
+    editRestoreDiscard: 'Utiliser les données enregistrées',
+  },
+  sale: {
+    enabled: true,
+    storage: 'indexeddb',
+    serverSync: true,
+    expirationDays: DRAFT_EXPIRATION_DAYS,
+    excludedFields: [...DEFAULT_EXCLUDED_FIELDS],
+    label: 'vente',
+    createRestoreTitle: 'Un brouillon de vente a été retrouvé.',
+    createRestoreContinue: 'Continuer la saisie',
+    createRestoreDiscard: 'Commencer une nouvelle vente',
+    editRestoreTitle: 'Une version non enregistrée de cette vente a été retrouvée.',
+    editRestoreContinue: 'Restaurer',
+    editRestoreDiscard: 'Utiliser les données enregistrées',
+  },
+  quote: {
+    enabled: true,
+    storage: 'indexeddb',
+    serverSync: true,
+    expirationDays: DRAFT_EXPIRATION_DAYS,
+    excludedFields: [...DEFAULT_EXCLUDED_FIELDS],
+    label: 'devis',
+    createRestoreTitle: 'Un brouillon de devis a été retrouvé.',
+    createRestoreContinue: 'Continuer la saisie',
+    createRestoreDiscard: 'Commencer un nouveau devis',
+    editRestoreTitle: 'Une version non enregistrée de ce devis a été retrouvée.',
+    editRestoreContinue: 'Restaurer',
+    editRestoreDiscard: 'Utiliser les données enregistrées',
+  },
+  purchase_order: {
+    enabled: true,
+    storage: 'indexeddb',
+    serverSync: true,
+    expirationDays: DRAFT_EXPIRATION_DAYS,
+    excludedFields: [...DEFAULT_EXCLUDED_FIELDS],
+    label: 'bon de commande',
+    createRestoreTitle: 'Un brouillon de bon de commande a été retrouvé.',
+    createRestoreContinue: 'Continuer la saisie',
+    createRestoreDiscard: 'Commencer un nouveau bon de commande',
+    editRestoreTitle: 'Une version non enregistrée de ce bon de commande a été retrouvée.',
+    editRestoreContinue: 'Restaurer',
+    editRestoreDiscard: 'Utiliser les données enregistrées',
+  },
+  delivery_note: {
+    enabled: true,
+    storage: 'indexeddb',
+    serverSync: true,
+    expirationDays: DRAFT_EXPIRATION_DAYS,
+    excludedFields: [...DEFAULT_EXCLUDED_FIELDS, 'invoice_file', 'invoiceFile'],
+    label: 'bon de livraison',
+    createRestoreTitle: 'Un brouillon de bon de livraison a été retrouvé.',
+    createRestoreContinue: 'Continuer la saisie',
+    createRestoreDiscard: 'Commencer un nouveau bon de livraison',
+    editRestoreTitle: 'Une version non enregistrée de ce bon de livraison a été retrouvée.',
+    editRestoreContinue: 'Restaurer',
+    editRestoreDiscard: 'Utiliser les données enregistrées',
+  },
+}
+
+export function getDraftConfig(formType: DraftFormType): DraftFormConfig {
+  return draftConfigs[formType]
+}

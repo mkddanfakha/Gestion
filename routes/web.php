@@ -11,6 +11,7 @@ use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\DeliveryNoteController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\QuoteController;
+use App\Http\Controllers\FormDraftController;
 use App\Http\Controllers\DocumentPreviewController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Admin\UserController;
@@ -64,6 +65,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Dépenses
     Route::resource('expenses', ExpenseController::class);
+
+    // Brouillons de formulaires (auto-save)
+    Route::prefix('drafts')->name('drafts.')->group(function () {
+        Route::get('/', [FormDraftController::class, 'show'])->name('show');
+        Route::put('/', [FormDraftController::class, 'upsert'])->name('upsert');
+        Route::delete('/scope', [FormDraftController::class, 'destroyByScope'])->name('destroy-scope');
+        Route::delete('/{draft}', [FormDraftController::class, 'destroy'])->name('destroy');
+    });
     
     // Fournisseurs
     Route::resource('suppliers', SupplierController::class);

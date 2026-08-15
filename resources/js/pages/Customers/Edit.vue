@@ -7,6 +7,9 @@
         :back-href="route('customers.index')"
         back-label="Retour à la liste"
       >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
         <template #actions>
           <Link :href="route('customers.show', { id: customer.id })" class="btn btn-outline-primary">
             <i class="bi bi-eye me-1"></i>
@@ -14,6 +17,15 @@
           </Link>
         </template>
       </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="edit"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
+      />
 
       <form @submit.prevent="submit">
         <div class="form-page__body">
@@ -56,6 +68,10 @@ import { ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { validateCustomerField, validateCustomerForm } from '@/composables/useCustomerFormValidation'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 
 interface Customer {
   id: number
@@ -91,7 +107,7 @@ const validateField = (fieldName: string, value: unknown) => {
   }
 }
 
-const form = useForm({
+const customerEditBaseline = {
   name: props.customer.name,
   email: props.customer.email || '',
   phone: props.customer.phone || '',
@@ -104,6 +120,18 @@ const form = useForm({
   country: props.customer.country || '',
   notes: props.customer.notes || '',
   is_active: props.customer.is_active,
+}
+
+const form = useForm({ ...customerEditBaseline })
+
+const draft = useFormDraft({
+  formType: 'customer',
+  mode: 'edit',
+  entityId: props.customer.id,
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => customerEditBaseline,
 })
 
 const submit = () => {
@@ -116,7 +144,8 @@ const submit = () => {
   }
 
   form.put(route('customers.update', { id: props.customer.id }), {
-    onSuccess: () => {
+    onSuccess: async () => {
+      await draft.markSubmitted()
       success('Client modifié avec succès !')
       clientErrors.value = {}
     },

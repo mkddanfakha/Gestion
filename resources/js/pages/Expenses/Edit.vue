@@ -6,6 +6,19 @@
         subtitle="Modifiez les informations de la dépense"
         :back-href="route('expenses.index')"
         back-label="Retour à la liste"
+      >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
+      </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="edit"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
       />
 
       <form>
@@ -262,6 +275,10 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 
 interface User {
   id: number
@@ -304,6 +321,18 @@ const form = useForm({
   receipt_number: props.expense.receipt_number || '',
   vendor: props.expense.vendor || '',
   notes: props.expense.notes || ''
+})
+
+const expenseEditBaseline = { ...form.data() } as Record<string, unknown>
+
+const draft = useFormDraft({
+  formType: 'expense',
+  mode: 'edit',
+  entityId: props.expense.id,
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => expenseEditBaseline,
 })
 
 // Client-side validation errors
@@ -402,7 +431,8 @@ const submit = () => {
   }
 
   form.put(route('expenses.update', { id: props.expense.id }), {
-    onSuccess: () => {
+    onSuccess: async () => {
+      await draft.markSubmitted()
       success('Dépense modifiée avec succès !')
     },
     onError: () => {

@@ -6,6 +6,19 @@
         subtitle="Modifiez les informations du devis"
         :back-href="route('quotes.index')"
         back-label="Retour à la liste"
+      >
+        <template #meta>
+          <DraftSaveStatus :status="draft.status" :last-saved-at="draft.lastSavedAt" />
+        </template>
+      </FormPageHeader>
+
+      <DraftRestoreDialog
+        :visible="draft.showRestoreDialog"
+        mode="edit"
+        :config="draft.config"
+        :draft="draft.pendingDraft"
+        @restore="draft.restoreDraft()"
+        @dismiss="draft.dismissDraft()"
       />
 
       <form>
@@ -288,6 +301,10 @@ import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
 import { usePermissions } from '@/composables/usePermissions'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { useFormDraft } from '@/composables/useFormDraft'
+import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
+import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 
 interface Customer {
   id: number
@@ -347,6 +364,18 @@ const form = useForm({
     unit_price: parseFloat(String(item.unit_price)) || 0,
     total_price: parseFloat(String(item.total_price)) || 0
   })) : []
+})
+
+const quoteEditBaseline = { ...form.data() } as Record<string, unknown>
+
+const draft = useFormDraft({
+  formType: 'quote',
+  mode: 'edit',
+  entityId: props.quote.id,
+  watchSource: form,
+  getData: () => form.data() as Record<string, unknown>,
+  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  getBaseline: () => quoteEditBaseline,
 })
 
 const addItem = () => {
@@ -532,7 +561,8 @@ const submit = () => {
   }
 
   form.transform(() => formData).put(route('quotes.update', { id: props.quote.id }), {
-    onSuccess: () => {
+    onSuccess: async () => {
+      await draft.markSubmitted()
       success('Devis modifié avec succès !')
     },
     onError: (errors) => {
