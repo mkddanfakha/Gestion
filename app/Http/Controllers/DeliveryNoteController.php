@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Company;
 use App\Services\ActivityLogger;
+use App\Services\PurchaseOrderDeliveryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +17,10 @@ use App\Traits\GeneratesPdf;
 class DeliveryNoteController extends Controller
 {
     use GeneratesPdf;
+
+    public function __construct(
+        private PurchaseOrderDeliveryService $deliveryService,
+    ) {}
     /**
      * Display a listing of the resource.
      */
@@ -81,11 +86,16 @@ class DeliveryNoteController extends Controller
                 ->find($request->purchase_order_id);
         }
 
+        $purchaseOrderReceipt = $purchaseOrder
+            ? $this->deliveryService->buildReceiptSummary($purchaseOrder)
+            : null;
+
         return Inertia::render('DeliveryNotes/Create', [
             'suppliers' => $suppliers,
             'products' => $products,
             'purchaseOrders' => $purchaseOrders,
             'purchaseOrder' => $purchaseOrder,
+            'purchaseOrderReceipt' => $purchaseOrderReceipt,
         ]);
     }
 
@@ -114,9 +124,21 @@ class DeliveryNoteController extends Controller
             'items.*.total_price' => 'required|numeric|min:0',
         ]);
 
+        $purchaseOrder = PurchaseOrder::with('items.product')->findOrFail($validated['purchase_order_id']);
+
+        if (! $this->deliveryService->canCreateDelivery($purchaseOrder)) {
+            return back()->withErrors([
+                'purchase_order_id' => 'Ce bon de commande ne peut plus recevoir de livraison.',
+            ]);
+        }
+
+        $this->deliveryService->assertDeliveryQuantities($purchaseOrder, $request->items);
+
         // Générer automatiquement le numéro de BL
         $validated['delivery_number'] = DeliveryNote::generateDeliveryNumber();
         $validated['user_id'] = auth()->id();
+        $shouldValidateImmediately = $validated['status'] === 'validated';
+        $validated['status'] = 'pending';
 
         $dn = DeliveryNote::create($validated);
 
@@ -128,14 +150,10 @@ class DeliveryNoteController extends Controller
         // Recharger la relation items pour s'assurer que tous les items sont disponibles
         $dn->load('items');
 
-        // Si le statut est validé, ajuster le stock
-        if ($validated['status'] === 'validated') {
-            $dn->validate();
-        }
-
         ActivityLogger::logCreate('Bon de livraison', $dn);
-        if ($validated['status'] === 'validated') {
-            ActivityLogger::logValidate('Bon de livraison', $dn);
+
+        if ($shouldValidateImmediately) {
+            $this->deliveryService->validateDeliveryNote($dn);
         }
 
         return redirect()->route('delivery-notes.index')
@@ -227,6 +245,13 @@ class DeliveryNoteController extends Controller
             'items.*.total_price' => 'required|numeric|min:0',
         ]);
 
+        $purchaseOrder = PurchaseOrder::with('items.product')->findOrFail($validated['purchase_order_id']);
+        $this->deliveryService->assertDeliveryQuantities($purchaseOrder, $request->items, $deliveryNote);
+
+        $shouldValidate = $validated['status'] === 'validated' && $oldStatus !== 'validated';
+        $shouldCancel = $validated['status'] === 'cancelled' && $oldStatus !== 'cancelled';
+        $validated['status'] = $deliveryNote->status;
+
         \DB::transaction(function () use ($validated, $deliveryNote, $request) {
             // Mettre à jour le bon de livraison
             $deliveryNote->update($validated);
@@ -272,10 +297,10 @@ class DeliveryNoteController extends Controller
 
         $deliveryNote->refresh();
 
-        if ($validated['status'] === 'validated' && $oldStatus !== 'validated') {
-            ActivityLogger::logValidate('Bon de livraison', $deliveryNote);
-        } elseif ($validated['status'] === 'cancelled' && $oldStatus !== 'cancelled') {
-            ActivityLogger::logCancel('Bon de livraison', $deliveryNote);
+        if ($shouldValidate) {
+            $this->deliveryService->validateDeliveryNote($deliveryNote);
+        } elseif ($shouldCancel) {
+            $this->deliveryService->cancelDeliveryNote($deliveryNote);
         } else {
             ActivityLogger::logUpdate('Bon de livraison', $deliveryNote);
         }
@@ -315,16 +340,36 @@ class DeliveryNoteController extends Controller
             return back()->withErrors(['message' => 'Ce bon de livraison ne peut pas être validé.']);
         }
 
-        $success = $deliveryNote->validate();
+        $success = $this->deliveryService->validateDeliveryNote($deliveryNote);
 
         if ($success) {
-            ActivityLogger::logValidate('Bon de livraison', $deliveryNote);
-
             return redirect()->route('delivery-notes.show', $deliveryNote)
                 ->with('success', 'Bon de livraison validé et stock ajusté avec succès.');
         }
 
         return back()->withErrors(['message' => 'Erreur lors de la validation du bon de livraison.']);
+    }
+
+    /**
+     * Annuler un bon de livraison
+     */
+    public function cancel(Request $request, DeliveryNote $deliveryNote)
+    {
+        $this->checkPermission($request, 'delivery-notes', 'update');
+
+        if ($deliveryNote->status === 'cancelled') {
+            return redirect()->route('delivery-notes.show', $deliveryNote)
+                ->with('success', 'Ce bon de livraison est déjà annulé.');
+        }
+
+        $success = $this->deliveryService->cancelDeliveryNote($deliveryNote);
+
+        if ($success) {
+            return redirect()->route('delivery-notes.show', $deliveryNote)
+                ->with('success', 'Bon de livraison annulé et stock recalculé avec succès.');
+        }
+
+        return back()->withErrors(['message' => 'Erreur lors de l\'annulation du bon de livraison.']);
     }
 
     /**

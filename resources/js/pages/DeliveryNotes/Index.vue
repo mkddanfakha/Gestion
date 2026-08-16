@@ -178,8 +178,10 @@
                       @click="validateDeliveryNote(dn)"
                       class="btn btn-sm btn-outline-success"
                       title="Valider"
+                      :disabled="validatingIds.has(dn.id)"
                     >
-                      <i class="bi bi-check-circle"></i>
+                      <span v-if="validatingIds.has(dn.id)" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      <i v-else class="bi bi-check-circle"></i>
                     </button>
                     <button
                       v-if="dn.status === 'pending'"
@@ -261,6 +263,7 @@ const props = defineProps<Props>()
 const { success, error, confirm } = useSweetAlert()
 
 const filters = ref({ ...props.filters })
+const validatingIds = ref<Set<number>>(new Set())
 
 // Computed pour les statistiques
 const validatedCount = computed(() => {
@@ -293,17 +296,27 @@ const clearFilters = () => {
 }
 
 const validateDeliveryNote = async (dn: DeliveryNote) => {
+  if (validatingIds.value.has(dn.id)) {
+    return
+  }
+
   const confirmed = await confirm(`Êtes-vous sûr de vouloir valider le bon de livraison "${dn.delivery_number}" ? Le stock sera ajusté.`)
   
   if (confirmed) {
-    router.post(route('delivery-notes.validate', { id: dn.id }), {}, {
+    validatingIds.value = new Set([...validatingIds.value, dn.id])
+    router.post(route('delivery-notes.validate', { deliveryNote: dn.id }), {}, {
       onSuccess: () => {
         success(`Bon de livraison "${dn.delivery_number}" validé et stock ajusté avec succès !`)
       },
       onError: (errors) => {
         const errorMessage = errors.message || 'Erreur lors de la validation du bon de livraison.'
         error(errorMessage)
-      }
+      },
+      onFinish: () => {
+        const next = new Set(validatingIds.value)
+        next.delete(dn.id)
+        validatingIds.value = next
+      },
     })
   }
 }

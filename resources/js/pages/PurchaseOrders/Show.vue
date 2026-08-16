@@ -71,6 +71,64 @@
           </div>
         </div>
 
+        <!-- État de la commande -->
+        <div class="card mb-4" v-if="receiptSummary">
+          <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="card-title mb-0">État de la commande</h5>
+            <span class="badge" :class="getStatusBadgeClass(purchaseOrder.status)">
+              {{ purchaseOrder.status_label }}
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="row g-3 mb-3">
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Commandé</div>
+                <div class="fs-5 fw-semibold">{{ receiptSummary.totals.ordered }}</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Livré</div>
+                <div class="fs-5 fw-semibold text-success">{{ receiptSummary.totals.delivered }}</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Restant</div>
+                <div class="fs-5 fw-semibold text-primary">{{ receiptSummary.totals.remaining }}</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Progression</div>
+                <div class="fs-5 fw-semibold">{{ receiptSummary.progress_percent }} %</div>
+              </div>
+            </div>
+
+            <div class="progress mb-3" style="height: 1.25rem;">
+              <div
+                class="progress-bar"
+                :class="receiptSummary.is_fully_delivered ? 'bg-success' : 'bg-primary'"
+                role="progressbar"
+                :style="{ width: `${Math.min(receiptSummary.progress_percent, 100)}%` }"
+                :aria-valuenow="receiptSummary.progress_percent"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                {{ receiptSummary.progress_percent }} %
+              </div>
+            </div>
+
+            <div v-if="receiptSummary.is_fully_delivered" class="alert alert-success mb-0">
+              <i class="bi bi-check-circle me-1"></i>
+              Commande entièrement livrée
+            </div>
+            <div v-else-if="receiptSummary.can_create_delivery && canCreateDeliveryNote" class="d-grid d-md-block">
+              <Link
+                :href="route('delivery-notes.create', { purchase_order_id: purchaseOrder.id })"
+                class="btn btn-primary"
+              >
+                <i class="bi bi-plus-circle me-1"></i>
+                Créer un bon de livraison
+              </Link>
+            </div>
+          </div>
+        </div>
+
         <!-- Articles du bon de commande -->
         <div class="card">
           <div class="card-header">
@@ -87,7 +145,9 @@
                 <thead class="table-light">
                   <tr>
                     <th>Produit</th>
-                    <th>Quantité</th>
+                    <th>Commandé</th>
+                    <th>Livré</th>
+                    <th>Restant</th>
                     <th>Prix unitaire</th>
                     <th>Total</th>
                   </tr>
@@ -126,7 +186,13 @@
                       </div>
                     </td>
                     <td class="align-middle">
-                      <span class="badge bg-secondary">{{ item.quantity }}</span>
+                      <span class="badge bg-secondary">{{ item.ordered_quantity ?? item.quantity }}</span>
+                    </td>
+                    <td class="align-middle">
+                      <span class="badge bg-success">{{ item.delivered_quantity ?? 0 }}</span>
+                    </td>
+                    <td class="align-middle">
+                      <span class="badge bg-primary">{{ item.remaining_quantity ?? item.quantity }}</span>
                     </td>
                     <td class="align-middle">{{ formatCurrency(item.unit_price) }}</td>
                     <td class="align-middle fw-medium text-success">{{ formatCurrency(item.total_price) }}</td>
@@ -181,6 +247,7 @@
               <i class="bi bi-inbox fs-1 mb-3"></i>
               <p>Aucun bon de livraison pour ce bon de commande.</p>
               <Link
+                v-if="receiptSummary?.can_create_delivery && canCreateDeliveryNote"
                 :href="route('delivery-notes.create', { purchase_order_id: purchaseOrder.id })"
                 class="btn btn-primary btn-sm"
               >
@@ -189,41 +256,35 @@
               </Link>
             </div>
             
-            <div v-else class="table-responsive">
-              <table class="table table-hover mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>Numéro</th>
-                    <th>Date de livraison</th>
-                    <th>Montant</th>
-                    <th>Statut</th>
-                    <th class="text-end">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="dn in purchaseOrder.delivery_notes" :key="dn.id">
-                    <td>
-                      <code class="text-dark">{{ dn.delivery_number }}</code>
-                    </td>
-                    <td>{{ formatDate(dn.delivery_date) }}</td>
-                    <td class="fw-medium text-success">{{ formatCurrency(dn.total_amount) }}</td>
-                    <td>
-                      <span class="badge" :class="getStatusBadgeClass(dn.status)">
-                        {{ dn.status_label }}
-                      </span>
-                    </td>
-                    <td class="text-end">
-                      <Link
-                        :href="route('delivery-notes.show', { id: dn.id })"
-                        class="btn btn-sm btn-outline-primary"
-                        title="Voir"
-                      >
-                        <i class="bi bi-eye"></i>
-                      </Link>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div v-else>
+              <div
+                v-for="dn in purchaseOrder.delivery_notes"
+                :key="dn.id"
+                class="border rounded p-3 mb-3"
+              >
+                <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                  <div>
+                    <div class="fw-semibold font-monospace">{{ dn.delivery_number }}</div>
+                    <div class="text-muted small">{{ formatDate(dn.delivery_date) }}</div>
+                  </div>
+                  <span class="badge" :class="getDeliveryStatusBadgeClass(dn.status)">
+                    {{ dn.status_label || dn.status }}
+                  </span>
+                </div>
+                <div class="mt-2">
+                  <span class="badge bg-secondary me-2">{{ dn.total_quantity ?? 0 }} unité(s)</span>
+                  <span class="text-success fw-medium">{{ formatCurrency(dn.total_amount) }}</span>
+                </div>
+                <div class="mt-3">
+                  <Link
+                    :href="route('delivery-notes.show', { id: dn.id })"
+                    class="btn btn-sm btn-outline-primary"
+                  >
+                    <i class="bi bi-eye me-1"></i>
+                    Voir
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -299,6 +360,8 @@ import { usePermissions } from '@/composables/usePermissions'
 import { ref } from 'vue'
 import { formatCurrency } from '@/utils/currencyFormatter'
 
+import type { PurchaseOrderReceiptSummary } from '@/composables/usePurchaseOrderReceipt'
+
 interface Category {
   id: number
   name: string
@@ -317,8 +380,21 @@ interface PurchaseOrderItem {
   id: number
   product?: Product
   quantity: number
+  ordered_quantity?: number
+  delivered_quantity?: number
+  remaining_quantity?: number
   unit_price: number
   total_price: number
+}
+
+interface DeliveryNoteSummary {
+  id: number
+  delivery_number: string
+  delivery_date: string
+  total_amount: number
+  total_quantity?: number
+  status: string
+  status_label?: string
 }
 
 interface PurchaseOrder {
@@ -336,10 +412,12 @@ interface PurchaseOrder {
   discount_amount: number
   total_amount: number
   items?: PurchaseOrderItem[]
+  delivery_notes?: DeliveryNoteSummary[]
 }
 
 interface Props {
   purchaseOrder: PurchaseOrder
+  receiptSummary?: PurchaseOrderReceiptSummary | null
 }
 
 const props = defineProps<Props>()
@@ -347,6 +425,7 @@ const props = defineProps<Props>()
 const { success, error, confirm } = useSweetAlert()
 const { openFromUrl } = useDocumentPdfPreview()
 const { canAny } = usePermissions()
+const canCreateDeliveryNote = canAny('delivery-notes', ['create'])
 const canPreviewPurchaseOrder = canAny('purchase-orders', ['print', 'create', 'update'])
 
 const isDownloading = ref(false)
@@ -365,6 +444,15 @@ const getStatusBadgeClass = (status: string) => {
     partially_received: 'bg-primary',
     received: 'bg-success',
     cancelled: 'bg-danger'
+  }
+  return classes[status] || 'bg-secondary'
+}
+
+const getDeliveryStatusBadgeClass = (status: string) => {
+  const classes: Record<string, string> = {
+    pending: 'bg-warning text-dark',
+    validated: 'bg-success',
+    cancelled: 'bg-danger',
   }
   return classes[status] || 'bg-secondary'
 }

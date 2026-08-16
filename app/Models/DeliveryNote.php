@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PurchaseOrderDeliveryService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -156,31 +157,14 @@ class DeliveryNote extends Model
      */
     public function validate(): bool
     {
-        if ($this->status !== 'pending') {
-            return false;
-        }
+        return app(PurchaseOrderDeliveryService::class)->validateDeliveryNote($this);
+    }
 
-        \DB::transaction(function () {
-            foreach ($this->items as $item) {
-                $product = $item->product;
-                
-                if ($product) {
-                    // Ajuster le stock
-                    $product->increment('stock_quantity', $item->quantity);
-                    
-                    // Mettre à jour le prix d'achat si nécessaire
-                    if ($item->unit_price > 0) {
-                        $product->cost_price = $item->unit_price;
-                        $product->save();
-                    }
-                }
-            }
-            
-            // Marquer le bon de livraison comme validé
-            $this->status = 'validated';
-            $this->save();
-        });
-
-        return true;
+    /**
+     * Annuler le bon de livraison et inverser l'impact stock si nécessaire
+     */
+    public function cancel(): bool
+    {
+        return app(PurchaseOrderDeliveryService::class)->cancelDeliveryNote($this);
     }
 }

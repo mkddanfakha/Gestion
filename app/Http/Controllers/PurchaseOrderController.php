@@ -7,6 +7,7 @@ use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\Company;
 use App\Services\ActivityLogger;
+use App\Services\PurchaseOrderDeliveryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Traits\GeneratesPdf;
@@ -14,6 +15,10 @@ use App\Traits\GeneratesPdf;
 class PurchaseOrderController extends Controller
 {
     use GeneratesPdf;
+
+    public function __construct(
+        private PurchaseOrderDeliveryService $deliveryService,
+    ) {}
     /**
      * Display a listing of the resource.
      */
@@ -126,20 +131,38 @@ class PurchaseOrderController extends Controller
     {
         $this->checkPermission($request, 'purchase-orders', 'view');
         
-        $purchaseOrder->load(['supplier', 'user', 'items.product', 'items.product.category', 'items.product.media', 'deliveryNotes']);
+        $purchaseOrder->load(['supplier', 'user', 'items.product', 'items.product.category', 'items.product.media', 'deliveryNotes.items']);
+
+        $receiptSummary = $this->deliveryService->buildReceiptSummary($purchaseOrder);
         
         // Ajouter l'URL de la première image pour chaque produit
-        $purchaseOrder->items->transform(function ($item) {
+        $purchaseOrder->items->transform(function ($item) use ($receiptSummary) {
             if ($item->product) {
                 $item->product->image_url = $item->product->getThumbImageUrl();
             }
+
+            $line = collect($receiptSummary['items'] ?? [])->firstWhere('purchase_order_item_id', $item->id);
+            if ($line) {
+                $item->setAttribute('ordered_quantity', $line['ordered_quantity']);
+                $item->setAttribute('delivered_quantity', $line['delivered_quantity']);
+                $item->setAttribute('remaining_quantity', $line['remaining_quantity']);
+            }
+
             return $item;
+        });
+
+        $purchaseOrder->deliveryNotes->transform(function ($deliveryNote) {
+            $deliveryNote->setAttribute('status_label', $deliveryNote->status_label);
+            $deliveryNote->setAttribute('total_quantity', (int) $deliveryNote->items->sum('quantity'));
+
+            return $deliveryNote;
         });
         
         $purchaseOrder->setAttribute('status_label', $purchaseOrder->status_label);
 
         return Inertia::render('PurchaseOrders/Show', [
             'purchaseOrder' => $purchaseOrder,
+            'receiptSummary' => $receiptSummary,
         ]);
     }
 
@@ -226,6 +249,20 @@ class PurchaseOrderController extends Controller
 
         return redirect()->route('purchase-orders.index')
             ->with('success', 'Bon de commande supprimé avec succès.');
+    }
+
+    /**
+     * Résumé des quantités livrées / restantes pour un bon de commande
+     */
+    public function receiptSummary(Request $request, PurchaseOrder $purchaseOrder)
+    {
+        $this->checkPermission($request, 'delivery-notes', 'create');
+
+        return response()->json(
+            $this->deliveryService->buildReceiptSummary(
+                $purchaseOrder->load(['items.product']),
+            ),
+        );
     }
 
     /**

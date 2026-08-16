@@ -181,6 +181,30 @@
                   class="border rounded p-3 mb-3 form-line-item-card"
                 >
                   <div class="row g-3">
+                    <div
+                      v-if="item.ordered_quantity !== undefined"
+                      class="col-12"
+                    >
+                      <div class="row g-2 small text-muted">
+                        <div class="col-6 col-md-3">
+                          <span class="d-block">Commandé</span>
+                          <strong class="text-dark">{{ item.ordered_quantity }}</strong>
+                        </div>
+                        <div class="col-6 col-md-3">
+                          <span class="d-block">Déjà livré</span>
+                          <strong class="text-dark">{{ item.delivered_quantity ?? 0 }}</strong>
+                        </div>
+                        <div class="col-6 col-md-3">
+                          <span class="d-block">Restant</span>
+                          <strong class="text-primary">{{ item.remaining_quantity ?? 0 }}</strong>
+                        </div>
+                        <div class="col-6 col-md-3">
+                          <span class="d-block">Disponible</span>
+                          <strong class="text-success">{{ item.available_quantity ?? 0 }}</strong>
+                        </div>
+                      </div>
+                    </div>
+
                     <div class="col-12 col-md-5">
                       <label class="form-label">Produit <span class="text-danger">*</span></label>
                       <ProductAutocomplete
@@ -200,11 +224,12 @@
                     </div>
 
                     <div class="col-12 col-md-2">
-                      <label class="form-label">Quantité <span class="text-danger">*</span></label>
+                      <label class="form-label">Quantité à livrer <span class="text-danger">*</span></label>
                       <input
                         v-model.number="item.quantity"
                         type="number"
                         min="1"
+                        :max="item.available_quantity || undefined"
                         required
                         class="form-control"
                         :class="{ 'is-invalid': clientErrors[`items.${index}.quantity`] }"
@@ -362,6 +387,11 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import {
+  fetchPurchaseOrderReceiptSummary,
+  validateDeliveryQuantityAgainstReceipt,
+  type PurchaseOrderReceiptSummary,
+} from '@/composables/usePurchaseOrderReceipt'
 import { usePermissions } from '@/composables/usePermissions'
 
 interface Supplier {
@@ -387,6 +417,10 @@ interface DNItem {
   quantity: number
   unit_price: number
   total_price: number
+  ordered_quantity?: number
+  delivered_quantity?: number
+  remaining_quantity?: number
+  available_quantity?: number
 }
 
 interface Props {
@@ -394,6 +428,7 @@ interface Props {
   products: Product[]
   purchaseOrders: PurchaseOrder[]
   purchaseOrder?: any
+  purchaseOrderReceipt?: PurchaseOrderReceiptSummary | null
 }
 
 const props = defineProps<Props>()
@@ -408,6 +443,26 @@ const isPreviewing = ref(false)
 const poSearchQuery = ref('')
 const showPOSuggestions = ref(false)
 const selectedPurchaseOrder = ref<PurchaseOrder | null>(null)
+const receiptSummary = ref<PurchaseOrderReceiptSummary | null>(props.purchaseOrderReceipt ?? null)
+
+const buildItemsFromReceipt = (summary: PurchaseOrderReceiptSummary | null): DNItem[] => {
+  if (!summary) {
+    return []
+  }
+
+  return summary.items
+    .filter((line) => line.available_quantity > 0)
+    .map((line) => ({
+      product_id: line.product_id,
+      quantity: line.available_quantity,
+      unit_price: Number(line.unit_price) || 0,
+      total_price: line.available_quantity * (Number(line.unit_price) || 0),
+      ordered_quantity: line.ordered_quantity,
+      delivered_quantity: line.delivered_quantity,
+      remaining_quantity: line.remaining_quantity,
+      available_quantity: line.available_quantity,
+    }))
+}
 
 const form = useForm({
   supplier_id: props.purchaseOrder?.supplier_id || '',
@@ -420,12 +475,7 @@ const form = useForm({
   discount_amount: 0,
   subtotal: 0,
   total_amount: 0,
-  items: props.purchaseOrder?.items?.map((item: any) => ({
-    product_id: item.product_id || 0,
-    quantity: Number(item.quantity) || 1,
-    unit_price: Number(item.unit_price) || 0,
-    total_price: Number(item.quantity || 1) * Number(item.unit_price || 0)
-  })) || [] as DNItem[]
+  items: buildItemsFromReceipt(props.purchaseOrderReceipt ?? null) as DNItem[]
 })
 
 const dnCreateBaseline = { ...form.data() } as Record<string, unknown>
@@ -462,11 +512,19 @@ const handlePOSearch = () => {
   showPOSuggestions.value = true
 }
 
-const selectPurchaseOrder = (po: PurchaseOrder) => {
+const selectPurchaseOrder = async (po: PurchaseOrder) => {
   selectedPurchaseOrder.value = po
   form.purchase_order_id = po.id
   poSearchQuery.value = po.po_number
   showPOSuggestions.value = false
+
+  try {
+    receiptSummary.value = await fetchPurchaseOrderReceiptSummary(po.id)
+    form.items = buildItemsFromReceipt(receiptSummary.value)
+    updateTotals()
+  } catch (err) {
+    error('Impossible de charger les quantités restantes du bon de commande.')
+  }
 }
 
 // Réinitialiser le bon de commande quand le fournisseur change
@@ -475,6 +533,7 @@ const watchSupplierChange = () => {
   form.items = []
   poSearchQuery.value = ''
   selectedPurchaseOrder.value = null
+  receiptSummary.value = null
   showPOSuggestions.value = false
 }
 
@@ -485,6 +544,7 @@ watch(() => form.supplier_id, () => {
     form.items = []
     poSearchQuery.value = ''
     selectedPurchaseOrder.value = null
+    receiptSummary.value = null
     showPOSuggestions.value = false
   }
 })
@@ -734,6 +794,15 @@ const validateForm = (): Record<string, string> | null => {
     
     if (!item.quantity || item.quantity < 1) {
       errors[`items.${index}.quantity`] = 'La quantité doit être supérieure à 0'
+    } else {
+      const receiptError = validateDeliveryQuantityAgainstReceipt(
+        receiptSummary.value,
+        item.product_id,
+        item.quantity,
+      )
+      if (receiptError) {
+        errors[`items.${index}.quantity`] = receiptError
+      }
     }
     
     if (!item.unit_price || item.unit_price < 0) {
@@ -772,6 +841,16 @@ const validateItemField = (index: number, fieldName: string, value: any) => {
     case 'quantity':
       if (!value || value < 1) {
         errorMessage = 'La quantité doit être supérieure à 0'
+      } else {
+        const item = form.items[index]
+        const receiptError = validateDeliveryQuantityAgainstReceipt(
+          receiptSummary.value,
+          item.product_id,
+          Number(value),
+        )
+        if (receiptError) {
+          errorMessage = receiptError
+        }
       }
       break
       
@@ -792,6 +871,7 @@ onMounted(() => {
   if (props.purchaseOrder) {
     selectedPurchaseOrder.value = props.purchaseOrder
     poSearchQuery.value = props.purchaseOrder.po_number
+    receiptSummary.value = props.purchaseOrderReceipt ?? receiptSummary.value
   }
   
   // Initialiser les totaux si des items sont déjà présents

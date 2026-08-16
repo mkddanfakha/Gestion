@@ -242,10 +242,20 @@
                 v-if="deliveryNote.status === 'pending' && isAdmin"
                 @click="validateDeliveryNote"
                 class="btn btn-success"
+                :disabled="isValidating || isDownloading || isPrinting"
+              >
+                <span v-if="isValidating" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <i v-else class="bi bi-check-circle me-1"></i>
+                {{ isValidating ? 'Validation...' : 'Valider le BL' }}
+              </button>
+              <button
+                v-if="deliveryNote.status !== 'cancelled' && canUpdateDeliveryNote"
+                @click="cancelDeliveryNote"
+                class="btn btn-outline-warning"
                 :disabled="isDownloading || isPrinting"
               >
-                <i class="bi bi-check-circle me-1"></i>
-                Valider le BL
+                <i class="bi bi-x-circle me-1"></i>
+                Annuler le BL
               </button>
               <button
                 v-if="deliveryNote.status === 'pending'"
@@ -392,10 +402,13 @@ const { success, error, confirm } = useSweetAlert()
 const { openFromUrl } = useDocumentPdfPreview()
 const { canAny } = usePermissions()
 const canPreviewDeliveryNote = canAny('delivery-notes', ['print', 'create', 'update'])
+const canUpdateDeliveryNote = canAny('delivery-notes', ['update'])
 
 const isDownloading = ref(false)
 const isPrinting = ref(false)
 const isPreviewing = ref(false)
+const isValidating = ref(false)
+const isCancelling = ref(false)
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')
@@ -479,17 +492,49 @@ const formatSize = (bytes: number) => {
 }
 
 const validateDeliveryNote = async () => {
+  if (isValidating.value) {
+    return
+  }
+
   const confirmed = await confirm(`Êtes-vous sûr de vouloir valider le bon de livraison "${props.deliveryNote.delivery_number}" ? Le stock sera ajusté.`)
   
   if (confirmed) {
-    router.post(route('delivery-notes.validate', { id: props.deliveryNote.id }), {}, {
+    isValidating.value = true
+    router.post(route('delivery-notes.validate', { deliveryNote: props.deliveryNote.id }), {}, {
       onSuccess: () => {
         success(`Bon de livraison "${props.deliveryNote.delivery_number}" validé et stock ajusté avec succès !`)
       },
       onError: (errors) => {
         const errorMessage = errors.message || 'Erreur lors de la validation du bon de livraison.'
         error(errorMessage)
-      }
+      },
+      onFinish: () => {
+        isValidating.value = false
+      },
+    })
+  }
+}
+
+const cancelDeliveryNote = async () => {
+  if (isCancelling.value) {
+    return
+  }
+
+  const confirmed = await confirm(`Annuler le bon de livraison "${props.deliveryNote.delivery_number}" ? Le stock et le bon de commande seront recalculés.`)
+
+  if (confirmed) {
+    isCancelling.value = true
+    router.post(route('delivery-notes.cancel', { deliveryNote: props.deliveryNote.id }), {}, {
+      onSuccess: () => {
+        success(`Bon de livraison "${props.deliveryNote.delivery_number}" annulé avec succès.`)
+      },
+      onError: (errors) => {
+        const errorMessage = errors.message || 'Erreur lors de l\'annulation du bon de livraison.'
+        error(errorMessage)
+      },
+      onFinish: () => {
+        isCancelling.value = false
+      },
     })
   }
 }

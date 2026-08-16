@@ -81,6 +81,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Bons de commande
     Route::resource('purchase-orders', PurchaseOrderController::class);
+    Route::get('/purchase-orders/{purchaseOrder}/receipt-summary', [PurchaseOrderController::class, 'receiptSummary'])->name('purchase-orders.receipt-summary');
     Route::get('/purchase-orders/{purchaseOrder}/download', [PurchaseOrderController::class, 'downloadPurchaseOrder'])->name('purchase-orders.download');
     Route::get('/purchase-orders/{purchaseOrder}/print', [PurchaseOrderController::class, 'printPurchaseOrder'])->name('purchase-orders.print');
     Route::post('/purchase-orders/preview', [DocumentPreviewController::class, 'purchaseOrder'])->name('purchase-orders.preview');
@@ -90,6 +91,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/delivery-notes/{deliveryNote}/validate', [DeliveryNoteController::class, 'validate'])
         ->middleware(EnsureUserIsAdmin::class)
         ->name('delivery-notes.validate');
+    Route::post('/delivery-notes/{deliveryNote}/cancel', [DeliveryNoteController::class, 'cancel'])
+        ->name('delivery-notes.cancel');
     Route::get('/delivery-notes/{deliveryNote}/download', [DeliveryNoteController::class, 'downloadDeliveryNote'])->name('delivery-notes.download');
     Route::get('/delivery-notes/{deliveryNote}/print', [DeliveryNoteController::class, 'printDeliveryNote'])->name('delivery-notes.print');
     Route::post('/delivery-notes/preview', [DocumentPreviewController::class, 'deliveryNote'])->name('delivery-notes.preview');
