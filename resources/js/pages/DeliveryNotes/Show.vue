@@ -148,6 +148,28 @@
             </div>
           </div>
         </div>
+
+        <!-- Pièces jointes -->
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+              <i class="bi bi-paperclip me-2"></i>
+              Pièces jointes
+            </h5>
+            <span v-if="deliveryNote.attachments?.length" class="badge bg-secondary">
+              {{ deliveryNote.attachments.length }}
+            </span>
+          </div>
+          <div class="card-body">
+            <AttachmentList
+              v-if="deliveryNote.attachments?.length"
+              :attachments="deliveryNote.attachments"
+              :allow-delete="canUpdateDeliveryNote"
+              @preview="openAttachmentPreview"
+            />
+            <p v-else class="text-muted mb-0">Aucune pièce jointe.</p>
+          </div>
+        </div>
       </div>
 
       <!-- Sidebar -->
@@ -334,13 +356,15 @@
 <script setup lang="ts">
 import { formatCurrency } from '@/utils/currencyFormatter'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { Link, router } from '@inertiajs/vue3'
+import AttachmentList from '@/components/attachments/AttachmentList.vue'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import { useDocumentPreview } from '@/composables/useDocumentPreview'
 import { usePermissions } from '@/composables/usePermissions'
+import type { AttachmentRecord } from '@/types/attachment'
 import { ref, computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
 
 interface Category {
   id: number
@@ -384,6 +408,7 @@ interface DeliveryNote {
   invoice_file_name?: string
   invoice_file_mime?: string
   invoice_file_size?: number
+  attachments?: AttachmentRecord[]
 }
 
 interface Props {
@@ -400,6 +425,7 @@ const isAdmin = computed(() => {
 
 const { success, error, confirm } = useSweetAlert()
 const { openFromUrl } = useDocumentPdfPreview()
+const { openAttachment } = useDocumentPreview()
 const { canAny } = usePermissions()
 const canPreviewDeliveryNote = canAny('delivery-notes', ['print', 'create', 'update'])
 const canUpdateDeliveryNote = canAny('delivery-notes', ['update'])
@@ -409,6 +435,10 @@ const isPrinting = ref(false)
 const isPreviewing = ref(false)
 const isValidating = ref(false)
 const isCancelling = ref(false)
+
+const openAttachmentPreview = (attachment: AttachmentRecord) => {
+  void openAttachment(attachment, `Aperçu — ${attachment.original_name}`)
+}
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')

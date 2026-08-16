@@ -8,6 +8,7 @@
       :purchase-order="purchaseOrder"
       :purchase-order-receipt="purchaseOrderReceipt"
       :initial-purchase-order-id="purchaseOrder?.id ?? null"
+      :attachment-config="attachmentConfig"
     />
   </AppLayout>
 </template>
@@ -21,6 +22,7 @@ import type {
   DeliveryNoteFormPurchaseOrder,
   DeliveryNoteFormSupplier,
 } from '@/composables/useDeliveryNoteForm'
+import type { AttachmentConfig } from '@/types/attachment'
 
 defineProps<{
   suppliers: DeliveryNoteFormSupplier[]
@@ -28,5 +30,6 @@ defineProps<{
   purchaseOrders: DeliveryNoteFormPurchaseOrder[]
   purchaseOrder?: DeliveryNoteFormPurchaseOrder | null
   purchaseOrderReceipt?: PurchaseOrderReceiptSummary | null
+  attachmentConfig: AttachmentConfig
 }>()
 </script>

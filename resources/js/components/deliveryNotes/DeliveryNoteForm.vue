@@ -674,6 +674,32 @@
           </div>
         </div>
 
+        <div v-if="!isFormDisabled" class="card sale-card mb-4">
+          <div class="card-header sale-card-header d-flex justify-content-between align-items-center">
+            <span>
+              <i class="bi bi-paperclip me-2"></i>
+              Pièces jointes
+            </span>
+            <span v-if="existingAttachments.length" class="badge bg-secondary">
+              {{ existingAttachments.length }}
+            </span>
+          </div>
+          <div class="card-body">
+            <AttachmentUploader
+              v-model="pendingFiles"
+              :attachments="existingAttachments"
+              :max-files="resolvedAttachmentConfig.maxFiles"
+              :max-size-kb="resolvedAttachmentConfig.maxSizeKb"
+              :accept="resolvedAttachmentConfig.accept"
+              hint="Les nouveaux fichiers seront ajoutés à l'enregistrement. Ils ne sont pas sauvegardés dans le brouillon."
+              @preview="openAttachmentPreview"
+            />
+            <div v-if="errors.attachments" class="text-danger small mt-2">
+              {{ errors.attachments }}
+            </div>
+          </div>
+        </div>
+
         <FormActionsBar class="form-actions-bar--split">
           <Link :href="route('delivery-notes.index')" class="btn btn-outline-secondary order-1 order-sm-1">
             <i class="bi bi-x-lg me-1"></i>
@@ -728,8 +754,12 @@ import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
+import AttachmentUploader from '@/components/attachments/AttachmentUploader.vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import { useDocumentPreview } from '@/composables/useDocumentPreview'
+import type { AttachmentConfig, AttachmentRecord } from '@/types/attachment'
+import { DEFAULT_ATTACHMENT_CONFIG } from '@/types/attachment'
 import type { PurchaseOrderReceiptSummary } from '@/composables/usePurchaseOrderReceipt'
 import {
   useDeliveryNoteForm,
@@ -749,11 +779,17 @@ const props = defineProps<{
   purchaseOrder?: DeliveryNoteFormPurchaseOrder
   purchaseOrderReceipt?: PurchaseOrderReceiptSummary | null
   initialPurchaseOrderId?: number | null
+  attachmentConfig?: AttachmentConfig
 }>()
+
+const resolvedAttachmentConfig = computed(() => props.attachmentConfig ?? DEFAULT_ATTACHMENT_CONFIG)
+const pendingFiles = ref<File[]>([])
+const existingAttachments = computed<AttachmentRecord[]>(() => props.deliveryNote?.attachments ?? [])
 
 const { canAny } = usePermissions()
 const canPreviewDeliveryNote = canAny('delivery-notes', ['print', 'create', 'update'])
 const { openFromPayload } = useDocumentPdfPreview()
+const { openAttachment } = useDocumentPreview()
 const isPreviewing = ref(false)
 
 const {
@@ -817,7 +853,12 @@ const {
   purchaseOrder: props.purchaseOrder,
   purchaseOrderReceipt: props.purchaseOrderReceipt,
   initialPurchaseOrderId: props.initialPurchaseOrderId,
+  pendingFiles,
 })
+
+const openAttachmentPreview = (attachment: AttachmentRecord) => {
+  void openAttachment(attachment, `Aperçu — ${attachment.original_name}`)
+}
 
 const showReceiptColumns = computed(() => !!form.purchase_order_id && !!receiptSummary.value)
 

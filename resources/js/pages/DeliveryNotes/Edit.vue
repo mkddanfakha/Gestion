@@ -7,6 +7,7 @@
       :products="products"
       :purchase-orders="purchaseOrders"
       :purchase-order-receipt="purchaseOrderReceipt"
+      :attachment-config="attachmentConfig"
     />
   </AppLayout>
 </template>
@@ -21,6 +22,7 @@ import type {
   DeliveryNoteFormPurchaseOrder,
   DeliveryNoteFormSupplier,
 } from '@/composables/useDeliveryNoteForm'
+import type { AttachmentConfig } from '@/types/attachment'
 
 defineProps<{
   deliveryNote: DeliveryNoteFormDeliveryNote
@@ -28,5 +30,6 @@ defineProps<{
   products: DeliveryNoteFormProduct[]
   purchaseOrders: DeliveryNoteFormPurchaseOrder[]
   purchaseOrderReceipt?: PurchaseOrderReceiptSummary | null
+  attachmentConfig: AttachmentConfig
 }>()
 </script>

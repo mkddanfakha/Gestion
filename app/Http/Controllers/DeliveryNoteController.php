@@ -8,11 +8,13 @@ use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Company;
 use App\Services\ActivityLogger;
+use App\Services\AttachmentService;
 use App\Services\PurchaseOrderDeliveryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use App\Traits\GeneratesPdf;
+use InvalidArgumentException;
 
 class DeliveryNoteController extends Controller
 {
@@ -20,6 +22,7 @@ class DeliveryNoteController extends Controller
 
     public function __construct(
         private PurchaseOrderDeliveryService $deliveryService,
+        protected AttachmentService $attachmentService,
     ) {}
     /**
      * Display a listing of the resource.
@@ -99,6 +102,7 @@ class DeliveryNoteController extends Controller
             'purchaseOrders' => $purchaseOrders,
             'purchaseOrder' => $purchaseOrder,
             'purchaseOrderReceipt' => $purchaseOrderReceipt,
+            'attachmentConfig' => $this->attachmentConfig(),
         ]);
     }
 
@@ -125,7 +129,13 @@ class DeliveryNoteController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.total_price' => 'required|numeric|min:0',
+            'attachments' => 'nullable|array|max:' . config('attachments.max_files', 10),
+            'attachments.*' => 'file',
         ]);
+
+        unset($validated['attachments']);
+        $items = $validated['items'];
+        unset($validated['items']);
 
         $purchaseOrder = PurchaseOrder::with('items.product')->findOrFail($validated['purchase_order_id']);
 
@@ -135,23 +145,42 @@ class DeliveryNoteController extends Controller
             ]);
         }
 
-        $this->deliveryService->assertDeliveryQuantities($purchaseOrder, $request->items);
+        $this->deliveryService->assertDeliveryQuantities($purchaseOrder, $items);
 
         // Générer automatiquement le numéro de BL
         $validated['delivery_number'] = DeliveryNote::generateDeliveryNumber();
         $validated['user_id'] = auth()->id();
         $shouldValidateImmediately = $validated['status'] === 'validated';
         $validated['status'] = 'pending';
+        $validated['notes'] = $validated['notes'] ?? null;
+        $validated['invoice_number'] = $validated['invoice_number'] ?? null;
+        $validated['tax_amount'] = $validated['tax_amount'] ?? 0;
+        $validated['discount_amount'] = $validated['discount_amount'] ?? 0;
 
         $dn = DeliveryNote::create($validated);
 
         // Créer les items
-        foreach ($request->items as $item) {
+        foreach ($items as $item) {
             $dn->items()->create($item);
         }
 
         // Recharger la relation items pour s'assurer que tous les items sont disponibles
         $dn->load('items');
+
+        try {
+            if ($request->hasFile('attachments')) {
+                $this->attachmentService->addMany(
+                    $dn,
+                    $request->file('attachments'),
+                    $request->user()
+                );
+            }
+        } catch (InvalidArgumentException $e) {
+            $dn->items()->delete();
+            $dn->delete();
+
+            return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
+        }
 
         ActivityLogger::logCreate('Bon de livraison', $dn);
 
@@ -171,8 +200,15 @@ class DeliveryNoteController extends Controller
         $this->checkPermission($request, 'delivery-notes', 'view');
         
         // Recharger le BL pour s'assurer que toutes les relations sont à jour
-        $deliveryNote = DeliveryNote::with(['supplier', 'user', 'purchaseOrder', 'items.product', 'items.product.category', 'items.product.media'])
-            ->findOrFail($deliveryNote->id);
+        $deliveryNote = DeliveryNote::with([
+            'supplier',
+            'user',
+            'purchaseOrder',
+            'items.product',
+            'items.product.category',
+            'items.product.media',
+            'attachments.uploadedBy',
+        ])->findOrFail($deliveryNote->id);
         
         // Ajouter l'URL de la première image pour chaque produit
         $deliveryNote->items->transform(function ($item) {
@@ -201,7 +237,7 @@ class DeliveryNoteController extends Controller
             return back()->withErrors(['message' => 'Un bon de livraison validé ne peut pas être modifié.']);
         }
 
-        $deliveryNote->load(['supplier', 'purchaseOrder', 'items.product']);
+        $deliveryNote->load(['supplier', 'purchaseOrder', 'items.product', 'attachments.uploadedBy']);
 
         $suppliers = Supplier::where('status', 'active')->orderBy('name')->get();
         $products = $this->productsForForm();
@@ -217,6 +253,7 @@ class DeliveryNoteController extends Controller
             'products' => $products,
             'purchaseOrders' => $purchaseOrders,
             'purchaseOrderReceipt' => $purchaseOrderReceipt,
+            'attachmentConfig' => $this->attachmentConfig(),
         ]);
     }
 
@@ -251,16 +288,26 @@ class DeliveryNoteController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.total_price' => 'required|numeric|min:0',
+            'attachments' => 'nullable|array|max:' . config('attachments.max_files', 10),
+            'attachments.*' => 'file',
         ]);
 
+        unset($validated['attachments']);
+        $items = $validated['items'];
+        unset($validated['items']);
+
         $purchaseOrder = PurchaseOrder::with('items.product')->findOrFail($validated['purchase_order_id']);
-        $this->deliveryService->assertDeliveryQuantities($purchaseOrder, $request->items, $deliveryNote);
+        $this->deliveryService->assertDeliveryQuantities($purchaseOrder, $items, $deliveryNote);
 
         $shouldValidate = $validated['status'] === 'validated' && $oldStatus !== 'validated';
         $shouldCancel = $validated['status'] === 'cancelled' && $oldStatus !== 'cancelled';
         $validated['status'] = $deliveryNote->status;
+        $validated['notes'] = $validated['notes'] ?? null;
+        $validated['invoice_number'] = $validated['invoice_number'] ?? null;
+        $validated['tax_amount'] = $validated['tax_amount'] ?? 0;
+        $validated['discount_amount'] = $validated['discount_amount'] ?? 0;
 
-        \DB::transaction(function () use ($validated, $deliveryNote, $request) {
+        \DB::transaction(function () use ($validated, $deliveryNote, $items) {
             // Mettre à jour le bon de livraison
             $deliveryNote->update($validated);
 
@@ -268,7 +315,7 @@ class DeliveryNoteController extends Controller
             $existingItemIds = $deliveryNote->items->pluck('id')->toArray();
             $updatedItemIds = [];
 
-            foreach ($request->items as $itemData) {
+            foreach ($items as $itemData) {
                 if (isset($itemData['id'])) {
                     // Mettre à jour l'item existant
                     $deliveryNote->items()->where('id', $itemData['id'])->update([
@@ -304,6 +351,18 @@ class DeliveryNoteController extends Controller
         });
 
         $deliveryNote->refresh();
+
+        try {
+            if ($request->hasFile('attachments')) {
+                $this->attachmentService->addMany(
+                    $deliveryNote,
+                    $request->file('attachments'),
+                    $request->user()
+                );
+            }
+        } catch (InvalidArgumentException $e) {
+            return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
+        }
 
         if ($shouldValidate) {
             $this->deliveryService->validateDeliveryNote($deliveryNote);
@@ -562,5 +621,15 @@ class DeliveryNoteController extends Controller
 
             return $product;
         });
+    }
+
+    protected function attachmentConfig(): array
+    {
+        return [
+            'maxFiles' => config('attachments.max_files', 10),
+            'maxSizeKb' => config('attachments.max_size', 10240),
+            'allowedExtensions' => config('attachments.allowed_extensions', []),
+            'accept' => '.pdf,.jpg,.jpeg,.png,.webp',
+        ];
     }
 }

@@ -3,6 +3,7 @@
 use App\Models\ActivityLog;
 use App\Models\Attachment;
 use App\Models\Category;
+use App\Models\DeliveryNote;
 use App\Models\Expense;
 use App\Models\Permission;
 use App\Models\Product;
@@ -137,6 +138,45 @@ function createTestPurchaseOrder(User $user, Supplier $supplier, Product $produc
     ]);
 
     return $purchaseOrder;
+}
+
+function createUserWithDeliveryNotePermissions(array $actions = ['view', 'create', 'update', 'delete']): User
+{
+    (new PermissionSeeder())->run();
+
+    $user = User::factory()->create(['role' => 'user']);
+
+    foreach ($actions as $action) {
+        $permission = Permission::where('name', "delivery-notes.{$action}")->firstOrFail();
+        $user->permissions()->attach($permission);
+    }
+
+    return $user;
+}
+
+function createTestDeliveryNote(User $user, Supplier $supplier, Product $product, PurchaseOrder $purchaseOrder): DeliveryNote
+{
+    $deliveryNote = DeliveryNote::create([
+        'delivery_number' => DeliveryNote::generateDeliveryNumber(),
+        'purchase_order_id' => $purchaseOrder->id,
+        'supplier_id' => $supplier->id,
+        'user_id' => $user->id,
+        'delivery_date' => now()->toDateString(),
+        'status' => 'pending',
+        'subtotal' => 2000,
+        'tax_amount' => 0,
+        'discount_amount' => 0,
+        'total_amount' => 2000,
+    ]);
+
+    $deliveryNote->items()->create([
+        'product_id' => $product->id,
+        'quantity' => 2,
+        'unit_price' => 1000,
+        'total_price' => 2000,
+    ]);
+
+    return $deliveryNote;
 }
 
 beforeEach(function () {
@@ -452,6 +492,129 @@ test('deleting purchase order removes attachments', function () {
     $path = $purchaseOrder->attachments()->first()->path;
 
     $purchaseOrder->delete();
+
+    expect(Attachment::count())->toBe(0);
+    expect(Storage::disk('local')->exists($path))->toBeFalse();
+});
+
+test('user can upload attachment on delivery note create', function () {
+    $user = createUserWithDeliveryNotePermissions();
+    $supplier = createTestSupplier();
+    $product = createTestProduct();
+    $purchaseOrder = createTestPurchaseOrder($user, $supplier, $product);
+    $purchaseOrder->update(['status' => 'confirmed']);
+    $file = UploadedFile::fake()->create('bon-livraison-signe.pdf', 100, 'application/pdf');
+
+    $this->actingAs($user)
+        ->post(route('delivery-notes.store'), [
+            'supplier_id' => $supplier->id,
+            'purchase_order_id' => $purchaseOrder->id,
+            'delivery_date' => now()->toDateString(),
+            'status' => 'pending',
+            'subtotal' => 1000,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 1000,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'total_price' => 1000,
+                ],
+            ],
+            'attachments' => [$file],
+        ])
+        ->assertRedirect(route('delivery-notes.index'));
+
+    $deliveryNote = DeliveryNote::first();
+    expect($deliveryNote)->not->toBeNull();
+    expect($deliveryNote->attachments)->toHaveCount(1);
+    expect($deliveryNote->attachments->first()->original_name)->toBe('bon-livraison-signe.pdf');
+});
+
+test('user can upload attachment on delivery note update', function () {
+    $user = createUserWithDeliveryNotePermissions(['view', 'update']);
+    $supplier = createTestSupplier();
+    $product = createTestProduct();
+    $purchaseOrder = createTestPurchaseOrder($user, $supplier, $product);
+    $purchaseOrder->update(['status' => 'confirmed']);
+    $deliveryNote = createTestDeliveryNote($user, $supplier, $product, $purchaseOrder);
+    $file = UploadedFile::fake()->image('photo-marchandise.jpg');
+
+    $this->actingAs($user)
+        ->post(route('delivery-notes.update', $deliveryNote), [
+            '_method' => 'PUT',
+            'supplier_id' => $supplier->id,
+            'purchase_order_id' => $purchaseOrder->id,
+            'delivery_date' => now()->toDateString(),
+            'status' => 'pending',
+            'subtotal' => 2000,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 2000,
+            'items' => [
+                [
+                    'id' => $deliveryNote->items()->first()->id,
+                    'product_id' => $product->id,
+                    'quantity' => 2,
+                    'unit_price' => 1000,
+                    'total_price' => 2000,
+                ],
+            ],
+            'attachments' => [$file],
+        ])
+        ->assertRedirect(route('delivery-notes.show', $deliveryNote));
+
+    $deliveryNote->refresh();
+    expect($deliveryNote->attachments)->toHaveCount(1);
+});
+
+test('adding delivery note attachment does not change product stock', function () {
+    $user = createUserWithDeliveryNotePermissions(['view', 'update']);
+    $supplier = createTestSupplier();
+    $product = createTestProduct();
+    $product->update(['stock_quantity' => 25]);
+    $purchaseOrder = createTestPurchaseOrder($user, $supplier, $product);
+    $purchaseOrder->update(['status' => 'confirmed']);
+    $deliveryNote = createTestDeliveryNote($user, $supplier, $product, $purchaseOrder);
+    $file = UploadedFile::fake()->create('justificatif.pdf', 100, 'application/pdf');
+
+    app(\App\Services\AttachmentService::class)->add($deliveryNote, $file, $user);
+
+    $product->refresh();
+    expect($product->stock_quantity)->toBe(25);
+    expect($deliveryNote->attachments)->toHaveCount(1);
+});
+
+test('user can download delivery note attachment with view permission', function () {
+    $user = createUserWithDeliveryNotePermissions(['view']);
+    $supplier = createTestSupplier();
+    $product = createTestProduct();
+    $purchaseOrder = createTestPurchaseOrder($user, $supplier, $product);
+    $deliveryNote = createTestDeliveryNote($user, $supplier, $product, $purchaseOrder);
+    $file = UploadedFile::fake()->create('bon-reception.pdf', 100, 'application/pdf');
+
+    app(\App\Services\AttachmentService::class)->add($deliveryNote, $file, $user);
+    $attachment = $deliveryNote->attachments()->first();
+
+    $this->actingAs($user)
+        ->get(route('attachments.download', $attachment))
+        ->assertOk();
+});
+
+test('deleting delivery note removes attachments', function () {
+    $user = createUserWithDeliveryNotePermissions(['view', 'delete']);
+    $supplier = createTestSupplier();
+    $product = createTestProduct();
+    $purchaseOrder = createTestPurchaseOrder($user, $supplier, $product);
+    $deliveryNote = createTestDeliveryNote($user, $supplier, $product, $purchaseOrder);
+    $file = UploadedFile::fake()->create('conditions.pdf', 100, 'application/pdf');
+
+    app(\App\Services\AttachmentService::class)->add($deliveryNote, $file, $user);
+    $path = $deliveryNote->attachments()->first()->path;
+
+    $deliveryNote->delete();
 
     expect(Attachment::count())->toBe(0);
     expect(Storage::disk('local')->exists($path))->toBeFalse();

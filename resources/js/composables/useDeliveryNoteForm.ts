@@ -6,6 +6,7 @@ import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useFormDraft } from '@/composables/useFormDraft'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 import { formatDateForInput, getTodayForInput, normalizeFormDateFields } from '@/utils/dateFormatter'
+import type { AttachmentRecord } from '@/types/attachment'
 import {
   getReceiptLineForProduct,
   validateDeliveryQuantityAgainstReceipt,
@@ -68,12 +69,33 @@ export interface DeliveryNoteFormDeliveryNote {
   subtotal?: number | string | null
   total_amount?: number | string | null
   items?: DeliveryNoteFormItem[]
+  attachments?: AttachmentRecord[]
 }
 
 export interface DeliveryNoteFormPurchaseOrder {
   id: number
   po_number: string
   supplier_id: number
+}
+
+interface DeliveryNotePayload {
+  supplier_id: number | null
+  purchase_order_id: number | null
+  delivery_date: string
+  status: DeliveryNoteStatus | string
+  notes: string | null
+  invoice_number: string | null
+  subtotal: number
+  tax_amount: number
+  discount_amount: number
+  total_amount: number
+  items: Array<{
+    id?: number
+    product_id: number
+    quantity: number
+    unit_price: number
+    total_price: number
+  }>
 }
 
 interface UseDeliveryNoteFormOptions {
@@ -85,6 +107,7 @@ interface UseDeliveryNoteFormOptions {
   purchaseOrder?: DeliveryNoteFormPurchaseOrder
   purchaseOrderReceipt?: PurchaseOrderReceiptSummary | null
   initialPurchaseOrderId?: number | null
+  pendingFiles?: Ref<File[]>
 }
 
 function toNumber(value: unknown, fallback = 0): number {
@@ -229,6 +252,7 @@ export function useDeliveryNoteForm({
   purchaseOrder,
   purchaseOrderReceipt,
   initialPurchaseOrderId,
+  pendingFiles,
 }: UseDeliveryNoteFormOptions) {
   const { success, error } = useSweetAlert()
   const clientErrors = ref<Record<string, string>>({})
@@ -971,7 +995,7 @@ export function useDeliveryNoteForm({
     }
   }
 
-  const buildPayload = (overrides: Record<string, unknown> = {}) => {
+  const buildPayload = (overrides: Record<string, unknown> = {}): DeliveryNotePayload => {
     const computedSubtotal = subtotal.value
     const computedTotal = totalAmount.value
 
@@ -999,6 +1023,37 @@ export function useDeliveryNoteForm({
       ...overrides,
     }
   }
+
+  const appendPayloadToFormData = (formData: FormData, payload: DeliveryNotePayload) => {
+    if (payload.supplier_id != null) {
+      formData.append('supplier_id', String(payload.supplier_id))
+    }
+
+    if (payload.purchase_order_id != null) {
+      formData.append('purchase_order_id', String(payload.purchase_order_id))
+    }
+
+    formData.append('delivery_date', payload.delivery_date)
+    formData.append('status', String(payload.status))
+    formData.append('notes', payload.notes ?? '')
+    formData.append('invoice_number', payload.invoice_number ?? '')
+    formData.append('subtotal', String(payload.subtotal))
+    formData.append('tax_amount', String(payload.tax_amount))
+    formData.append('discount_amount', String(payload.discount_amount))
+    formData.append('total_amount', String(payload.total_amount))
+
+    payload.items.forEach((item, index) => {
+      if (item.id) {
+        formData.append(`items[${index}][id]`, String(item.id))
+      }
+      formData.append(`items[${index}][product_id]`, String(item.product_id))
+      formData.append(`items[${index}][quantity]`, String(item.quantity))
+      formData.append(`items[${index}][unit_price]`, String(item.unit_price))
+      formData.append(`items[${index}][total_price]`, String(item.total_price))
+    })
+  }
+
+  const hasPendingAttachments = () => (pendingFiles?.value.length ?? 0) > 0
 
   const scrollToFirstError = () => {
     requestAnimationFrame(() => {
@@ -1060,10 +1115,64 @@ export function useDeliveryNoteForm({
   const submit = () => {
     if (!prepareSubmit()) return
 
-    const formData = buildPayload()
+    const payload = buildPayload()
+    const files = pendingFiles?.value ?? []
+
+    if (hasPendingAttachments()) {
+      const submitOptions = {
+        forceFormData: true,
+        onSuccess: async () => {
+          await draft.markSubmitted()
+          if (pendingFiles) {
+            pendingFiles.value = []
+          }
+          success(
+            mode === 'edit'
+              ? 'Bon de livraison modifié avec succès !'
+              : 'Bon de livraison créé avec succès !',
+          )
+          if (mode === 'create') {
+            form.reset()
+          }
+          clientErrors.value = {}
+        },
+        onError: () => {
+          error(
+            mode === 'edit'
+              ? 'Erreur lors de la modification du bon de livraison.'
+              : 'Erreur lors de la création du bon de livraison.',
+          )
+        },
+      }
+
+      if (mode === 'create') {
+        form.transform(() => {
+          const formData = new FormData()
+          appendPayloadToFormData(formData, payload)
+          files.forEach((file) => {
+            formData.append('attachments[]', file)
+          })
+          return formData
+        }).post(route('delivery-notes.store'), submitOptions)
+        return
+      }
+
+      if (!deliveryNote) return
+
+      form.transform(() => {
+        const formData = new FormData()
+        appendPayloadToFormData(formData, payload)
+        files.forEach((file) => {
+          formData.append('attachments[]', file)
+        })
+        formData.append('_method', 'PUT')
+        return formData
+      }).post(route('delivery-notes.update', { id: deliveryNote.id }), submitOptions)
+      return
+    }
 
     if (mode === 'create') {
-      form.transform(() => formData).post(route('delivery-notes.store'), {
+      form.transform(() => payload).post(route('delivery-notes.store'), {
         onSuccess: async () => {
           await draft.markSubmitted()
           success('Bon de livraison créé avec succès !')
@@ -1079,7 +1188,7 @@ export function useDeliveryNoteForm({
 
     if (!deliveryNote) return
 
-    form.transform(() => formData).put(route('delivery-notes.update', { id: deliveryNote.id }), {
+    form.transform(() => payload).put(route('delivery-notes.update', { id: deliveryNote.id }), {
       onSuccess: async () => {
         await draft.markSubmitted()
         success('Bon de livraison modifié avec succès !')
