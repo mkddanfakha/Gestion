@@ -168,6 +168,28 @@
             </div>
           </div>
         </div>
+
+        <!-- Pièces jointes -->
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+              <i class="bi bi-paperclip me-2"></i>
+              Pièces jointes
+            </h5>
+            <span v-if="quote.attachments?.length" class="badge bg-secondary">
+              {{ quote.attachments.length }}
+            </span>
+          </div>
+          <div class="card-body">
+            <AttachmentList
+              v-if="quote.attachments?.length"
+              :attachments="quote.attachments"
+              :allow-delete="canUpdateQuote"
+              @preview="openAttachmentPreview"
+            />
+            <p v-else class="text-muted mb-0">Aucune pièce jointe.</p>
+          </div>
+        </div>
       </div>
 
       <!-- Sidebar -->
@@ -294,17 +316,21 @@
 
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue'
+import AttachmentList from '@/components/attachments/AttachmentList.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
+import { useDocumentPreview } from '@/composables/useDocumentPreview'
 import { usePermissions } from '@/composables/usePermissions'
+import type { AttachmentRecord } from '@/types/attachment'
 import { ref, computed } from 'vue'
 import { formatDate } from '@/utils/dateFormatter'
 import { formatCurrency } from '@/utils/currencyFormatter'
 
 const { success, error, confirm } = useSweetAlert()
 const { openFromUrl } = useDocumentPdfPreview()
+const { openAttachment } = useDocumentPreview()
 const { canAny } = usePermissions()
 const canPreviewQuote = canAny('quotes', ['print', 'create', 'update'])
 
@@ -370,13 +396,21 @@ interface Quote {
   customer?: Customer
   user?: User
   quoteItems?: QuoteItem[]
+  attachments?: AttachmentRecord[]
 }
 
 interface Props {
   quote: Quote
+  canUpdateQuote?: boolean
 }
 
 const props = defineProps<Props>()
+
+const canUpdateQuote = computed(() => props.canUpdateQuote ?? false)
+
+const openAttachmentPreview = (attachment: AttachmentRecord) => {
+  void openAttachment(attachment, `Aperçu — ${attachment.original_name}`)
+}
 
 const getStatusLabel = (status: string) => {
   const labels: Record<string, string> = {

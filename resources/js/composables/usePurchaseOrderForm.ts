@@ -6,6 +6,7 @@ import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useFormDraft } from '@/composables/useFormDraft'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 import { formatDateForInput, getTodayForInput, normalizeFormDateFields } from '@/utils/dateFormatter'
+import type { AttachmentRecord } from '@/types/attachment'
 
 export type PurchaseOrderFormMode = 'create' | 'edit'
 
@@ -62,12 +63,32 @@ export interface PurchaseOrderFormPurchase {
   subtotal?: number | string | null
   total_amount?: number | string | null
   items?: PurchaseOrderFormItem[]
+  attachments?: AttachmentRecord[]
+}
+
+interface PurchaseOrderPayload {
+  supplier_id: number | null
+  order_date: string
+  expected_delivery_date: string | null
+  status: PurchaseOrderStatus
+  notes: string | null
+  subtotal: number
+  tax_amount: number
+  discount_amount: number
+  total_amount: number
+  items: Array<{
+    product_id: number
+    quantity: number
+    unit_price: number
+    total_price: number
+  }>
 }
 
 interface UsePurchaseOrderFormOptions {
   mode: PurchaseOrderFormMode
   purchaseOrder?: PurchaseOrderFormPurchase
   products: Ref<PurchaseOrderFormProduct[]> | PurchaseOrderFormProduct[]
+  pendingFiles?: Ref<File[]>
 }
 
 const STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
@@ -162,7 +183,7 @@ function buildInitialForm(mode: PurchaseOrderFormMode, purchaseOrder?: PurchaseO
   }
 }
 
-export function usePurchaseOrderForm({ mode, purchaseOrder, products }: UsePurchaseOrderFormOptions) {
+export function usePurchaseOrderForm({ mode, purchaseOrder, products, pendingFiles }: UsePurchaseOrderFormOptions) {
   const { success, error } = useSweetAlert()
   const clientErrors = ref<Record<string, string>>({})
 
@@ -719,7 +740,7 @@ export function usePurchaseOrderForm({ mode, purchaseOrder, products }: UsePurch
     }
   }
 
-  const buildPayload = (overrides: Record<string, unknown> = {}) => {
+  const buildPayload = (overrides: Record<string, unknown> = {}): PurchaseOrderPayload => {
     const computedSubtotal = subtotal.value
     const computedTotal = totalAmount.value
 
@@ -745,6 +766,30 @@ export function usePurchaseOrderForm({ mode, purchaseOrder, products }: UsePurch
       ...overrides,
     }
   }
+
+  const appendPayloadToFormData = (formData: FormData, payload: PurchaseOrderPayload) => {
+    if (payload.supplier_id != null) {
+      formData.append('supplier_id', String(payload.supplier_id))
+    }
+
+    formData.append('order_date', payload.order_date)
+    formData.append('expected_delivery_date', payload.expected_delivery_date ?? '')
+    formData.append('status', payload.status)
+    formData.append('notes', payload.notes ?? '')
+    formData.append('subtotal', String(payload.subtotal))
+    formData.append('tax_amount', String(payload.tax_amount))
+    formData.append('discount_amount', String(payload.discount_amount))
+    formData.append('total_amount', String(payload.total_amount))
+
+    payload.items.forEach((item, index) => {
+      formData.append(`items[${index}][product_id]`, String(item.product_id))
+      formData.append(`items[${index}][quantity]`, String(item.quantity))
+      formData.append(`items[${index}][unit_price]`, String(item.unit_price))
+      formData.append(`items[${index}][total_price]`, String(item.total_price))
+    })
+  }
+
+  const hasPendingAttachments = () => (pendingFiles?.value.length ?? 0) > 0
 
   const scrollToFirstError = () => {
     requestAnimationFrame(() => {
@@ -802,10 +847,64 @@ export function usePurchaseOrderForm({ mode, purchaseOrder, products }: UsePurch
   const submit = () => {
     if (!prepareSubmit()) return
 
-    const formData = buildPayload()
+    const payload = buildPayload()
+    const files = pendingFiles?.value ?? []
+
+    if (hasPendingAttachments()) {
+      const submitOptions = {
+        forceFormData: true,
+        onSuccess: async () => {
+          await draft.markSubmitted()
+          if (pendingFiles) {
+            pendingFiles.value = []
+          }
+          success(
+            mode === 'edit'
+              ? 'Bon de commande modifié avec succès !'
+              : 'Bon de commande créé avec succès !',
+          )
+          if (mode === 'create') {
+            form.reset()
+          }
+          clientErrors.value = {}
+        },
+        onError: () => {
+          error(
+            mode === 'edit'
+              ? 'Erreur lors de la modification du bon de commande.'
+              : 'Erreur lors de la création du bon de commande.',
+          )
+        },
+      }
+
+      if (mode === 'create') {
+        form.transform(() => {
+          const formData = new FormData()
+          appendPayloadToFormData(formData, payload)
+          files.forEach((file) => {
+            formData.append('attachments[]', file)
+          })
+          return formData
+        }).post(route('purchase-orders.store'), submitOptions)
+        return
+      }
+
+      if (!purchaseOrder) return
+
+      form.transform(() => {
+        const formData = new FormData()
+        appendPayloadToFormData(formData, payload)
+        files.forEach((file) => {
+          formData.append('attachments[]', file)
+        })
+        formData.append('_method', 'PUT')
+        return formData
+      }).post(route('purchase-orders.update', { id: purchaseOrder.id }), submitOptions)
+      return
+    }
 
     if (mode === 'create') {
-      form.transform(() => formData).post(route('purchase-orders.store'), {
+      form.transform(() => payload).post(route('purchase-orders.store'), {
         onSuccess: async () => {
           await draft.markSubmitted()
           success('Bon de commande créé avec succès !')
@@ -821,7 +920,7 @@ export function usePurchaseOrderForm({ mode, purchaseOrder, products }: UsePurch
 
     if (!purchaseOrder) return
 
-    form.transform(() => formData).put(route('purchase-orders.update', { id: purchaseOrder.id }), {
+    form.transform(() => payload).put(route('purchase-orders.update', { id: purchaseOrder.id }), {
       onSuccess: async () => {
         await draft.markSubmitted()
         success('Bon de commande modifié avec succès !')

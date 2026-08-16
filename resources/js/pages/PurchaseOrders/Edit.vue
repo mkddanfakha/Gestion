@@ -6,6 +6,7 @@
       :suppliers="suppliers"
       :products="products"
       :has-deliveries="hasDeliveries"
+      :attachment-config="attachmentConfig"
     />
   </AppLayout>
 </template>
@@ -18,11 +19,13 @@ import type {
   PurchaseOrderFormPurchase,
   PurchaseOrderFormSupplier,
 } from '@/composables/usePurchaseOrderForm'
+import type { AttachmentConfig } from '@/types/attachment'
 
 defineProps<{
   purchaseOrder: PurchaseOrderFormPurchase
   suppliers: PurchaseOrderFormSupplier[]
   products: PurchaseOrderFormProduct[]
   hasDeliveries?: boolean
+  attachmentConfig: AttachmentConfig
 }>()
 </script>

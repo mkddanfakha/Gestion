@@ -6,6 +6,7 @@ import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useFormDraft } from '@/composables/useFormDraft'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 import { formatDateForInput, getTodayForInput, normalizeFormDateFields } from '@/utils/dateFormatter'
+import type { AttachmentRecord } from '@/types/attachment'
 
 export type QuoteFormMode = 'create' | 'edit'
 
@@ -53,12 +54,28 @@ export interface QuoteFormQuote {
   tax_amount?: number | string | null
   discount_amount?: number | string | null
   quoteItems?: QuoteFormItem[]
+  attachments?: AttachmentRecord[]
+}
+
+interface QuotePayload {
+  customer_id: number | null
+  status: QuoteStatus
+  notes: string | null
+  valid_until: string | null
+  tax_amount: number
+  discount_amount: number
+  items: Array<{
+    product_id: number
+    quantity: number
+    unit_price: number
+  }>
 }
 
 interface UseQuoteFormOptions {
   mode: QuoteFormMode
   quote?: QuoteFormQuote
   products: Ref<QuoteFormProduct[]> | QuoteFormProduct[]
+  pendingFiles?: Ref<File[]>
 }
 
 function toNumber(value: unknown, fallback = 0): number {
@@ -121,7 +138,7 @@ function buildInitialForm(mode: QuoteFormMode, quote?: QuoteFormQuote) {
   }
 }
 
-export function useQuoteForm({ mode, quote, products }: UseQuoteFormOptions) {
+export function useQuoteForm({ mode, quote, products, pendingFiles }: UseQuoteFormOptions) {
   const { success, error } = useSweetAlert()
   const clientErrors = ref<Record<string, string>>({})
 
@@ -549,7 +566,7 @@ export function useQuoteForm({ mode, quote, products }: UseQuoteFormOptions) {
     }
   }
 
-  const buildPayload = (overrides: Record<string, unknown> = {}) => ({
+  const buildPayload = (overrides: Record<string, unknown> = {}): QuotePayload => ({
     customer_id: form.customer_id || null,
     status: form.status,
     notes: form.notes || null,
@@ -563,6 +580,28 @@ export function useQuoteForm({ mode, quote, products }: UseQuoteFormOptions) {
     })),
     ...overrides,
   })
+
+  const appendPayloadToFormData = (formData: FormData, payload: QuotePayload) => {
+    if (payload.customer_id != null) {
+      formData.append('customer_id', String(payload.customer_id))
+    }
+
+    formData.append('status', payload.status)
+    // Toujours envoyer les champs nullable : FormData n'inclut pas les clés absentes,
+    // ce qui les exclut aussi de $validated côté Laravel (nullable).
+    formData.append('notes', payload.notes ?? '')
+    formData.append('valid_until', payload.valid_until ?? '')
+    formData.append('tax_amount', String(payload.tax_amount))
+    formData.append('discount_amount', String(payload.discount_amount))
+
+    payload.items.forEach((item, index) => {
+      formData.append(`items[${index}][product_id]`, String(item.product_id))
+      formData.append(`items[${index}][quantity]`, String(item.quantity))
+      formData.append(`items[${index}][unit_price]`, String(item.unit_price))
+    })
+  }
+
+  const hasPendingAttachments = () => (pendingFiles?.value.length ?? 0) > 0
 
   const scrollToFirstError = () => {
     requestAnimationFrame(() => {
@@ -620,10 +659,56 @@ export function useQuoteForm({ mode, quote, products }: UseQuoteFormOptions) {
   const submit = () => {
     if (!prepareSubmit()) return
 
-    const formData = buildPayload()
+    const payload = buildPayload()
+    const files = pendingFiles?.value ?? []
+
+    if (hasPendingAttachments()) {
+      const submitOptions = {
+        forceFormData: true,
+        onSuccess: async () => {
+          await draft.markSubmitted()
+          if (pendingFiles) {
+            pendingFiles.value = []
+          }
+          success(mode === 'edit' ? 'Devis modifié avec succès !' : 'Devis créé avec succès !')
+          if (mode === 'create') {
+            form.reset()
+          }
+          clientErrors.value = {}
+        },
+        onError: () => {
+          error(mode === 'edit' ? 'Erreur lors de la modification du devis.' : 'Erreur lors de la création du devis.')
+        },
+      }
+
+      if (mode === 'create') {
+        form.transform(() => {
+          const formData = new FormData()
+          appendPayloadToFormData(formData, payload)
+          files.forEach((file) => {
+            formData.append('attachments[]', file)
+          })
+          return formData
+        }).post(route('quotes.store'), submitOptions)
+        return
+      }
+
+      if (!quote) return
+
+      form.transform(() => {
+        const formData = new FormData()
+        appendPayloadToFormData(formData, payload)
+        files.forEach((file) => {
+          formData.append('attachments[]', file)
+        })
+        formData.append('_method', 'PUT')
+        return formData
+      }).post(route('quotes.update', { id: quote.id }), submitOptions)
+      return
+    }
 
     if (mode === 'create') {
-      form.transform(() => formData).post(route('quotes.store'), {
+      form.transform(() => payload).post(route('quotes.store'), {
         onSuccess: async () => {
           await draft.markSubmitted()
           success('Devis créé avec succès !')
@@ -639,7 +724,7 @@ export function useQuoteForm({ mode, quote, products }: UseQuoteFormOptions) {
 
     if (!quote) return
 
-    form.transform(() => formData).put(route('quotes.update', { id: quote.id }), {
+    form.transform(() => payload).put(route('quotes.update', { id: quote.id }), {
       onSuccess: async () => {
         await draft.markSubmitted()
         success('Devis modifié avec succès !')

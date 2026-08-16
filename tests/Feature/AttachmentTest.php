@@ -2,8 +2,13 @@
 
 use App\Models\ActivityLog;
 use App\Models\Attachment;
+use App\Models\Category;
 use App\Models\Expense;
 use App\Models\Permission;
+use App\Models\Product;
+use App\Models\PurchaseOrder;
+use App\Models\Quote;
+use App\Models\Supplier;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Http\UploadedFile;
@@ -34,6 +39,104 @@ function createTestExpense(User $user): Expense
         'expense_date' => now()->toDateString(),
         'user_id' => $user->id,
     ]);
+}
+
+function createUserWithQuotePermissions(array $actions = ['view', 'create', 'update', 'delete']): User
+{
+    (new PermissionSeeder())->run();
+
+    $user = User::factory()->create(['role' => 'user']);
+
+    foreach ($actions as $action) {
+        $permission = Permission::where('name', "quotes.{$action}")->firstOrFail();
+        $user->permissions()->attach($permission);
+    }
+
+    return $user;
+}
+
+function createTestProduct(): Product
+{
+    $category = Category::create(['name' => 'Test', 'slug' => 'test-' . uniqid()]);
+
+    return Product::create([
+        'name' => 'Produit test',
+        'sku' => 'SKU-' . uniqid(),
+        'price' => 1000,
+        'stock_quantity' => 10,
+        'min_stock_level' => 1,
+        'unit' => 'u',
+        'category_id' => $category->id,
+        'is_active' => true,
+    ]);
+}
+
+function createTestQuote(User $user, Product $product): Quote
+{
+    $quote = Quote::create([
+        'quote_number' => Quote::generateQuoteNumber(),
+        'user_id' => $user->id,
+        'subtotal' => 2000,
+        'tax_amount' => 0,
+        'discount_amount' => 0,
+        'total_amount' => 2000,
+        'status' => 'draft',
+    ]);
+
+    $quote->quoteItems()->create([
+        'product_id' => $product->id,
+        'quantity' => 2,
+        'unit_price' => 1000,
+        'total_price' => 2000,
+    ]);
+
+    return $quote;
+}
+
+function createUserWithPurchaseOrderPermissions(array $actions = ['view', 'create', 'update', 'delete']): User
+{
+    (new PermissionSeeder())->run();
+
+    $user = User::factory()->create(['role' => 'user']);
+
+    foreach ($actions as $action) {
+        $permission = Permission::where('name', "purchase-orders.{$action}")->firstOrFail();
+        $user->permissions()->attach($permission);
+    }
+
+    return $user;
+}
+
+function createTestSupplier(): Supplier
+{
+    return Supplier::create([
+        'name' => 'Fournisseur test ' . uniqid(),
+        'status' => 'active',
+    ]);
+}
+
+function createTestPurchaseOrder(User $user, Supplier $supplier, Product $product): PurchaseOrder
+{
+    $purchaseOrder = PurchaseOrder::create([
+        'po_number' => PurchaseOrder::generatePONumber(),
+        'supplier_id' => $supplier->id,
+        'user_id' => $user->id,
+        'order_date' => now()->toDateString(),
+        'status' => 'draft',
+        'subtotal' => 2000,
+        'tax_amount' => 0,
+        'discount_amount' => 0,
+        'total_amount' => 2000,
+    ]);
+
+    $purchaseOrder->items()->create([
+        'product_id' => $product->id,
+        'quantity' => 2,
+        'unit_price' => 1000,
+        'total_price' => 2000,
+    ]);
+
+    return $purchaseOrder;
 }
 
 beforeEach(function () {
@@ -168,4 +271,188 @@ test('expense index includes attachments count', function () {
             ->has('expenses.data', 1)
             ->where('expenses.data.0.attachments_count', 1)
         );
+});
+
+test('user can upload attachment on quote create', function () {
+    $user = createUserWithQuotePermissions();
+    $product = createTestProduct();
+    $file = UploadedFile::fake()->create('cahier-des-charges.pdf', 100, 'application/pdf');
+
+    $this->actingAs($user)
+        ->post(route('quotes.store'), [
+            'status' => 'draft',
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                ],
+            ],
+            'attachments' => [$file],
+        ])
+        ->assertRedirect(route('quotes.index'));
+
+    $quote = Quote::first();
+    expect($quote)->not->toBeNull();
+    expect($quote->attachments)->toHaveCount(1);
+    expect($quote->attachments->first()->original_name)->toBe('cahier-des-charges.pdf');
+    expect(Storage::disk('local')->exists($quote->attachments->first()->path))->toBeTrue();
+    expect(ActivityLog::where('action', ActivityLog::ACTION_ATTACHMENT_ADDED)->exists())->toBeTrue();
+});
+
+test('user can upload attachment on quote update', function () {
+    $user = createUserWithQuotePermissions(['view', 'update']);
+    $product = createTestProduct();
+    $quote = createTestQuote($user, $product);
+    $file = UploadedFile::fake()->image('plan.jpg');
+
+    $this->actingAs($user)
+        ->post(route('quotes.update', $quote), [
+            '_method' => 'PUT',
+            'status' => 'draft',
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 2,
+                    'unit_price' => 1000,
+                ],
+            ],
+            'attachments' => [$file],
+        ])
+        ->assertRedirect(route('quotes.index'));
+
+    $quote->refresh();
+    expect($quote->attachments)->toHaveCount(1);
+    expect($quote->attachments->first()->original_name)->toBe('plan.jpg');
+});
+
+test('user can download quote attachment with view permission', function () {
+    $user = createUserWithQuotePermissions(['view']);
+    $product = createTestProduct();
+    $quote = createTestQuote($user, $product);
+    $file = UploadedFile::fake()->create('proposition.pdf', 100, 'application/pdf');
+
+    app(\App\Services\AttachmentService::class)->add($quote, $file, $user);
+    $attachment = $quote->attachments()->first();
+
+    $this->actingAs($user)
+        ->get(route('attachments.download', $attachment))
+        ->assertOk();
+});
+
+test('deleting quote removes attachments', function () {
+    $user = createUserWithQuotePermissions(['view', 'delete']);
+    $product = createTestProduct();
+    $quote = createTestQuote($user, $product);
+    $file = UploadedFile::fake()->create('conditions.pdf', 100, 'application/pdf');
+
+    app(\App\Services\AttachmentService::class)->add($quote, $file, $user);
+    $path = $quote->attachments()->first()->path;
+
+    $quote->delete();
+
+    expect(Attachment::count())->toBe(0);
+    expect(Storage::disk('local')->exists($path))->toBeFalse();
+});
+
+test('user can upload attachment on purchase order create', function () {
+    $user = createUserWithPurchaseOrderPermissions();
+    $supplier = createTestSupplier();
+    $product = createTestProduct();
+    $file = UploadedFile::fake()->create('devis-fournisseur.pdf', 100, 'application/pdf');
+
+    $this->actingAs($user)
+        ->post(route('purchase-orders.store'), [
+            'supplier_id' => $supplier->id,
+            'order_date' => now()->toDateString(),
+            'status' => 'draft',
+            'subtotal' => 1000,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 1000,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'total_price' => 1000,
+                ],
+            ],
+            'attachments' => [$file],
+        ])
+        ->assertRedirect(route('purchase-orders.index'));
+
+    $purchaseOrder = PurchaseOrder::first();
+    expect($purchaseOrder)->not->toBeNull();
+    expect($purchaseOrder->attachments)->toHaveCount(1);
+    expect($purchaseOrder->attachments->first()->original_name)->toBe('devis-fournisseur.pdf');
+    expect(ActivityLog::where('action', ActivityLog::ACTION_ATTACHMENT_ADDED)->exists())->toBeTrue();
+});
+
+test('user can upload attachment on purchase order update', function () {
+    $user = createUserWithPurchaseOrderPermissions(['view', 'update']);
+    $supplier = createTestSupplier();
+    $product = createTestProduct();
+    $purchaseOrder = createTestPurchaseOrder($user, $supplier, $product);
+    $file = UploadedFile::fake()->image('plan-produit.jpg');
+
+    $this->actingAs($user)
+        ->post(route('purchase-orders.update', $purchaseOrder), [
+            '_method' => 'PUT',
+            'supplier_id' => $supplier->id,
+            'order_date' => now()->toDateString(),
+            'status' => 'draft',
+            'subtotal' => 2000,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => 2000,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 2,
+                    'unit_price' => 1000,
+                    'total_price' => 2000,
+                ],
+            ],
+            'attachments' => [$file],
+        ])
+        ->assertRedirect(route('purchase-orders.index'));
+
+    $purchaseOrder->refresh();
+    expect($purchaseOrder->attachments)->toHaveCount(1);
+});
+
+test('user can download purchase order attachment with view permission', function () {
+    $user = createUserWithPurchaseOrderPermissions(['view']);
+    $supplier = createTestSupplier();
+    $product = createTestProduct();
+    $purchaseOrder = createTestPurchaseOrder($user, $supplier, $product);
+    $file = UploadedFile::fake()->create('facture-proforma.pdf', 100, 'application/pdf');
+
+    app(\App\Services\AttachmentService::class)->add($purchaseOrder, $file, $user);
+    $attachment = $purchaseOrder->attachments()->first();
+
+    $this->actingAs($user)
+        ->get(route('attachments.download', $attachment))
+        ->assertOk();
+});
+
+test('deleting purchase order removes attachments', function () {
+    $user = createUserWithPurchaseOrderPermissions(['view', 'delete']);
+    $supplier = createTestSupplier();
+    $product = createTestProduct();
+    $purchaseOrder = createTestPurchaseOrder($user, $supplier, $product);
+    $file = UploadedFile::fake()->create('conditions.pdf', 100, 'application/pdf');
+
+    app(\App\Services\AttachmentService::class)->add($purchaseOrder, $file, $user);
+    $path = $purchaseOrder->attachments()->first()->path;
+
+    $purchaseOrder->delete();
+
+    expect(Attachment::count())->toBe(0);
+    expect(Storage::disk('local')->exists($path))->toBeFalse();
 });

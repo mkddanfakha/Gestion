@@ -7,10 +7,12 @@ use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\Company;
 use App\Services\ActivityLogger;
+use App\Services\AttachmentService;
 use App\Services\PurchaseOrderDeliveryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Traits\GeneratesPdf;
+use InvalidArgumentException;
 
 class PurchaseOrderController extends Controller
 {
@@ -18,6 +20,7 @@ class PurchaseOrderController extends Controller
 
     public function __construct(
         private PurchaseOrderDeliveryService $deliveryService,
+        protected AttachmentService $attachmentService,
     ) {}
     /**
      * Display a listing of the resource.
@@ -71,6 +74,7 @@ class PurchaseOrderController extends Controller
         return Inertia::render('PurchaseOrders/Create', [
             'suppliers' => $suppliers,
             'products' => $products,
+            'attachmentConfig' => $this->attachmentConfig(),
         ]);
     }
 
@@ -96,22 +100,47 @@ class PurchaseOrderController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.total_price' => 'required|numeric|min:0',
+            'attachments' => 'nullable|array|max:' . config('attachments.max_files', 10),
+            'attachments.*' => 'file',
         ]);
+
+        unset($validated['attachments']);
+        $items = $validated['items'];
+        unset($validated['items']);
 
         // Générer automatiquement le numéro de BC
         $validated['po_number'] = PurchaseOrder::generatePONumber();
         $validated['user_id'] = auth()->id();
+        $validated['notes'] = $validated['notes'] ?? null;
+        $validated['expected_delivery_date'] = $validated['expected_delivery_date'] ?? null;
+        $validated['tax_amount'] = $validated['tax_amount'] ?? 0;
+        $validated['discount_amount'] = $validated['discount_amount'] ?? 0;
 
         $po = PurchaseOrder::create($validated);
 
         // Créer les items
-        foreach ($request->items as $item) {
+        foreach ($items as $item) {
             $po->items()->create($item);
         }
 
         // Recalculer le total
         $po->calculateTotal();
         $po->save();
+
+        try {
+            if ($request->hasFile('attachments')) {
+                $this->attachmentService->addMany(
+                    $po,
+                    $request->file('attachments'),
+                    $request->user()
+                );
+            }
+        } catch (InvalidArgumentException $e) {
+            $po->items()->delete();
+            $po->delete();
+
+            return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
+        }
 
         ActivityLogger::logCreate('Bon de commande', $po);
         if ($validated['status'] === 'confirmed') {
@@ -131,7 +160,15 @@ class PurchaseOrderController extends Controller
     {
         $this->checkPermission($request, 'purchase-orders', 'view');
         
-        $purchaseOrder->load(['supplier', 'user', 'items.product', 'items.product.category', 'items.product.media', 'deliveryNotes.items']);
+        $purchaseOrder->load([
+            'supplier',
+            'user',
+            'items.product',
+            'items.product.category',
+            'items.product.media',
+            'deliveryNotes.items',
+            'attachments.uploadedBy',
+        ]);
 
         $receiptSummary = $this->deliveryService->buildReceiptSummary($purchaseOrder);
         
@@ -163,6 +200,7 @@ class PurchaseOrderController extends Controller
         return Inertia::render('PurchaseOrders/Show', [
             'purchaseOrder' => $purchaseOrder,
             'receiptSummary' => $receiptSummary,
+            'canUpdatePurchaseOrder' => $request->user()?->hasPermission('purchase-orders', 'update') ?? false,
         ]);
     }
 
@@ -173,7 +211,7 @@ class PurchaseOrderController extends Controller
     {
         $this->checkPermission($request, 'purchase-orders', 'edit');
         
-        $purchaseOrder->load(['supplier', 'items.product']);
+        $purchaseOrder->load(['supplier', 'items.product', 'attachments.uploadedBy']);
         $suppliers = Supplier::where('status', 'active')->orderBy('name')->get();
         $products = $this->productsForForm();
 
@@ -182,6 +220,7 @@ class PurchaseOrderController extends Controller
             'suppliers' => $suppliers,
             'products' => $products,
             'hasDeliveries' => $purchaseOrder->deliveryNotes()->exists(),
+            'attachmentConfig' => $this->attachmentConfig(),
         ]);
     }
 
@@ -209,7 +248,18 @@ class PurchaseOrderController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.total_price' => 'required|numeric|min:0',
+            'attachments' => 'nullable|array|max:' . config('attachments.max_files', 10),
+            'attachments.*' => 'file',
         ]);
+
+        unset($validated['attachments']);
+        $items = $validated['items'];
+        unset($validated['items']);
+
+        $validated['notes'] = $validated['notes'] ?? null;
+        $validated['expected_delivery_date'] = $validated['expected_delivery_date'] ?? null;
+        $validated['tax_amount'] = $validated['tax_amount'] ?? 0;
+        $validated['discount_amount'] = $validated['discount_amount'] ?? 0;
 
         $purchaseOrder->update($validated);
 
@@ -217,13 +267,25 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->items()->delete();
 
         // Créer les nouveaux items
-        foreach ($request->items as $item) {
+        foreach ($items as $item) {
             $purchaseOrder->items()->create($item);
         }
 
         // Recalculer le total
         $purchaseOrder->calculateTotal();
         $purchaseOrder->save();
+
+        try {
+            if ($request->hasFile('attachments')) {
+                $this->attachmentService->addMany(
+                    $purchaseOrder,
+                    $request->file('attachments'),
+                    $request->user()
+                );
+            }
+        } catch (InvalidArgumentException $e) {
+            return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
+        }
 
         if ($validated['status'] === 'confirmed' && $oldStatus !== 'confirmed') {
             ActivityLogger::logValidate('Bon de commande', $purchaseOrder);
@@ -322,5 +384,15 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder->load(['supplier', 'user', 'items.product']);
         return $this->generatePdfFromView('purchase-orders.purchase-order', ['purchaseOrder' => $purchaseOrder]);
+    }
+
+    protected function attachmentConfig(): array
+    {
+        return [
+            'maxFiles' => config('attachments.max_files', 10),
+            'maxSizeKb' => config('attachments.max_size', 10240),
+            'allowedExtensions' => config('attachments.allowed_extensions', []),
+            'accept' => '.pdf,.jpg,.jpeg,.png,.webp',
+        ];
     }
 }

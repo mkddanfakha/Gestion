@@ -7,14 +7,20 @@ use App\Models\Sale;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Company;
+use App\Services\AttachmentService;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Traits\GeneratesPdf;
+use InvalidArgumentException;
 
 class QuoteController extends Controller
 {
     use GeneratesPdf;
+
+    public function __construct(
+        protected AttachmentService $attachmentService,
+    ) {}
     /**
      * Display a listing of the resource.
      */
@@ -90,6 +96,7 @@ class QuoteController extends Controller
             'products' => $products,
             'customers' => $customers,
             'initialCustomerId' => $initialCustomerId,
+            'attachmentConfig' => $this->attachmentConfig(),
         ]);
     }
 
@@ -111,7 +118,11 @@ class QuoteController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'attachments' => 'nullable|array|max:' . config('attachments.max_files', 10),
+            'attachments.*' => 'file',
         ]);
+
+        unset($validated['attachments']);
 
         // Vérifier les doublons de produits
         $productIds = array_column($validated['items'], 'product_id');
@@ -137,9 +148,9 @@ class QuoteController extends Controller
 
         $quote = Quote::create([
             'quote_number' => Quote::generateQuoteNumber(),
-            'customer_id' => $validated['customer_id'],
+            'customer_id' => $validated['customer_id'] ?? null,
             'user_id' => auth()->id(),
-            'notes' => $validated['notes'],
+            'notes' => $validated['notes'] ?? null,
             'valid_until' => $validated['valid_until'] ?? null,
             'status' => $validated['status'] ?? 'draft',
             'subtotal' => $subtotal,
@@ -157,6 +168,21 @@ class QuoteController extends Controller
             ]);
         }
 
+        try {
+            if ($request->hasFile('attachments')) {
+                $this->attachmentService->addMany(
+                    $quote,
+                    $request->file('attachments'),
+                    $request->user()
+                );
+            }
+        } catch (InvalidArgumentException $e) {
+            $quote->quoteItems()->delete();
+            $quote->delete();
+
+            return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
+        }
+
         return redirect()->route('quotes.index')
             ->with('success', 'Devis créé avec succès.');
     }
@@ -169,7 +195,7 @@ class QuoteController extends Controller
         $this->checkPermission($request, 'quotes', 'view');
         
         // Charger les relations de base
-        $quote->load(['customer', 'user']);
+        $quote->load(['customer', 'user', 'attachments.uploadedBy']);
         
         // Charger les articles séparément avec les médias des produits
         $quoteItems = $quote->quoteItems()->with(['product.category', 'product.media'])->get();
@@ -192,6 +218,7 @@ class QuoteController extends Controller
         
         return Inertia::render('Quotes/Show', [
             'quote' => $quoteData,
+            'canUpdateQuote' => $request->user()?->hasPermission('quotes', 'update') ?? false,
         ]);
     }
 
@@ -202,6 +229,8 @@ class QuoteController extends Controller
     {
         $this->checkPermission($request, 'quotes', 'edit');
         
+        $quote->load(['attachments.uploadedBy']);
+
         // Charger les articles séparément
         $quoteItems = $quote->quoteItems()->with('product.category')->get();
         
@@ -227,6 +256,7 @@ class QuoteController extends Controller
             'quote' => $quoteData,
             'products' => $products,
             'customers' => $customers,
+            'attachmentConfig' => $this->attachmentConfig(),
         ]);
     }
 
@@ -248,7 +278,11 @@ class QuoteController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'attachments' => 'nullable|array|max:' . config('attachments.max_files', 10),
+            'attachments.*' => 'file',
         ]);
+
+        unset($validated['attachments']);
 
         // Vérifier les doublons de produits
         $productIds = array_column($validated['items'], 'product_id');
@@ -273,8 +307,8 @@ class QuoteController extends Controller
         $totalAmount = $subtotal + $taxAmount - $discountAmount;
 
         $quote->update([
-            'customer_id' => $validated['customer_id'],
-            'notes' => $validated['notes'],
+            'customer_id' => $validated['customer_id'] ?? null,
+            'notes' => $validated['notes'] ?? null,
             'valid_until' => $validated['valid_until'] ?? null,
             'status' => $validated['status'],
             'subtotal' => $subtotal,
@@ -294,6 +328,18 @@ class QuoteController extends Controller
                 'unit_price' => $item['unit_price'],
                 'total_price' => $item['quantity'] * $item['unit_price'],
             ]);
+        }
+
+        try {
+            if ($request->hasFile('attachments')) {
+                $this->attachmentService->addMany(
+                    $quote,
+                    $request->file('attachments'),
+                    $request->user()
+                );
+            }
+        } catch (InvalidArgumentException $e) {
+            return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
         }
 
         return redirect()->route('quotes.index')
@@ -428,5 +474,15 @@ class QuoteController extends Controller
 
         return redirect()->route('sales.show', $sale)
             ->with('success', "Devis converti en vente avec succès. Vente créée: {$sale->sale_number}");
+    }
+
+    protected function attachmentConfig(): array
+    {
+        return [
+            'maxFiles' => config('attachments.max_files', 10),
+            'maxSizeKb' => config('attachments.max_size', 10240),
+            'allowedExtensions' => config('attachments.allowed_extensions', []),
+            'accept' => '.pdf,.jpg,.jpeg,.png,.webp',
+        ];
     }
 }

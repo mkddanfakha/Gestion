@@ -5,6 +5,7 @@
       :customers="customers"
       :products="products"
       :initial-customer-id="initialCustomerId"
+      :attachment-config="attachmentConfig"
     />
   </AppLayout>
 </template>
@@ -13,10 +14,12 @@
 import AppLayout from '@/layouts/AppLayout.vue'
 import QuoteForm from '@/components/quotes/QuoteForm.vue'
 import type { QuoteFormCustomer, QuoteFormProduct } from '@/composables/useQuoteForm'
+import type { AttachmentConfig } from '@/types/attachment'
 
 defineProps<{
   customers: QuoteFormCustomer[]
   products: QuoteFormProduct[]
   initialCustomerId?: number | null
+  attachmentConfig: AttachmentConfig
 }>()
 </script>
