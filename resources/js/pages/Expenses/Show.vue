@@ -103,6 +103,28 @@
             <p class="mb-0 text-dark-emphasis">{{ expense.notes }}</p>
           </div>
         </div>
+
+        <!-- Justificatifs -->
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+              <i class="bi bi-paperclip me-2"></i>
+              Justificatifs
+            </h5>
+            <span v-if="expense.attachments?.length" class="badge bg-secondary">
+              {{ expense.attachments.length }}
+            </span>
+          </div>
+          <div class="card-body">
+            <AttachmentList
+              v-if="expense.attachments?.length"
+              :attachments="expense.attachments"
+              :allow-delete="canUpdateExpense"
+              @preview="openPreview"
+            />
+            <p v-else class="text-muted mb-0">Aucune pièce jointe.</p>
+          </div>
+        </div>
       </div>
 
       <!-- Informations secondaires -->
@@ -188,16 +210,20 @@
         </div>
       </div>
     </div>
+
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue'
+import AttachmentList from '@/components/attachments/AttachmentList.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import { useDocumentPreview } from '@/composables/useDocumentPreview'
 import { formatDate, formatDateTime } from '@/utils/dateFormatter'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import type { AttachmentRecord } from '@/types/attachment'
 
 interface User {
   id: number
@@ -220,16 +246,25 @@ interface Expense {
   vendor?: string
   notes?: string
   user: User
+  attachments?: AttachmentRecord[]
   created_at: string
   updated_at: string
 }
 
 interface Props {
   expense: Expense
+  canUpdateExpense?: boolean
 }
 
 const props = defineProps<Props>()
 const { success, error, confirm } = useSweetAlert()
+const { openAttachment } = useDocumentPreview()
+
+const canUpdateExpense = props.canUpdateExpense ?? false
+
+const openPreview = (attachment: AttachmentRecord) => {
+  void openAttachment(attachment, `Aperçu — ${attachment.original_name}`)
+}
 
 // Fonctions utilitaires
 const deleteExpense = async () => {

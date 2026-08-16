@@ -9,6 +9,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\DeliveryNoteController;
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\FormDraftController;
@@ -65,6 +66,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Dépenses
     Route::resource('expenses', ExpenseController::class);
+
+    // Pièces jointes centralisées
+    Route::get('/attachments/{attachment}', [AttachmentController::class, 'show'])->name('attachments.show');
+    Route::get('/attachments/{attachment}/download', [AttachmentController::class, 'download'])->name('attachments.download');
+    Route::delete('/attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('attachments.destroy');
 
     // Brouillons de formulaires (auto-save)
     Route::prefix('drafts')->name('drafts.')->group(function () {

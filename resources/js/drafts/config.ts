@@ -50,7 +50,7 @@ export const draftConfigs: Record<DraftFormType, DraftFormConfig> = {
     storage: 'local',
     serverSync: false,
     expirationDays: DRAFT_EXPIRATION_DAYS,
-    excludedFields: [...DEFAULT_EXCLUDED_FIELDS],
+    excludedFields: [...DEFAULT_EXCLUDED_FIELDS, 'attachments', 'pendingFiles', 'selectedFiles'],
     label: 'dépense',
     createRestoreTitle: 'Un brouillon de dépense a été retrouvé.',
     createRestoreContinue: 'Continuer la saisie',

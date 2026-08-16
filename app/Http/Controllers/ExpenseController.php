@@ -3,12 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Expense;
+use App\Services\ActivityLogger;
+use App\Services\AttachmentService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use App\Services\ActivityLogger;
+use InvalidArgumentException;
 
 class ExpenseController extends Controller
 {
+    public function __construct(
+        protected AttachmentService $attachmentService,
+    ) {}
+
     /**
      * Empêcher un gestionnaire d'accéder aux dépenses des autres utilisateurs.
      */
@@ -32,6 +38,7 @@ class ExpenseController extends Controller
         
         $expenses = (clone $query)
             ->with('user')
+            ->withCount('attachments')
             ->orderBy('expense_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->paginate(15);
@@ -80,7 +87,9 @@ class ExpenseController extends Controller
     {
         $this->checkPermission($request, 'expenses', 'create');
         
-        return Inertia::render('Expenses/Create');
+        return Inertia::render('Expenses/Create', [
+            'attachmentConfig' => $this->attachmentConfig(),
+        ]);
     }
 
     /**
@@ -100,13 +109,32 @@ class ExpenseController extends Controller
             'receipt_number' => 'nullable|string|max:255',
             'vendor' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
+            'attachments' => 'nullable|array|max:' . config('attachments.max_files', 10),
+            'attachments.*' => 'file',
         ]);
+
+        unset($validated['attachments']);
 
         // Générer automatiquement le numéro de dépense
         $validated['expense_number'] = Expense::generateExpenseNumber();
         $validated['user_id'] = auth()->id();
 
         $expense = Expense::create($validated);
+
+        try {
+            if ($request->hasFile('attachments')) {
+                $this->attachmentService->addMany(
+                    $expense,
+                    $request->file('attachments'),
+                    $request->user()
+                );
+            }
+        } catch (InvalidArgumentException $e) {
+            ActivityLogger::logDelete('Dépense', $expense);
+            $expense->delete();
+
+            return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
+        }
 
         ActivityLogger::logCreate('Dépense', $expense);
 
@@ -122,7 +150,7 @@ class ExpenseController extends Controller
         $this->checkPermission($request, 'expenses', 'view');
         $this->authorizeExpenseAccess($request, $expense);
         
-        $expense->load('user');
+        $expense->load(['user', 'attachments.uploadedBy']);
 
         // Ajouter les attributs calculés
         $expense->setAttribute('category_label', $expense->category_label);
@@ -130,6 +158,7 @@ class ExpenseController extends Controller
 
         return Inertia::render('Expenses/Show', [
             'expense' => $expense,
+            'canUpdateExpense' => $request->user()?->hasPermission('expenses', 'update') ?? false,
         ]);
     }
 
@@ -140,9 +169,12 @@ class ExpenseController extends Controller
     {
         $this->checkPermission($request, 'expenses', 'edit');
         $this->authorizeExpenseAccess($request, $expense);
+
+        $expense->load(['attachments.uploadedBy']);
         
         return Inertia::render('Expenses/Edit', [
             'expense' => $expense,
+            'attachmentConfig' => $this->attachmentConfig(),
         ]);
     }
 
@@ -164,9 +196,25 @@ class ExpenseController extends Controller
             'receipt_number' => 'nullable|string|max:255',
             'vendor' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
+            'attachments' => 'nullable|array|max:' . config('attachments.max_files', 10),
+            'attachments.*' => 'file',
         ]);
 
+        unset($validated['attachments']);
+
         $expense->update($validated);
+
+        try {
+            if ($request->hasFile('attachments')) {
+                $this->attachmentService->addMany(
+                    $expense,
+                    $request->file('attachments'),
+                    $request->user()
+                );
+            }
+        } catch (InvalidArgumentException $e) {
+            return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
+        }
 
         ActivityLogger::logUpdate('Dépense', $expense);
 
@@ -188,5 +236,15 @@ class ExpenseController extends Controller
 
         return redirect()->route('expenses.index')
             ->with('success', 'Dépense supprimée avec succès.');
+    }
+
+    protected function attachmentConfig(): array
+    {
+        return [
+            'maxFiles' => config('attachments.max_files', 10),
+            'maxSizeKb' => config('attachments.max_size', 10240),
+            'allowedExtensions' => config('attachments.allowed_extensions', []),
+            'accept' => '.pdf,.jpg,.jpeg,.png,.webp',
+        ];
     }
 }

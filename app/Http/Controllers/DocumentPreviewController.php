@@ -15,6 +15,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
+/**
+ * Document Access — aperçu des PDF générés par MKD-Pro (devis, BC, BL, factures).
+ *
+ * Autorisation, génération inline (preview) ou cache token, headers HTTP.
+ * Fichiers uploadés : AttachmentController. Voir docs/document-manager.md.
+ */
 class DocumentPreviewController extends Controller
 {
     use GeneratesPdf;

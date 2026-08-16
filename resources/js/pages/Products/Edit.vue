@@ -390,6 +390,7 @@ import { useFormDraft } from '@/composables/useFormDraft'
 import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
+import { formatDateForInput, normalizeFormDateFields } from '@/utils/dateFormatter'
 
 const { isVendeur } = usePermissions()
 
@@ -451,7 +452,7 @@ const form = useForm({
   location: props.product.location || '',
   is_active: props.product.is_active,
   category_id: props.product.category_id,
-  expiration_date: props.product.expiration_date ? new Date(props.product.expiration_date).toISOString().split('T')[0] : '',
+  expiration_date: formatDateForInput(props.product.expiration_date),
   alert_threshold_value: props.product.alert_threshold_value || null,
   alert_threshold_unit: props.product.alert_threshold_unit || '' as 'days' | 'weeks' | 'months' | '',
 })
@@ -464,7 +465,10 @@ const draft = useFormDraft({
   entityId: props.product.id,
   watchSource: form,
   getData: () => form.data() as Record<string, unknown>,
-  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  restoreData: (data) => {
+    restoreInertiaFormData(form as unknown as Record<string, unknown>, data)
+    normalizeFormDateFields(form as unknown as Record<string, unknown>, ['expiration_date'])
+  },
   getBaseline: () => productEditBaseline,
 })
 

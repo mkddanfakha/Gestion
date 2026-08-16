@@ -17,6 +17,8 @@ class ActivityLog extends Model
     public const ACTION_LOGIN = 'login';
     public const ACTION_LOGOUT = 'logout';
     public const ACTION_RESTORE = 'restore';
+    public const ACTION_ATTACHMENT_ADDED = 'attachment_added';
+    public const ACTION_ATTACHMENT_DELETED = 'attachment_deleted';
 
     protected $fillable = [
         'user_id',
@@ -72,6 +74,8 @@ class ActivityLog extends Model
             self::ACTION_LOGIN => 'Connexion',
             self::ACTION_LOGOUT => 'Déconnexion',
             self::ACTION_RESTORE => 'Restauration',
+            self::ACTION_ATTACHMENT_ADDED => 'Pièce jointe ajoutée',
+            self::ACTION_ATTACHMENT_DELETED => 'Pièce jointe supprimée',
             default => ucfirst($this->action),
         };
     }

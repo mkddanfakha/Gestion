@@ -5,6 +5,7 @@ import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useFormDraft } from '@/composables/useFormDraft'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
+import { formatDateForInput, getTodayForInput, normalizeFormDateFields } from '@/utils/dateFormatter'
 
 export type PurchaseOrderFormMode = 'create' | 'edit'
 
@@ -92,13 +93,6 @@ function normalizePercent(value: unknown): number {
   return Math.round(Math.min(100, Math.max(0, parsed)) * 100) / 100
 }
 
-function formatDateForInput(date: string | Date | null | undefined): string {
-  if (!date) return ''
-  const parsed = new Date(date)
-  if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toISOString().split('T')[0]
-}
-
 function isSystemStatus(status: unknown): status is PurchaseOrderSystemStatus {
   return PURCHASE_ORDER_SYSTEM_STATUSES.includes(status as PurchaseOrderSystemStatus)
 }
@@ -156,7 +150,7 @@ function buildInitialForm(mode: PurchaseOrderFormMode, purchaseOrder?: PurchaseO
 
   return {
     supplier_id: null,
-    order_date: new Date().toISOString().split('T')[0],
+    order_date: getTodayForInput(),
     expected_delivery_date: '',
     status: 'draft' as PurchaseOrderUserStatus,
     notes: '',
@@ -210,6 +204,10 @@ export function usePurchaseOrderForm({ mode, purchaseOrder, products }: UsePurch
   const restorePurchaseOrderDraftData = (data: Record<string, unknown>) => {
     const { ui, ...formData } = data
     restoreInertiaFormData(form as unknown as Record<string, unknown>, formData)
+    normalizeFormDateFields(form as unknown as Record<string, unknown>, [
+      'order_date',
+      'expected_delivery_date',
+    ])
 
     if (ui && typeof ui === 'object') {
       const uiState = ui as Record<string, unknown>
@@ -260,7 +258,7 @@ export function usePurchaseOrderForm({ mode, purchaseOrder, products }: UsePurch
 
   const submitIcon = computed(() => (mode === 'edit' ? 'bi-check-circle' : 'bi-save'))
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getTodayForInput()
 
   const statusOptions = computed(() => {
     const options = PURCHASE_ORDER_USER_STATUSES.map((value) => ({

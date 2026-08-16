@@ -166,6 +166,7 @@
                 <th>Montant</th>
                 <th>Méthode de paiement</th>
                 <th>Date</th>
+                <th>Pièces</th>
                 <th>Créé par</th>
                 <th>Actions</th>
               </tr>
@@ -193,6 +194,16 @@
                 <td>
                   <div>{{ formatDate(expense.expense_date) }}</div>
                   <div class="text-muted small">{{ formatTime(expense.created_at) }}</div>
+                </td>
+                <td>
+                  <span
+                    v-if="expense.attachments_count"
+                    class="text-muted"
+                    :title="`${expense.attachments_count} pièce(s) jointe(s)`"
+                  >
+                    <i class="bi bi-paperclip me-1"></i>{{ expense.attachments_count }}
+                  </span>
+                  <span v-else class="text-muted">—</span>
                 </td>
                 <td>
                   <div class="d-flex align-items-center">
@@ -278,6 +289,7 @@ interface Expense {
   receipt_number?: string
   vendor?: string
   notes?: string
+  attachments_count?: number
   user: User
   created_at: string
   updated_at: string

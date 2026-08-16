@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Model;
 
 class Supplier extends Model
 {
+    use HasAttachments;
     protected $fillable = [
         'name',
         'contact_person',

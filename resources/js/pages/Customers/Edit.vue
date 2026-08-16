@@ -72,6 +72,7 @@ import { useFormDraft } from '@/composables/useFormDraft'
 import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
+import { formatDateForInput, normalizeFormDateFields } from '@/utils/dateFormatter'
 
 interface Customer {
   id: number
@@ -115,7 +116,7 @@ const customerEditBaseline = {
   nationality: props.customer.nationality || '',
   identity_document_type: props.customer.identity_document_type || '',
   identity_document_number: props.customer.identity_document_number || '',
-  birthday: props.customer.birthday || '',
+  birthday: formatDateForInput(props.customer.birthday),
   address: props.customer.address || '',
   city: props.customer.city || '',
   postal_code: props.customer.postal_code || '',
@@ -132,7 +133,10 @@ const draft = useFormDraft({
   entityId: props.customer.id,
   watchSource: form,
   getData: () => form.data() as Record<string, unknown>,
-  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  restoreData: (data) => {
+    restoreInertiaFormData(form as unknown as Record<string, unknown>, data)
+    normalizeFormDateFields(form as unknown as Record<string, unknown>, ['birthday'])
+  },
   getBaseline: () => customerEditBaseline,
 })
 

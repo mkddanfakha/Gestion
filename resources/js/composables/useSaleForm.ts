@@ -5,6 +5,7 @@ import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useFormDraft } from '@/composables/useFormDraft'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
+import { formatDateForInput, getTodayForInput, normalizeFormDateFields } from '@/utils/dateFormatter'
 import {
   calculateSalePaymentState,
   getPaymentStatusBadgeClass,
@@ -110,7 +111,7 @@ function buildInitialForm(mode: SaleFormMode, sale?: SaleFormSale) {
       customer_id: sale.customer_id ?? null,
       payment_method: sale.payment_method || '',
       notes: sale.notes || '',
-      due_date: sale.due_date ? new Date(sale.due_date).toISOString().split('T')[0] : '',
+      due_date: formatDateForInput(sale.due_date),
       tax_amount: toNumber(sale.tax_amount),
       discount_amount: toNumber(sale.discount_amount),
       down_payment_amount: toNumber(sale.down_payment_amount),
@@ -175,6 +176,7 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
   const restoreSaleDraftData = (data: Record<string, unknown>) => {
     const { ui, ...formData } = data
     restoreInertiaFormData(form as unknown as Record<string, unknown>, formData)
+    normalizeFormDateFields(form as unknown as Record<string, unknown>, ['due_date'])
 
     if (ui && typeof ui === 'object') {
       const uiState = ui as Record<string, unknown>
@@ -220,7 +222,7 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
 
   const submitIcon = computed(() => (mode === 'edit' ? 'bi-check-circle' : 'bi-save'))
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getTodayForInput()
 
   watch(taxEnabled, (enabled) => {
     if (!enabled) {

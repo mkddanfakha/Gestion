@@ -241,6 +241,21 @@
             </div>
           </FormSection>
 
+          <FormSection title="Justificatifs" icon="bi bi-paperclip">
+            <AttachmentUploader
+              v-model="pendingFiles"
+              :attachments="expense.attachments || []"
+              :max-files="attachmentConfig.maxFiles"
+              :max-size-kb="attachmentConfig.maxSizeKb"
+              :accept="attachmentConfig.accept"
+              hint="Les nouveaux fichiers seront ajoutés à l'enregistrement. Ils ne sont pas sauvegardés dans le brouillon."
+              @preview="openPreview"
+            />
+            <div v-if="errors.attachments" class="text-danger small mt-2">
+              {{ errors.attachments }}
+            </div>
+          </FormSection>
+
           <FormActionsBar class="form-actions-bar--split">
             <Link
               :href="route('expenses.index')"
@@ -262,6 +277,7 @@
         </div>
       </form>
     </FormPageLayout>
+
   </AppLayout>
 </template>
 
@@ -274,11 +290,15 @@ import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { route } from '@/lib/routes'
+import { useDocumentPreview } from '@/composables/useDocumentPreview'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useFormDraft } from '@/composables/useFormDraft'
+import { formatDateForInput } from '@/utils/dateFormatter'
 import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import AttachmentUploader from '@/components/attachments/AttachmentUploader.vue'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
+import type { AttachmentConfig, AttachmentRecord } from '@/types/attachment'
 
 interface User {
   id: number
@@ -299,12 +319,14 @@ interface Expense {
   vendor?: string
   notes?: string
   user: User
+  attachments?: AttachmentRecord[]
   created_at: string
   updated_at: string
 }
 
 interface Props {
   expense: Expense
+  attachmentConfig: AttachmentConfig
 }
 
 const props = defineProps<Props>()
@@ -317,7 +339,7 @@ const form = useForm({
   amount: props.expense.amount,
   category: props.expense.category,
   payment_method: props.expense.payment_method,
-  expense_date: props.expense.expense_date,
+  expense_date: formatDateForInput(props.expense.expense_date),
   receipt_number: props.expense.receipt_number || '',
   vendor: props.expense.vendor || '',
   notes: props.expense.notes || ''
@@ -331,12 +353,19 @@ const draft = useFormDraft({
   entityId: props.expense.id,
   watchSource: form,
   getData: () => form.data() as Record<string, unknown>,
-  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  restoreData: (data) => {
+    restoreInertiaFormData(form as unknown as Record<string, unknown>, data)
+    form.expense_date = formatDateForInput(form.expense_date as string)
+  },
   getBaseline: () => expenseEditBaseline,
 })
 
 // Client-side validation errors
 const clientErrors = ref<Record<string, string>>({})
+const pendingFiles = ref<File[]>([])
+const { openAttachment } = useDocumentPreview()
+
+const attachmentConfig = props.attachmentConfig
 
 // Validation functions
 const validateRequired = (value: any): boolean => {
@@ -430,7 +459,26 @@ const submit = () => {
     return
   }
 
-  form.put(route('expenses.update', { id: props.expense.id }), {
+  form.transform((data) => {
+    const formData = new FormData()
+    const formDataObj = data as Record<string, unknown>
+
+    Object.keys(formDataObj).forEach((key) => {
+      const value = formDataObj[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, String(value))
+      }
+    })
+
+    pendingFiles.value.forEach((file) => {
+      formData.append('attachments[]', file)
+    })
+
+    formData.append('_method', 'PUT')
+
+    return formData
+  }).post(route('expenses.update', { id: props.expense.id }), {
+    forceFormData: true,
     onSuccess: async () => {
       await draft.markSubmitted()
       success('Dépense modifiée avec succès !')
@@ -439,6 +487,10 @@ const submit = () => {
       error('Erreur lors de la modification de la dépense.')
     }
   })
+}
+
+const openPreview = (attachment: AttachmentRecord) => {
+  void openAttachment(attachment, `Aperçu — ${attachment.original_name}`)
 }
 
 const { errors, processing } = form

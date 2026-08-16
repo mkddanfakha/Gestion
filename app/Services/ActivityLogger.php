@@ -274,6 +274,59 @@ class ActivityLogger
         );
     }
 
+    public static function logAttachmentAdded(Model $attachable, \App\Models\Attachment $attachment, ?User $user = null): ActivityLog
+    {
+        $module = self::resolveAttachmentModule($attachable);
+        $label = ActivityLog::resolveSubjectLabel($attachable);
+
+        return self::log(
+            ActivityLog::ACTION_ATTACHMENT_ADDED,
+            $module,
+            sprintf('a ajouté %s à %s %s', $attachment->original_name, self::subjectTypePhrase($module), $label),
+            $attachable,
+            $user,
+            newValues: [
+                'attachment_id' => $attachment->id,
+                'original_name' => $attachment->original_name,
+                'mime_type' => $attachment->mime_type,
+                'size' => $attachment->size,
+            ],
+        );
+    }
+
+    public static function logAttachmentDeleted(Model $attachable, string $originalName, \App\Models\Attachment $attachment, ?User $user = null): ActivityLog
+    {
+        $module = self::resolveAttachmentModule($attachable);
+        $label = ActivityLog::resolveSubjectLabel($attachable);
+
+        return self::log(
+            ActivityLog::ACTION_ATTACHMENT_DELETED,
+            $module,
+            sprintf('a supprimé %s de %s %s', $originalName, self::subjectTypePhrase($module), $label),
+            $attachable,
+            $user,
+            oldValues: [
+                'attachment_id' => $attachment->id,
+                'original_name' => $originalName,
+                'mime_type' => $attachment->mime_type,
+                'size' => $attachment->size,
+            ],
+        );
+    }
+
+    private static function resolveAttachmentModule(Model $attachable): string
+    {
+        return match ($attachable::class) {
+            \App\Models\Expense::class => 'Dépense',
+            \App\Models\Quote::class => 'Devis',
+            \App\Models\PurchaseOrder::class => 'Bon de commande',
+            \App\Models\DeliveryNote::class => 'Bon de livraison',
+            \App\Models\Customer::class => 'Client',
+            \App\Models\Supplier::class => 'Fournisseur',
+            default => class_basename($attachable),
+        };
+    }
+
     private static function subjectTypePhrase(string $module, string $context = 'default'): string
     {
         return match ($module) {

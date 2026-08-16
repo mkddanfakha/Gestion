@@ -259,6 +259,7 @@ import type { CustomerFormData } from '@/composables/useCustomerFormValidation'
 import { COUNTRIES } from '@/data/countries'
 import { getIdentityFormatHint, IDENTITY_DOCUMENT_TYPES } from '@/utils/customerIdentity'
 import type { CustomerDuplicateMatch } from '@/utils/customerIdentity'
+import { getTodayForInput } from '@/utils/dateFormatter'
 
 const props = withDefaults(defineProps<{
   form: CustomerFormData
@@ -290,7 +291,7 @@ const identityTypes = IDENTITY_DOCUMENT_TYPES
 const countries = COUNTRIES
 const { analysis, isChecking, debouncedCheck, runCheck } = useCustomerDuplicateCheck(props.excludeId)
 
-const today = computed(() => new Date().toISOString().split('T')[0])
+const today = computed(() => getTodayForInput())
 
 const identityNumberHintId = computed(() => `${props.idPrefix}-identity-number-hint`)
 

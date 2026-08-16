@@ -102,23 +102,68 @@ export const getCurrentDate = (): Date => {
 }
 
 /**
- * Formater une date pour un input de type date (YYYY-MM-DD)
+ * Formater une date pour un input de type date (YYYY-MM-DD).
+ *
+ * Privilégie l'extraction directe de la partie calendaire pour les valeurs ISO
+ * afin d'éviter tout décalage lié au fuseau horaire.
  */
 export const formatDateForInput = (date: string | Date | null | undefined): string => {
-  if (!date) return ''
-  
+  if (date == null || date === '') {
+    return ''
+  }
+
+  if (typeof date === 'string') {
+    const trimmed = date.trim()
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed
+    }
+
+    const isoDateMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/)
+    if (isoDateMatch) {
+      return isoDateMatch[1]
+    }
+  }
+
   const dateObj = typeof date === 'string' ? new Date(date) : date
-  
-  // Utiliser le fuseau horaire du Sénégal
+
+  if (Number.isNaN(dateObj.getTime())) {
+    return ''
+  }
+
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: TIMEZONE,
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit'
+    day: '2-digit',
   })
-  
+
   return formatter.format(dateObj)
 }
+
+/**
+ * Date du jour au format input[type=date] (fuseau Africa/Dakar).
+ */
+export const getTodayForInput = (): string => formatDateForInput(new Date())
+
+/**
+ * Normalise les champs date d'un objet formulaire vers YYYY-MM-DD.
+ */
+export function normalizeFormDateFields(
+  target: Record<string, unknown>,
+  fields: readonly string[],
+): void {
+  for (const field of fields) {
+    if (field in target) {
+      target[field] = formatDateForInput(target[field] as string | Date | null | undefined)
+    }
+  }
+}
+
+/**
+ * Format futur pour input[type=datetime-local] : YYYY-MM-DDTHH:mm
+ * (ne pas confondre avec formatDateForInput).
+ */
 
 /**
  * Formater une date relative (ex: "il y a 2 heures", "dans 3 jours")

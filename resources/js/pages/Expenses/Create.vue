@@ -241,6 +241,20 @@
             </div>
           </FormSection>
 
+          <FormSection title="Justificatifs" icon="bi bi-paperclip">
+            <AttachmentUploader
+              v-model="pendingFiles"
+              :show-existing="false"
+              :max-files="attachmentConfig.maxFiles"
+              :max-size-kb="attachmentConfig.maxSizeKb"
+              :accept="attachmentConfig.accept"
+              hint="Les fichiers seront enregistrés à la création de la dépense. Ils ne sont pas sauvegardés dans le brouillon."
+            />
+            <div v-if="errors.attachments" class="text-danger small mt-2">
+              {{ errors.attachments }}
+            </div>
+          </FormSection>
+
           <FormActionsBar class="form-actions-bar--split">
             <Link
               :href="route('expenses.index')"
@@ -275,12 +289,19 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
-import { formatDateForInput } from '@/utils/dateFormatter'
+import { formatDateForInput, getTodayForInput } from '@/utils/dateFormatter'
 import { useFormDraft } from '@/composables/useFormDraft'
 import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
+import AttachmentUploader from '@/components/attachments/AttachmentUploader.vue'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
+import type { AttachmentConfig } from '@/types/attachment'
 
+interface Props {
+  attachmentConfig: AttachmentConfig
+}
+
+const { attachmentConfig } = defineProps<Props>()
 const { success, error } = useSweetAlert()
 
 // Form data
@@ -290,7 +311,7 @@ const form = useForm({
   amount: 0,
   category: '',
   payment_method: '',
-  expense_date: formatDateForInput(new Date()), // Date du jour par défaut (fuseau horaire du Sénégal)
+  expense_date: getTodayForInput(),
   receipt_number: '',
   vendor: '',
   notes: ''
@@ -309,6 +330,7 @@ const draft = useFormDraft({
 
 // Client-side validation errors
 const clientErrors = ref<Record<string, string>>({})
+const pendingFiles = ref<File[]>([])
 
 // Validation functions
 const validateRequired = (value: any): boolean => {
@@ -402,7 +424,24 @@ const submit = () => {
     return
   }
 
-  form.post(route('expenses.store'), {
+  form.transform((data) => {
+    const formData = new FormData()
+    const formDataObj = data as Record<string, unknown>
+
+    Object.keys(formDataObj).forEach((key) => {
+      const value = formDataObj[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, String(value))
+      }
+    })
+
+    pendingFiles.value.forEach((file) => {
+      formData.append('attachments[]', file)
+    })
+
+    return formData
+  }).post(route('expenses.store'), {
+    forceFormData: true,
     onSuccess: async () => {
       await draft.markSubmitted()
       success('Dépense créée avec succès !')

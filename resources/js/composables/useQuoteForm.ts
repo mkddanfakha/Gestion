@@ -5,6 +5,7 @@ import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useFormDraft } from '@/composables/useFormDraft'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
+import { formatDateForInput, getTodayForInput, normalizeFormDateFields } from '@/utils/dateFormatter'
 
 export type QuoteFormMode = 'create' | 'edit'
 
@@ -102,7 +103,7 @@ function buildInitialForm(mode: QuoteFormMode, quote?: QuoteFormQuote) {
       customer_id: quote.customer_id ?? null,
       status: (quote.status as QuoteStatus) || 'draft',
       notes: quote.notes || '',
-      valid_until: quote.valid_until ? new Date(quote.valid_until).toISOString().split('T')[0] : '',
+      valid_until: formatDateForInput(quote.valid_until),
       tax_amount: toNumber(quote.tax_amount),
       discount_amount: toNumber(quote.discount_amount),
       items: mapQuoteItems(quote.quoteItems),
@@ -162,6 +163,7 @@ export function useQuoteForm({ mode, quote, products }: UseQuoteFormOptions) {
   const restoreQuoteDraftData = (data: Record<string, unknown>) => {
     const { ui, ...formData } = data
     restoreInertiaFormData(form as unknown as Record<string, unknown>, formData)
+    normalizeFormDateFields(form as unknown as Record<string, unknown>, ['valid_until'])
 
     if (ui && typeof ui === 'object') {
       const uiState = ui as Record<string, unknown>
@@ -206,7 +208,7 @@ export function useQuoteForm({ mode, quote, products }: UseQuoteFormOptions) {
 
   const submitIcon = computed(() => (mode === 'edit' ? 'bi-check-circle' : 'bi-save'))
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getTodayForInput()
 
   watch(taxEnabled, (enabled) => {
     if (!enabled) {
