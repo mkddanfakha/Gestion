@@ -66,7 +66,7 @@ class PurchaseOrderController extends Controller
         $this->checkPermission($request, 'purchase-orders', 'create');
         
         $suppliers = Supplier::where('status', 'active')->orderBy('name')->get();
-        $products = Product::with('category')->orderBy('name')->get();
+        $products = $this->productsForForm();
 
         return Inertia::render('PurchaseOrders/Create', [
             'suppliers' => $suppliers,
@@ -175,12 +175,13 @@ class PurchaseOrderController extends Controller
         
         $purchaseOrder->load(['supplier', 'items.product']);
         $suppliers = Supplier::where('status', 'active')->orderBy('name')->get();
-        $products = Product::with('category')->orderBy('name')->get();
+        $products = $this->productsForForm();
 
         return Inertia::render('PurchaseOrders/Edit', [
             'purchaseOrder' => $purchaseOrder,
             'suppliers' => $suppliers,
             'products' => $products,
+            'hasDeliveries' => $purchaseOrder->deliveryNotes()->exists(),
         ]);
     }
 
@@ -261,8 +262,23 @@ class PurchaseOrderController extends Controller
         return response()->json(
             $this->deliveryService->buildReceiptSummary(
                 $purchaseOrder->load(['items.product']),
+                $request->filled('exclude_delivery_note_id')
+                    ? (int) $request->input('exclude_delivery_note_id')
+                    : null,
             ),
         );
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Product>
+     */
+    private function productsForForm()
+    {
+        return Product::with('category')->orderBy('name')->get()->map(function (Product $product) {
+            $product->setAttribute('image_url', $product->getThumbImageUrl());
+
+            return $product;
+        });
     }
 
     /**

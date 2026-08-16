@@ -67,12 +67,12 @@ class PurchaseOrderDeliveryService
      *     is_fully_delivered: bool
      * }
      */
-    public function buildReceiptSummary(PurchaseOrder $purchaseOrder): array
+    public function buildReceiptSummary(PurchaseOrder $purchaseOrder, ?int $excludeDeliveryNoteId = null): array
     {
         $purchaseOrder->loadMissing(['items.product']);
 
-        $delivered = $this->getDeliveredQuantitiesByProduct($purchaseOrder);
-        $pending = $this->getPendingQuantitiesByProduct($purchaseOrder);
+        $delivered = $this->getDeliveredQuantitiesByProduct($purchaseOrder, $excludeDeliveryNoteId);
+        $pending = $this->getPendingQuantitiesByProduct($purchaseOrder, $excludeDeliveryNoteId);
 
         $items = [];
         $totalOrdered = 0;

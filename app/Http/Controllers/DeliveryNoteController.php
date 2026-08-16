@@ -76,8 +76,11 @@ class DeliveryNoteController extends Controller
         $this->checkPermission($request, 'delivery-notes', 'create');
         
         $suppliers = Supplier::where('status', 'active')->orderBy('name')->get();
-        $products = Product::with('category')->orderBy('name')->get();
-        $purchaseOrders = PurchaseOrder::with('supplier')->orderBy('po_number')->get();
+        $products = $this->productsForForm();
+        $purchaseOrders = PurchaseOrder::with('supplier')
+            ->whereNotIn('status', ['cancelled', 'received'])
+            ->orderBy('po_number')
+            ->get();
         
         // Optionnel: charger un bon de commande si spécifié
         $purchaseOrder = null;
@@ -199,16 +202,21 @@ class DeliveryNoteController extends Controller
         }
 
         $deliveryNote->load(['supplier', 'purchaseOrder', 'items.product']);
-        
+
         $suppliers = Supplier::where('status', 'active')->orderBy('name')->get();
-        $products = Product::with('category')->orderBy('name')->get();
+        $products = $this->productsForForm();
         $purchaseOrders = PurchaseOrder::with('supplier')->orderBy('po_number')->get();
+
+        $purchaseOrderReceipt = $deliveryNote->purchaseOrder
+            ? $this->deliveryService->buildReceiptSummary($deliveryNote->purchaseOrder, $deliveryNote->id)
+            : null;
 
         return Inertia::render('DeliveryNotes/Edit', [
             'deliveryNote' => $deliveryNote,
             'suppliers' => $suppliers,
             'products' => $products,
             'purchaseOrders' => $purchaseOrders,
+            'purchaseOrderReceipt' => $purchaseOrderReceipt,
         ]);
     }
 
@@ -542,5 +550,17 @@ class DeliveryNoteController extends Controller
     {
         $deliveryNote->load(['supplier', 'user', 'purchaseOrder', 'items.product']);
         return $this->generatePdfFromView('delivery-notes.delivery-note', ['deliveryNote' => $deliveryNote]);
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Product>
+     */
+    private function productsForForm()
+    {
+        return Product::with('category')->orderBy('name')->get()->map(function (Product $product) {
+            $product->setAttribute('image_url', $product->getThumbImageUrl());
+
+            return $product;
+        });
     }
 }

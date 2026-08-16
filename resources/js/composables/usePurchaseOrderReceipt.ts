@@ -60,8 +60,15 @@ export function validateDeliveryQuantityAgainstReceipt(
 
 export async function fetchPurchaseOrderReceiptSummary(
   purchaseOrderId: number,
+  excludeDeliveryNoteId?: number | null,
 ): Promise<PurchaseOrderReceiptSummary> {
-  const response = await fetch(route('purchase-orders.receipt-summary', { purchaseOrder: purchaseOrderId }), {
+  let url = route('purchase-orders.receipt-summary', { purchaseOrder: purchaseOrderId })
+
+  if (excludeDeliveryNoteId) {
+    url += `?exclude_delivery_note_id=${excludeDeliveryNoteId}`
+  }
+
+  const response = await fetch(url, {
     headers: {
       Accept: 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
