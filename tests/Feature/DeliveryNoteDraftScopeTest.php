@@ -179,6 +179,76 @@ class DeliveryNoteDraftScopeTest extends TestCase
         ]);
     }
 
+    public function test_fetching_from_po_select_without_draft_returns_null(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->getJson(route('drafts.show', [
+            'form_type' => 'delivery_note',
+            'mode' => 'create',
+            'scope_context' => 'from-po:select',
+        ]))
+            ->assertOk()
+            ->assertJsonPath('draft', null);
+    }
+
+    public function test_fetching_from_po_select_returns_only_its_own_draft(): void
+    {
+        $user = User::factory()->create();
+
+        $this->upsertDeliveryNoteDraft($user, 'from-po:select', [
+            'items' => [['product_id' => 4, 'quantity' => 2]],
+        ])->assertOk();
+
+        $this->actingAs($user)->getJson(route('drafts.show', [
+            'form_type' => 'delivery_note',
+            'mode' => 'create',
+            'scope_context' => 'from-po:select',
+        ]))
+            ->assertOk()
+            ->assertJsonPath('draft.scopeContext', 'from-po:select')
+            ->assertJsonPath('draft.data.items.0.quantity', 2);
+    }
+
+    public function test_from_po_select_draft_is_isolated_from_standalone_and_purchase_order_scopes(): void
+    {
+        $user = User::factory()->create();
+
+        $this->upsertDeliveryNoteDraft($user, 'standalone', [
+            'items' => [['product_id' => 1, 'quantity' => 10]],
+        ])->assertOk();
+
+        $this->upsertDeliveryNoteDraft($user, 'from-po:12', [
+            'items' => [['product_id' => 2, 'quantity' => 5]],
+        ])->assertOk();
+
+        $this->upsertDeliveryNoteDraft($user, 'from-po:select', [
+            'items' => [['product_id' => 4, 'quantity' => 2]],
+        ])->assertOk();
+
+        $this->fetchDeliveryNoteDraft($user, 'from-po:select')
+            ->assertOk()
+            ->assertJsonPath('draft.scopeContext', 'from-po:select')
+            ->assertJsonPath('draft.data.items.0.quantity', 2);
+
+        $this->fetchDeliveryNoteDraft($user, 'standalone')
+            ->assertOk()
+            ->assertJsonPath('draft.data.items.0.quantity', 10);
+
+        $this->fetchDeliveryNoteDraft($user, 'from-po:12')
+            ->assertOk()
+            ->assertJsonPath('draft.data.items.0.quantity', 5);
+    }
+
+    public function test_fetching_standalone_without_draft_returns_null(): void
+    {
+        $user = User::factory()->create();
+
+        $this->fetchDeliveryNoteDraft($user, 'standalone')
+            ->assertOk()
+            ->assertJsonPath('draft', null);
+    }
+
     public function test_legacy_draft_without_scope_context_remains_accessible(): void
     {
         $user = User::factory()->create();
