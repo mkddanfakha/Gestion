@@ -1,6 +1,29 @@
 import type { DraftFormType, DraftMode } from './types'
 
 const KEY_PREFIX = 'mkd-draft:v1'
+const SCOPE_MARKER = ':ctx:'
+
+export function normalizeScopeContext(scopeContext?: string | null): string {
+  if (!scopeContext) {
+    return ''
+  }
+
+  const trimmed = scopeContext.trim()
+
+  return trimmed === '' ? '' : trimmed
+}
+
+export function buildDraftScopeKey(
+  formType: DraftFormType,
+  mode: DraftMode,
+  entityId: number | null,
+  scopeContext?: string | null,
+): string {
+  const base = `${formType}:${mode}:${entityId === null ? 'new' : String(entityId)}`
+  const normalizedScope = normalizeScopeContext(scopeContext)
+
+  return normalizedScope ? `${base}:${normalizedScope}` : base
+}
 
 export function buildDraftStorageKey(
   userId: number,
@@ -10,7 +33,9 @@ export function buildDraftStorageKey(
   scopeContext?: string | null,
 ): string {
   const entityPart = entityId === null ? 'new' : String(entityId)
-  const contextPart = scopeContext ? `:ctx:${scopeContext}` : ''
+  const normalizedScope = normalizeScopeContext(scopeContext)
+  const contextPart = normalizedScope ? `${SCOPE_MARKER}${normalizedScope}` : ''
+
   return `${KEY_PREFIX}:${userId}:${formType}:${mode}:${entityPart}${contextPart}`
 }
 
@@ -37,16 +62,28 @@ export function parseDraftStorageKey(key: string): {
   formType: DraftFormType
   mode: DraftMode
   entityId: number | null
+  scopeContext: string | null
 } | null {
-  const parts = key.split(':')
-  if (parts.length < 6 || parts[0] !== 'mkd-draft' || parts[1] !== 'v1') {
+  if (!key.startsWith(`${KEY_PREFIX}:`)) {
     return null
   }
 
-  const userId = Number(parts[2])
-  const formType = parts[3] as DraftFormType
-  const mode = parts[4] as DraftMode
-  const entityPart = parts[5]
+  const withoutPrefix = key.slice(KEY_PREFIX.length + 1)
+  const scopeIndex = withoutPrefix.indexOf(SCOPE_MARKER)
+
+  const scopePart =
+    scopeIndex >= 0 ? withoutPrefix.slice(scopeIndex + SCOPE_MARKER.length) : null
+  const scopedBody = scopeIndex >= 0 ? withoutPrefix.slice(0, scopeIndex) : withoutPrefix
+
+  const parts = scopedBody.split(':')
+  if (parts.length < 4) {
+    return null
+  }
+
+  const userId = Number(parts[0])
+  const formType = parts[1] as DraftFormType
+  const mode = parts[2] as DraftMode
+  const entityPart = parts[3]
 
   if (!Number.isFinite(userId)) {
     return null
@@ -57,5 +94,6 @@ export function parseDraftStorageKey(key: string): {
     formType,
     mode,
     entityId: entityPart === 'new' ? null : Number(entityPart),
+    scopeContext: scopePart && scopePart.length > 0 ? scopePart : null,
   }
 }

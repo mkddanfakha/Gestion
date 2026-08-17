@@ -26,6 +26,7 @@ export interface FormDraftRecord {
   formType: DraftFormType
   mode: DraftMode
   entityId: number | null
+  scopeContext?: string | null
   data: Record<string, unknown>
   createdAt: string
   updatedAt: string
@@ -66,6 +67,7 @@ export interface DraftSyncPayload {
   form_type: DraftFormType
   mode: DraftMode
   entity_id?: number | null
+  scope_context?: string | null
   data: Record<string, unknown>
   version?: number
   instance_id?: string
@@ -77,6 +79,7 @@ export interface DraftApiRecord {
   formType: DraftFormType
   mode: DraftMode
   entityId: number | null
+  scopeContext?: string | null
   data: Record<string, unknown>
   version: number
   instanceId: string | null

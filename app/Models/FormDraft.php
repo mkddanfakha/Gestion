@@ -15,6 +15,7 @@ class FormDraft extends Model
         'form_type',
         'mode',
         'entity_id',
+        'scope_context',
         'data',
         'version',
         'instance_id',

@@ -3,7 +3,7 @@ import { useDebounceFn } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, unref, watch } from 'vue'
 import { getDraftConfig, DRAFT_LOCAL_SAVE_DEBOUNCE_MS, DRAFT_SERVER_SYNC_DEBOUNCE_MS } from '@/drafts/config'
 import { createDraftBroadcastManager } from '@/drafts/draftBroadcast'
-import { createInstanceId } from '@/drafts/draftKey'
+import { buildDraftScopeKey, createInstanceId } from '@/drafts/draftKey'
 import {
   cleanupExpiredDrafts,
   deleteDraft,
@@ -49,10 +49,9 @@ export function useFormDraft<T extends Record<string, unknown>>(
 
   let disposed = false
 
-  const draftScopeKey = computed(() => {
-    const base = `${options.formType}:${options.mode}:${entityId.value ?? 'new'}`
-    return scopeContext.value ? `${base}:${scopeContext.value}` : base
-  })
+  const draftScopeKey = computed(() =>
+    buildDraftScopeKey(options.formType, options.mode, entityId.value, scopeContext.value),
+  )
 
   const broadcast = createDraftBroadcastManager({
     isActive: () => !disposed && enabled,
@@ -182,6 +181,7 @@ export function useFormDraft<T extends Record<string, unknown>>(
       form_type: options.formType,
       mode: options.mode,
       entity_id: entityId.value,
+      scope_context: scopeContext.value,
       data,
       version: currentVersion.value,
       instance_id: instanceId,
@@ -239,7 +239,12 @@ export function useFormDraft<T extends Record<string, unknown>>(
 
     let remoteDraft: FormDraftRecord | null = null
     if (config.serverSync && isOnline()) {
-      remoteDraft = await fetchServerDraft(options.formType, options.mode, entityId.value)
+      remoteDraft = await fetchServerDraft(
+        options.formType,
+        options.mode,
+        entityId.value,
+        scopeContext.value,
+      )
     }
 
     if (disposed) {
@@ -311,7 +316,12 @@ export function useFormDraft<T extends Record<string, unknown>>(
     await deleteDraft(currentUserId, options.formType, options.mode, entityId.value, scopeContext.value)
 
     if (config.serverSync && !disposed) {
-      await deleteServerDraftByScope(options.formType, options.mode, entityId.value)
+      await deleteServerDraftByScope(
+        options.formType,
+        options.mode,
+        entityId.value,
+        scopeContext.value,
+      )
     }
 
     if (disposed) {
@@ -384,6 +394,29 @@ export function useFormDraft<T extends Record<string, unknown>>(
     },
     { deep: true },
   )
+
+  watch(scopeContext, async (nextScope, previousScope) => {
+    if (
+      disposed ||
+      !enabled ||
+      !isInitialized.value ||
+      nextScope === previousScope
+    ) {
+      return
+    }
+
+    isPaused.value = true
+    debouncedLocalSave.cancel?.()
+    debouncedServerSync.cancel?.()
+    pendingDraft.value = null
+    showRestoreDialog.value = false
+    status.value = 'clean'
+    lastSavedAt.value = null
+    currentVersion.value = 0
+    isPaused.value = false
+
+    await evaluateDraftForRestore()
+  })
 
   return reactive({
     enabled,

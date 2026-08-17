@@ -19,6 +19,7 @@ class FormDraftController extends Controller
             'form_type' => 'required|string|max:64',
             'mode' => 'required|string|in:create,edit',
             'entity_id' => 'nullable|integer|min:1',
+            'scope_context' => 'nullable|string|max:128',
         ]);
 
         $this->draftService->assertAllowedFormType($validated['form_type']);
@@ -27,7 +28,8 @@ class FormDraftController extends Controller
             $request->user(),
             $validated['form_type'],
             $validated['mode'],
-            $validated['entity_id'] ?? null
+            $validated['entity_id'] ?? null,
+            $validated['scope_context'] ?? null,
         );
 
         if (!$draft) {
@@ -45,6 +47,7 @@ class FormDraftController extends Controller
             'form_type' => 'required|string|max:64',
             'mode' => 'required|string|in:create,edit',
             'entity_id' => 'nullable|integer|min:1',
+            'scope_context' => 'nullable|string|max:128',
             'data' => 'required|array',
             'version' => 'nullable|integer|min:1',
             'instance_id' => 'nullable|string|max:64',
@@ -63,7 +66,8 @@ class FormDraftController extends Controller
             $validated['entity_id'] ?? null,
             $validated['data'],
             $validated['instance_id'] ?? null,
-            $validated['version'] ?? null
+            $validated['version'] ?? null,
+            $validated['scope_context'] ?? null,
         );
 
         return response()->json([
@@ -88,6 +92,7 @@ class FormDraftController extends Controller
             'form_type' => 'required|string|max:64',
             'mode' => 'required|string|in:create,edit',
             'entity_id' => 'nullable|integer|min:1',
+            'scope_context' => 'nullable|string|max:128',
         ]);
 
         $this->draftService->assertAllowedFormType($validated['form_type']);
@@ -96,7 +101,8 @@ class FormDraftController extends Controller
             $request->user(),
             $validated['form_type'],
             $validated['mode'],
-            $validated['entity_id'] ?? null
+            $validated['entity_id'] ?? null,
+            $validated['scope_context'] ?? null,
         );
 
         return response()->json(['success' => true]);
@@ -110,6 +116,7 @@ class FormDraftController extends Controller
             'formType' => $draft->form_type,
             'mode' => $draft->mode,
             'entityId' => $draft->entity_id,
+            'scopeContext' => $draft->scope_context,
             'data' => $draft->data,
             'version' => $draft->version,
             'instanceId' => $draft->instance_id,

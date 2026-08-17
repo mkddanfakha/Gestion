@@ -13,12 +13,14 @@ class FormDraftService
         User $user,
         string $formType,
         string $mode,
-        ?int $entityId
+        ?int $entityId,
+        ?string $scopeContext = null,
     ): ?FormDraft {
         $draft = FormDraft::query()
             ->where('user_id', $user->id)
             ->where('form_type', $formType)
             ->where('mode', $mode)
+            ->where('scope_context', $this->normalizeScopeContext($scopeContext))
             ->when(
                 $entityId === null,
                 fn ($query) => $query->whereNull('entity_id'),
@@ -46,9 +48,11 @@ class FormDraftService
         ?int $entityId,
         array $data,
         ?string $instanceId = null,
-        ?int $incomingVersion = null
+        ?int $incomingVersion = null,
+        ?string $scopeContext = null,
     ): FormDraft {
-        $existing = $this->findForScope($user, $formType, $mode, $entityId);
+        $normalizedScope = $this->normalizeScopeContext($scopeContext);
+        $existing = $this->findForScope($user, $formType, $mode, $entityId, $normalizedScope);
 
         if ($existing && $instanceId && $existing->instance_id && $existing->instance_id !== $instanceId) {
             $existingUpdatedAt = $existing->updated_at?->timestamp ?? 0;
@@ -82,6 +86,7 @@ class FormDraftService
             'form_type' => $formType,
             'mode' => $mode,
             'entity_id' => $entityId,
+            'scope_context' => $normalizedScope,
             'data' => $data,
             'version' => $incomingVersion ?? 1,
             'instance_id' => $instanceId,
@@ -93,18 +98,31 @@ class FormDraftService
         User $user,
         string $formType,
         string $mode,
-        ?int $entityId
+        ?int $entityId,
+        ?string $scopeContext = null,
     ): void {
         FormDraft::query()
             ->where('user_id', $user->id)
             ->where('form_type', $formType)
             ->where('mode', $mode)
+            ->where('scope_context', $this->normalizeScopeContext($scopeContext))
             ->when(
                 $entityId === null,
                 fn ($query) => $query->whereNull('entity_id'),
                 fn ($query) => $query->where('entity_id', $entityId)
             )
             ->delete();
+    }
+
+    private function normalizeScopeContext(?string $scopeContext): string
+    {
+        if ($scopeContext === null) {
+            return '';
+        }
+
+        $trimmed = trim($scopeContext);
+
+        return $trimmed === '' ? '' : $trimmed;
     }
 
     public function deleteById(User $user, string $draftId): bool

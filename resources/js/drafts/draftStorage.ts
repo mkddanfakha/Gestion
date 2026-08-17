@@ -79,7 +79,7 @@ async function idbDelete(key: string): Promise<void> {
   })
 }
 
-async function idbGetAllRecords(): Promise<FormDraftRecord[]> {
+async function idbGetAllEntries(): Promise<Array<{ storageKey: string; record: FormDraftRecord }>> {
   const db = await openDatabase()
 
   return new Promise((resolve, reject) => {
@@ -88,8 +88,19 @@ async function idbGetAllRecords(): Promise<FormDraftRecord[]> {
     const request = store.getAll()
 
     request.onsuccess = () => {
-      const rows = (request.result as Array<{ record?: FormDraftRecord }> | undefined) ?? []
-      resolve(rows.map((row) => row.record).filter(Boolean) as FormDraftRecord[])
+      const rows =
+        (request.result as Array<{ storageKey?: string; record?: FormDraftRecord }> | undefined) ?? []
+
+      resolve(
+        rows
+          .filter((row): row is { storageKey: string; record: FormDraftRecord } =>
+            Boolean(row.storageKey && row.record),
+          )
+          .map((row) => ({
+            storageKey: row.storageKey,
+            record: row.record,
+          })),
+      )
     }
     request.onerror = () => reject(request.error ?? new Error('Liste IndexedDB impossible'))
   })
@@ -231,6 +242,7 @@ export async function saveDraft(
     formType,
     mode,
     entityId,
+    scopeContext: scopeContext ?? null,
     data: sanitized,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
@@ -281,15 +293,14 @@ export async function cleanupExpiredDrafts(currentUserId?: number): Promise<void
   }
 
   try {
-    const records = await idbGetAllRecords()
-    for (const record of records) {
-      if (currentUserId !== undefined && record.userId !== currentUserId) {
+    const entries = await idbGetAllEntries()
+    for (const entry of entries) {
+      if (currentUserId !== undefined && entry.record.userId !== currentUserId) {
         continue
       }
 
-      if (isDraftExpired(record)) {
-        const key = buildDraftStorageKey(record.userId, record.formType, record.mode, record.entityId)
-        await idbDelete(key)
+      if (isDraftExpired(entry.record)) {
+        await idbDelete(entry.storageKey)
       }
     }
   } catch {
@@ -315,11 +326,10 @@ export async function purgeDraftsForOtherUsers(currentUserId: number): Promise<v
   }
 
   try {
-    const records = await idbGetAllRecords()
-    for (const record of records) {
-      if (record.userId !== currentUserId) {
-        const key = buildDraftStorageKey(record.userId, record.formType, record.mode, record.entityId)
-        await idbDelete(key)
+    const entries = await idbGetAllEntries()
+    for (const entry of entries) {
+      if (entry.record.userId !== currentUserId) {
+        await idbDelete(entry.storageKey)
       }
     }
   } catch {
