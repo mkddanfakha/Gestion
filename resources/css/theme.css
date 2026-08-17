@@ -71,6 +71,7 @@
     --color-dropdown-hover: rgba(15, 23, 42, 0.05);
     --color-dropdown-active-bg: var(--color-accent);
     --color-dropdown-active-text: #ffffff;
+    --color-dropdown-active-text-muted: rgba(255, 255, 255, 0.85);
     --color-input-disabled-bg: #f1f5f9;
     --color-input-disabled-text: var(--color-text-muted);
     --color-pagination-bg: var(--color-surface-elevated);
@@ -143,6 +144,7 @@
     --color-dropdown-hover: rgba(255, 255, 255, 0.08);
     --color-dropdown-active-bg: var(--color-accent);
     --color-dropdown-active-text: #ffffff;
+    --color-dropdown-active-text-muted: rgba(255, 255, 255, 0.85);
     --color-input-disabled-bg: rgba(255, 255, 255, 0.04);
     --color-input-disabled-text: var(--color-text-muted);
     --color-pagination-bg: var(--color-surface-elevated);
