@@ -395,6 +395,7 @@ import { useFormDraft } from '@/composables/useFormDraft'
 import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
+import { normalizeFormDateFields } from '@/utils/dateFormatter'
 
 interface Category {
   id: number
@@ -582,7 +583,10 @@ const draft = useFormDraft({
   mode: 'create',
   watchSource: form,
   getData: () => form.data() as Record<string, unknown>,
-  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  restoreData: (data) => {
+    restoreInertiaFormData(form as unknown as Record<string, unknown>, data)
+    normalizeFormDateFields(form as unknown as Record<string, unknown>, ['expiration_date'])
+  },
   getBaseline: () => productCreateBaseline,
 })
 

@@ -49,7 +49,7 @@ test('senegalese national id must contain exactly 13 digits on create', function
 test('senegalese passport must match A plus eight digits on create', function () {
     $admin = User::factory()->create(['role' => 'admin']);
 
-    $response = $this->actingAs($admin)->postJson(route('customers.store'), [
+    $response = $this->actingAs($admin)->post(route('customers.store'), [
         'name' => 'Awa Ndiaye',
         'nationality' => Countries::SENEGAL_CODE,
         'identity_document_type' => Customer::IDENTITY_TYPE_PASSPORT,
@@ -127,7 +127,7 @@ test('same normalized number with different document type is allowed', function 
         'name' => 'Client Passeport',
         'nationality' => Countries::SENEGAL_CODE,
         'identity_document_type' => Customer::IDENTITY_TYPE_PASSPORT,
-        'identity_document_number' => '1234567890123',
+        'identity_document_number' => 'A12345678',
         'is_active' => true,
     ]);
 

@@ -220,10 +220,10 @@ class SaleController extends Controller
         ) {
             $sale = Sale::create([
                 'sale_number' => Sale::generateSaleNumber(),
-                'customer_id' => $validated['customer_id'],
+                'customer_id' => $validated['customer_id'] ?? null,
                 'user_id' => auth()->id(),
                 'payment_method' => $paymentMethod,
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
                 'due_date' => $validated['due_date'] ?? null,
                 'subtotal' => $subtotal,
                 'tax_amount' => $taxAmount,
@@ -488,9 +488,9 @@ class SaleController extends Controller
             $paymentMethod,
         ) {
             $sale->update([
-                'customer_id' => $validated['customer_id'],
+                'customer_id' => $validated['customer_id'] ?? null,
                 'payment_method' => $paymentMethod,
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
                 'due_date' => $validated['due_date'] ?? null,
                 'subtotal' => $subtotal,
                 'tax_amount' => $taxAmount,

@@ -295,6 +295,7 @@ import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import AttachmentUploader from '@/components/attachments/AttachmentUploader.vue'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
+import { normalizeFormDateFields } from '@/utils/dateFormatter'
 import type { AttachmentConfig } from '@/types/attachment'
 
 interface Props {
@@ -324,7 +325,10 @@ const draft = useFormDraft({
   mode: 'create',
   watchSource: form,
   getData: () => form.data() as Record<string, unknown>,
-  restoreData: (data) => restoreInertiaFormData(form as unknown as Record<string, unknown>, data),
+  restoreData: (data) => {
+    restoreInertiaFormData(form as unknown as Record<string, unknown>, data)
+    normalizeFormDateFields(form as unknown as Record<string, unknown>, ['expense_date'])
+  },
   getBaseline: () => expenseCreateBaseline,
 })
 
