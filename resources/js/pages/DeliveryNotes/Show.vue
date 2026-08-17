@@ -51,17 +51,21 @@
               </div>
               
               <div class="col-md-6">
-                <label class="form-label text-muted">Numéro de BC</label>
+                <label class="form-label text-muted">Bon de commande</label>
                 <p class="mb-0">
-                  <code v-if="deliveryNote.purchase_order?.po_number">
-                    {{ deliveryNote.purchase_order.po_number }}
-                  </code>
-                  <span v-else class="text-muted">Non renseigné</span>
+                  <Link
+                    v-if="deliveryNote.purchase_order?.id"
+                    :href="route('purchase-orders.show', { id: deliveryNote.purchase_order.id })"
+                    class="text-decoration-none"
+                  >
+                    <code>{{ deliveryNote.purchase_order.po_number }}</code>
+                  </Link>
+                  <span v-else class="badge bg-light text-muted border">BL sans bon de commande</span>
                 </p>
               </div>
               
               <div class="col-md-6" v-if="deliveryNote.invoice_number">
-                <label class="form-label text-muted">Numéro de facture</label>
+                <label class="form-label text-muted">Réf. facture fournisseur</label>
                 <p class="mb-0">
                   <code>{{ deliveryNote.invoice_number }}</code>
                 </p>
@@ -83,8 +87,47 @@
           </div>
         </div>
 
+        <div v-if="purchaseOrderReceipt" class="card mb-4">
+          <div class="card-header">
+            <h5 class="card-title mb-0">Progression du bon de commande</h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3 text-center mb-3">
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Commandé</div>
+                <div class="fw-semibold">{{ purchaseOrderReceipt.totals.ordered }}</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Livré (validé)</div>
+                <div class="fw-semibold text-success">{{ purchaseOrderReceipt.totals.delivered }}</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">En attente (BL brouillon)</div>
+                <div class="fw-semibold text-warning">{{ purchaseOrderReceipt.totals.pending }}</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Reste</div>
+                <div class="fw-semibold text-primary">{{ purchaseOrderReceipt.totals.remaining }}</div>
+              </div>
+            </div>
+            <div class="progress" style="height: 8px">
+              <div
+                class="progress-bar"
+                role="progressbar"
+                :style="{ width: `${Math.min(purchaseOrderReceipt.progress_percent, 100)}%` }"
+                :aria-valuenow="purchaseOrderReceipt.progress_percent"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              ></div>
+            </div>
+            <p class="small text-muted mt-2 mb-0">
+              Les BL en attente ne sont pas comptabilisés comme livrés tant qu'ils ne sont pas validés.
+            </p>
+          </div>
+        </div>
+
         <!-- Articles du bon de livraison -->
-        <div class="card">
+        <div class="card mb-4">
           <div class="card-header">
             <h5 class="card-title mb-0">Articles livrés</h5>
           </div>
@@ -149,6 +192,63 @@
           </div>
         </div>
 
+        <!-- Document officiel -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="card-title mb-0">
+              <i class="bi bi-file-earmark-pdf me-2"></i>
+              Document officiel
+            </h5>
+          </div>
+          <div class="card-body">
+            <p class="text-muted small mb-3">
+              Bon de livraison généré par MKD-Pro à partir des données actuelles du BL.
+            </p>
+            <div class="d-flex align-items-start gap-3 mb-3">
+              <div class="text-danger fs-3">
+                <i class="bi bi-file-earmark-pdf"></i>
+              </div>
+              <div>
+                <div class="fw-semibold">{{ deliveryNote.delivery_number }}</div>
+                <div class="text-muted small font-monospace">{{ officialPdfFilename }}</div>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button
+                v-if="canPreviewDeliveryNote"
+                type="button"
+                class="btn btn-outline-primary"
+                :disabled="isPreviewing || isDownloading || isPrinting"
+                @click="previewDeliveryNote"
+              >
+                <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <i v-else class="bi bi-eye me-1"></i>
+                {{ isPreviewing ? 'Génération...' : 'Prévisualiser' }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                :disabled="isDownloading || isPrinting || isPreviewing"
+                @click="downloadDeliveryNote"
+              >
+                <span v-if="isDownloading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <i v-else class="bi bi-download me-1"></i>
+                {{ isDownloading ? 'Téléchargement...' : 'Télécharger PDF' }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="isPrinting || isDownloading || isPreviewing"
+                @click="printDeliveryNote"
+              >
+                <span v-if="isPrinting" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <i v-else class="bi bi-printer me-1"></i>
+                {{ isPrinting ? 'Ouverture...' : 'Imprimer' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Pièces jointes -->
         <div class="card mb-4">
           <div class="card-header d-flex justify-content-between align-items-center">
@@ -161,6 +261,9 @@
             </span>
           </div>
           <div class="card-body">
+            <p class="text-muted small mb-3">
+              Documents fournis par l'utilisateur ou le fournisseur (factures, BL signés, photos, etc.).
+            </p>
             <AttachmentList
               v-if="deliveryNote.attachments?.length"
               :attachments="deliveryNote.attachments"
@@ -221,41 +324,10 @@
           </div>
           <div class="card-body">
             <div class="d-grid gap-2">
-              <button
-                v-if="canPreviewDeliveryNote"
-                type="button"
-                class="btn btn-outline-primary"
-                :disabled="isPreviewing || isDownloading || isPrinting"
-                @click="previewDeliveryNote"
-              >
-                <span v-if="isPreviewing" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                <i v-else class="bi bi-eye me-1"></i>
-                {{ isPreviewing ? 'Génération...' : 'Aperçu' }}
-              </button>
-              <button
-                @click="downloadDeliveryNote"
-                class="btn btn-primary"
-                :disabled="isDownloading || isPrinting"
-              >
-                <span v-if="isDownloading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                <i v-else class="bi bi-download me-1"></i>
-                {{ isDownloading ? 'Téléchargement...' : 'Télécharger le BL' }}
-              </button>
-              <button
-                @click="printDeliveryNote"
-                class="btn btn-info"
-                :disabled="isPrinting || isDownloading"
-              >
-                <span v-if="isPrinting" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                <i v-else class="bi bi-printer me-1"></i>
-                {{ isPrinting ? 'Ouverture...' : 'Imprimer le BL' }}
-              </button>
               <Link
                 v-if="deliveryNote.status === 'pending'"
                 :href="route('delivery-notes.edit', { id: deliveryNote.id })"
                 class="btn btn-outline-primary"
-                :class="{ 'disabled': isDownloading || isPrinting }"
-                :tabindex="(isDownloading || isPrinting) ? -1 : 0"
               >
                 <i class="bi bi-pencil me-1"></i>
                 Modifier le BL
@@ -264,7 +336,7 @@
                 v-if="deliveryNote.status === 'pending' && isAdmin"
                 @click="validateDeliveryNote"
                 class="btn btn-success"
-                :disabled="isValidating || isDownloading || isPrinting"
+                :disabled="isValidating"
               >
                 <span v-if="isValidating" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
                 <i v-else class="bi bi-check-circle me-1"></i>
@@ -274,7 +346,6 @@
                 v-if="deliveryNote.status !== 'cancelled' && canUpdateDeliveryNote"
                 @click="cancelDeliveryNote"
                 class="btn btn-outline-warning"
-                :disabled="isDownloading || isPrinting"
               >
                 <i class="bi bi-x-circle me-1"></i>
                 Annuler le BL
@@ -283,68 +354,10 @@
                 v-if="deliveryNote.status === 'pending'"
                 @click="deleteDeliveryNote"
                 class="btn btn-outline-danger"
-                :disabled="isDownloading || isPrinting"
               >
                 <i class="bi bi-trash me-1"></i>
                 Supprimer le bon de livraison
               </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Facture/BL fournisseur -->
-        <div class="card mt-4">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Facture/BL fournisseur</h5>
-            <div v-if="hasInvoiceFile" class="d-flex align-items-center gap-2">
-              <a :href="invoicePreviewUrl" target="_blank" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-eye me-1"></i>
-                Ouvrir
-              </a>
-              <button @click="onDeleteInvoice" class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-trash me-1"></i>
-                Supprimer
-              </button>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="mb-3">
-              <label class="form-label">Choisir un fichier (PDF ou image)</label>
-              <input class="form-control" type="file" accept=".pdf,image/*" @change="onFileChange" />
-              <div v-if="selectedFile" class="mt-2">
-                <small class="text-success">
-                  <i class="bi bi-check-circle me-1"></i>
-                  Fichier sélectionné: <strong>{{ selectedFile.name }}</strong>
-                </small>
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <div class="d-grid">
-                <button class="btn btn-primary" :disabled="!selectedFile" @click="onUploadInvoice">
-                  <i class="bi bi-upload me-1"></i>
-                  {{ hasInvoiceFile ? 'Remplacer le fichier' : 'Uploader le fichier' }}
-                </button>
-              </div>
-              <div class="mt-2">
-                <small class="text-muted">
-                  <i class="bi bi-info-circle me-1"></i>
-                  Formats acceptés: PDF, JPG, PNG, WEBP. Taille max 2 Mo.
-                </small>
-              </div>
-            </div>
-
-            <div v-if="hasInvoiceFile" class="mt-3">
-              <label class="form-label text-muted">Aperçu</label>
-              <div class="border rounded p-2 bg-light">
-                <img v-if="isImage" :src="invoicePreviewUrl" alt="Aperçu" class="img-fluid rounded" />
-                <iframe v-else-if="isPdf" :src="invoicePreviewUrl" style="width: 100%; height: 360px;" />
-                <div v-else class="text-muted small">Type de fichier non prévisualisable. Utilisez le bouton "Ouvrir".</div>
-                <div class="mt-2 small text-muted">
-                  <div v-if="deliveryNote.invoice_file_name">Nom: {{ deliveryNote.invoice_file_name }}</div>
-                  <div v-if="deliveryNote.invoice_file_size">Taille: {{ formatSize(deliveryNote.invoice_file_size) }}</div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -364,6 +377,7 @@ import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
 import { useDocumentPreview } from '@/composables/useDocumentPreview'
 import { usePermissions } from '@/composables/usePermissions'
 import type { AttachmentRecord } from '@/types/attachment'
+import type { PurchaseOrderReceiptSummary } from '@/composables/usePurchaseOrderReceipt'
 import { ref, computed } from 'vue'
 
 interface Category {
@@ -404,15 +418,12 @@ interface DeliveryNote {
   discount_amount: number
   total_amount: number
   items?: DeliveryNoteItem[]
-  invoice_file_path?: string
-  invoice_file_name?: string
-  invoice_file_mime?: string
-  invoice_file_size?: number
   attachments?: AttachmentRecord[]
 }
 
 interface Props {
   deliveryNote: DeliveryNote
+  purchaseOrderReceipt?: PurchaseOrderReceiptSummary | null
 }
 
 const props = defineProps<Props>()
@@ -436,6 +447,8 @@ const isPreviewing = ref(false)
 const isValidating = ref(false)
 const isCancelling = ref(false)
 
+const officialPdfFilename = computed(() => `BL-${props.deliveryNote.delivery_number}.pdf`)
+
 const openAttachmentPreview = (attachment: AttachmentRecord) => {
   void openAttachment(attachment, `Aperçu — ${attachment.original_name}`)
 }
@@ -451,74 +464,6 @@ const getStatusBadgeClass = (status: string) => {
     cancelled: 'bg-danger'
   }
   return classes[status] || 'bg-secondary'
-}
-
-// Gestion fichier facture/BL
-const selectedFile = ref<File | null>(null)
-const invoicePreviewUrl = computed(() => route('delivery-notes.invoice.show', { deliveryNote: props.deliveryNote.id }))
-const hasInvoiceFile = computed(() => !!props.deliveryNote.invoice_file_path)
-const isImage = computed(() => (props.deliveryNote.invoice_file_mime || '').startsWith('image'))
-const isPdf = computed(() => (props.deliveryNote.invoice_file_mime || '').includes('pdf'))
-
-const onFileChange = (e: Event) => {
-  const input = e.target as HTMLInputElement
-  const file = input.files && input.files[0] ? input.files[0] : null
-  
-  if (file) {
-    // Vérifier la taille du fichier (2 Mo = 2 * 1024 * 1024 bytes)
-    const maxSize = 2 * 1024 * 1024 // 2 Mo en bytes
-    if (file.size > maxSize) {
-      error('Le fichier est trop volumineux. La taille maximale autorisée est de 2 Mo.')
-      input.value = '' // Réinitialiser l'input
-      selectedFile.value = null
-      return
-    }
-  }
-  
-  selectedFile.value = file
-}
-
-const onUploadInvoice = async () => {
-  if (!selectedFile.value) return
-  const formData = new FormData()
-  formData.append('file', selectedFile.value)
-  router.post(route('delivery-notes.invoice.upload', { deliveryNote: props.deliveryNote.id }), formData, {
-    forceFormData: true,
-    onSuccess: () => {
-      selectedFile.value = null
-      success('Fichier uploadé avec succès')
-    },
-    onError: (errors) => {
-      const msg = (errors as any).message || 'Erreur lors de l\'upload du fichier.'
-      error(msg)
-    }
-  })
-}
-
-const onDeleteInvoice = async () => {
-  const confirmed = await confirm('Supprimer le fichier de facture/BL ?')
-  if (!confirmed) return
-  router.delete(route('delivery-notes.invoice.delete', { deliveryNote: props.deliveryNote.id }), {
-    onSuccess: () => {
-      success('Fichier supprimé avec succès')
-    },
-    onError: (errors) => {
-      const msg = (errors as any).message || 'Erreur lors de la suppression du fichier.'
-      error(msg)
-    }
-  })
-}
-
-const formatSize = (bytes: number) => {
-  if (!bytes && bytes !== 0) return ''
-  const units = ['octets', 'Ko', 'Mo', 'Go']
-  let size = bytes
-  let unit = 0
-  while (size >= 1024 && unit < units.length - 1) {
-    size /= 1024
-    unit++
-  }
-  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(size)} ${units[unit]}`
 }
 
 const validateDeliveryNote = async () => {
@@ -579,7 +524,12 @@ const previewDeliveryNote = async () => {
   try {
     await openFromUrl(
       route('delivery-notes.print', { deliveryNote: props.deliveryNote.id }),
-      `BL_${props.deliveryNote.delivery_number}.pdf`,
+      officialPdfFilename.value,
+      undefined,
+      `Bon de livraison ${props.deliveryNote.delivery_number}`,
+      {
+        downloadUrl: route('delivery-notes.download', { deliveryNote: props.deliveryNote.id }),
+      },
     )
   } finally {
     isPreviewing.value = false
@@ -587,6 +537,10 @@ const previewDeliveryNote = async () => {
 }
 
 const downloadDeliveryNote = async () => {
+  if (isDownloading.value) {
+    return
+  }
+
   isDownloading.value = true
   try {
     const url = route('delivery-notes.download', { deliveryNote: props.deliveryNote.id })
@@ -601,9 +555,8 @@ const downloadDeliveryNote = async () => {
     const link = document.createElement('a')
     link.href = downloadUrl
     
-    // Extraire le nom du fichier depuis les headers
     const contentDisposition = response.headers.get('Content-Disposition')
-    let filename = `Bon_de_livraison_${props.deliveryNote.delivery_number}.pdf`
+    let filename = officialPdfFilename.value
     if (contentDisposition) {
       const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
       if (filenameMatch && filenameMatch[1]) {
@@ -619,13 +572,17 @@ const downloadDeliveryNote = async () => {
     
     success('Bon de livraison téléchargé avec succès !')
   } catch (err) {
-    error('Erreur lors du téléchargement du bon de livraison.')
+    error('Impossible de générer le PDF du bon de livraison.')
   } finally {
     isDownloading.value = false
   }
 }
 
 const printDeliveryNote = async () => {
+  if (isPrinting.value) {
+    return
+  }
+
   isPrinting.value = true
   try {
     const url = route('delivery-notes.print', { deliveryNote: props.deliveryNote.id })
@@ -643,9 +600,11 @@ const printDeliveryNote = async () => {
       printWindow.onload = () => {
         printWindow.print()
       }
+    } else {
+      window.location.href = url
     }
   } catch (err) {
-    error('Erreur lors de l\'ouverture du bon de livraison pour impression.')
+    error('Impossible de générer le PDF du bon de livraison.')
   } finally {
     isPrinting.value = false
   }
@@ -667,4 +626,3 @@ const deleteDeliveryNote = async () => {
   }
 }
 </script>
-

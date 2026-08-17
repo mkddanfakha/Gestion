@@ -399,7 +399,6 @@ const onRoleChange = () => {
       'delivery-notes.validate',
       'delivery-notes.download',
       'delivery-notes.print',
-      'delivery-notes.invoice',
     ]
     
     const gestionnairePermissionIds: number[] = []

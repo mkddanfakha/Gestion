@@ -106,7 +106,6 @@ class UserController extends Controller
             'delivery-notes.validate',
             'delivery-notes.download',
             'delivery-notes.print',
-            'delivery-notes.invoice',
         ];
 
         return Permission::whereIn('name', $permissionNames)

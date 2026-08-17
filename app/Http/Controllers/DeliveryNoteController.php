@@ -6,13 +6,11 @@ use App\Models\DeliveryNote;
 use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
-use App\Models\Company;
 use App\Services\ActivityLogger;
 use App\Services\AttachmentService;
 use App\Services\PurchaseOrderDeliveryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Storage;
 use App\Traits\GeneratesPdf;
 use InvalidArgumentException;
 
@@ -77,24 +75,32 @@ class DeliveryNoteController extends Controller
     public function create(Request $request)
     {
         $this->checkPermission($request, 'delivery-notes', 'create');
-        
+
+        $standalone = $request->boolean('standalone');
+
         $suppliers = Supplier::where('status', 'active')->orderBy('name')->get();
         $products = $this->productsForForm();
         $purchaseOrders = PurchaseOrder::with('supplier')
+            ->whereIn('status', PurchaseOrderDeliveryService::DELIVERABLE_PO_STATUSES)
             ->whereNotIn('status', ['cancelled', 'received'])
             ->orderBy('po_number')
-            ->get();
-        
-        // Optionnel: charger un bon de commande si spécifié
+            ->get()
+            ->filter(fn (PurchaseOrder $po) => $this->deliveryService->canCreateDelivery($po))
+            ->values();
+
         $purchaseOrder = null;
-        if ($request->filled('purchase_order_id')) {
+        $purchaseOrderReceipt = null;
+
+        if (! $standalone && $request->filled('purchase_order_id')) {
             $purchaseOrder = PurchaseOrder::with(['items.product', 'supplier'])
                 ->find($request->purchase_order_id);
-        }
 
-        $purchaseOrderReceipt = $purchaseOrder
-            ? $this->deliveryService->buildReceiptSummary($purchaseOrder)
-            : null;
+            if ($purchaseOrder && $this->deliveryService->canCreateDelivery($purchaseOrder)) {
+                $purchaseOrderReceipt = $this->deliveryService->buildReceiptSummary($purchaseOrder);
+            } else {
+                $purchaseOrder = null;
+            }
+        }
 
         return Inertia::render('DeliveryNotes/Create', [
             'suppliers' => $suppliers,
@@ -102,7 +108,20 @@ class DeliveryNoteController extends Controller
             'purchaseOrders' => $purchaseOrders,
             'purchaseOrder' => $purchaseOrder,
             'purchaseOrderReceipt' => $purchaseOrderReceipt,
+            'standalone' => $standalone,
             'attachmentConfig' => $this->attachmentConfig(),
+        ]);
+    }
+
+    /**
+     * Sélectionner un bon de commande éligible avant création d'un BL.
+     */
+    public function selectPurchaseOrder(Request $request)
+    {
+        $this->checkPermission($request, 'delivery-notes', 'create');
+
+        return Inertia::render('DeliveryNotes/SelectPurchaseOrder', [
+            'eligiblePurchaseOrders' => $this->eligiblePurchaseOrdersForDelivery(),
         ]);
     }
 
@@ -115,7 +134,7 @@ class DeliveryNoteController extends Controller
         
         $validated = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
-            'purchase_order_id' => 'required|exists:purchase_orders,id',
+            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
             'delivery_date' => 'required|date',
             'status' => 'required|in:pending,validated,cancelled',
             'subtotal' => 'required|numeric|min:0',
@@ -137,15 +156,25 @@ class DeliveryNoteController extends Controller
         $items = $validated['items'];
         unset($validated['items']);
 
-        $purchaseOrder = PurchaseOrder::with('items.product')->findOrFail($validated['purchase_order_id']);
+        $validated['purchase_order_id'] = $validated['purchase_order_id'] ?? null;
 
-        if (! $this->deliveryService->canCreateDelivery($purchaseOrder)) {
-            return back()->withErrors([
-                'purchase_order_id' => 'Ce bon de commande ne peut plus recevoir de livraison.',
-            ]);
+        if ($validated['purchase_order_id']) {
+            $purchaseOrder = PurchaseOrder::with('items.product')->findOrFail($validated['purchase_order_id']);
+
+            if (! $this->deliveryService->canCreateDelivery($purchaseOrder)) {
+                return back()->withErrors([
+                    'purchase_order_id' => 'Ce bon de commande ne peut plus recevoir de livraison.',
+                ]);
+            }
+
+            if ((int) $validated['supplier_id'] !== (int) $purchaseOrder->supplier_id) {
+                return back()->withErrors([
+                    'supplier_id' => 'Le fournisseur doit correspondre au bon de commande sélectionné.',
+                ]);
+            }
+
+            $this->deliveryService->assertDeliveryQuantities($purchaseOrder, $items);
         }
-
-        $this->deliveryService->assertDeliveryQuantities($purchaseOrder, $items);
 
         // Générer automatiquement le numéro de BL
         $validated['delivery_number'] = DeliveryNote::generateDeliveryNumber();
@@ -220,8 +249,13 @@ class DeliveryNoteController extends Controller
         
         $deliveryNote->setAttribute('status_label', $deliveryNote->status_label);
 
+        $purchaseOrderReceipt = $deliveryNote->purchase_order_id && $deliveryNote->purchaseOrder
+            ? $this->deliveryService->buildReceiptSummary($deliveryNote->purchaseOrder, $deliveryNote->id)
+            : null;
+
         return Inertia::render('DeliveryNotes/Show', [
             'deliveryNote' => $deliveryNote,
+            'purchaseOrderReceipt' => $purchaseOrderReceipt,
         ]);
     }
 
@@ -273,7 +307,7 @@ class DeliveryNoteController extends Controller
 
         $validated = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
-            'purchase_order_id' => 'required|exists:purchase_orders,id',
+            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
             'delivery_date' => 'required|date',
             'status' => 'required|in:pending,validated,cancelled',
             'subtotal' => 'required|numeric|min:0',
@@ -296,8 +330,23 @@ class DeliveryNoteController extends Controller
         $items = $validated['items'];
         unset($validated['items']);
 
-        $purchaseOrder = PurchaseOrder::with('items.product')->findOrFail($validated['purchase_order_id']);
-        $this->deliveryService->assertDeliveryQuantities($purchaseOrder, $items, $deliveryNote);
+        $validated['purchase_order_id'] = $validated['purchase_order_id'] ?? null;
+
+        if ($validated['purchase_order_id']) {
+            $purchaseOrder = PurchaseOrder::with('items.product')->findOrFail($validated['purchase_order_id']);
+
+            if ((int) $validated['supplier_id'] !== (int) $purchaseOrder->supplier_id) {
+                return back()->withErrors([
+                    'supplier_id' => 'Le fournisseur doit correspondre au bon de commande sélectionné.',
+                ]);
+            }
+
+            $this->deliveryService->assertDeliveryQuantities($purchaseOrder, $items, $deliveryNote);
+        } elseif ($deliveryNote->purchase_order_id) {
+            return back()->withErrors([
+                'purchase_order_id' => 'Impossible de retirer le bon de commande d\'un bon de livraison existant.',
+            ]);
+        }
 
         $shouldValidate = $validated['status'] === 'validated' && $oldStatus !== 'validated';
         $shouldCancel = $validated['status'] === 'cancelled' && $oldStatus !== 'cancelled';
@@ -440,135 +489,6 @@ class DeliveryNoteController extends Controller
     }
 
     /**
-     * Upload de la facture/BL fournisseur (image/PDF etc.)
-     */
-    public function uploadInvoice(Request $request, $deliveryNote)
-    {
-        // Résoudre le DeliveryNote manuellement pour éviter les problèmes de model binding
-        $deliveryNote = DeliveryNote::findOrFail($deliveryNote);
-        
-        $this->checkPermission($request, 'delivery-notes', 'invoice');
-        
-        $request->validate([
-            'file' => 'required|file|mimes:pdf,jpg,jpeg,png,webp|max:2048', // 2MB
-        ]);
-
-        $file = $request->file('file');
-
-        // Dossier de destination sur le disque media (public/storage)
-        $directory = 'delivery-notes/' . $deliveryNote->id;
-
-        // Nom de fichier unique
-        $filename = now()->format('Ymd_His') . '_' . str_replace(' ', '_', $file->getClientOriginalName());
-
-        // Stocker sur le disque media pour accès via /storage
-        $path = $file->storeAs($directory, $filename, 'media');
-
-        // Supprimer l'ancien fichier si existant
-        if ($deliveryNote->invoice_file_path) {
-            // Vérifier sur les deux disques pour compatibilité
-            if (Storage::disk('media')->exists($deliveryNote->invoice_file_path)) {
-                Storage::disk('media')->delete($deliveryNote->invoice_file_path);
-            } elseif (Storage::disk('public')->exists($deliveryNote->invoice_file_path)) {
-                Storage::disk('public')->delete($deliveryNote->invoice_file_path);
-            }
-        }
-
-        // Mettre à jour les métadonnées
-        $deliveryNote->update([
-            'invoice_file_path' => $path,
-            'invoice_file_name' => $file->getClientOriginalName(),
-            'invoice_file_mime' => $file->getClientMimeType(),
-            'invoice_file_size' => $file->getSize(),
-        ]);
-
-        ActivityLogger::logUpdate('Bon de livraison', $deliveryNote);
-
-        return back()->with('success', 'Fichier de facture/BL uploadé avec succès.');
-    }
-
-    /**
-     * Afficher / télécharger la facture/BL fournisseur
-     */
-    public function showInvoice(Request $request, $deliveryNote)
-    {
-        // Résoudre le DeliveryNote manuellement pour éviter les problèmes de model binding
-        try {
-            $deliveryNote = DeliveryNote::findOrFail($deliveryNote);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            \Log::error('DeliveryNote non trouvé pour showInvoice', [
-                'id' => $deliveryNote,
-                'url' => $request->fullUrl(),
-            ]);
-            abort(404, 'Bon de livraison introuvable.');
-        }
-        
-        $this->checkPermission($request, 'delivery-notes', 'invoice');
-        
-        if (!$deliveryNote->invoice_file_path) {
-            abort(404, 'Aucun fichier associé à ce bon de livraison.');
-        }
-
-        $path = $deliveryNote->invoice_file_path;
-        
-        // Vérifier d'abord sur le disque media, puis sur public pour compatibilité
-        $absolutePath = null;
-        
-        if (Storage::disk('media')->exists($path)) {
-            $absolutePath = Storage::disk('media')->path($path);
-        } elseif (Storage::disk('public')->exists($path)) {
-            $absolutePath = Storage::disk('public')->path($path);
-        } else {
-            abort(404, 'Fichier introuvable sur le serveur.');
-        }
-
-        // Vérifier que le fichier existe vraiment
-        if (!file_exists($absolutePath)) {
-            abort(404, 'Fichier introuvable sur le serveur.');
-        }
-
-        // Affichage inline pour PDF/images
-        return response()->file($absolutePath, [
-            'Content-Type' => $deliveryNote->invoice_file_mime ?? mime_content_type($absolutePath),
-            'Content-Disposition' => 'inline; filename="' . addslashes($deliveryNote->invoice_file_name ?? basename($absolutePath)) . '"',
-            'Cache-Control' => 'private, max-age=0, must-revalidate',
-            'Pragma' => 'public',
-        ]);
-    }
-
-    /**
-     * Supprimer le fichier de facture/BL
-     */
-    public function deleteInvoice(Request $request, $deliveryNote)
-    {
-        // Résoudre le DeliveryNote manuellement pour éviter les problèmes de model binding
-        $deliveryNote = DeliveryNote::findOrFail($deliveryNote);
-        
-        $this->checkPermission($request, 'delivery-notes', 'invoice');
-        
-        if ($deliveryNote->invoice_file_path) {
-            // Supprimer sur les deux disques pour compatibilité
-            if (Storage::disk('media')->exists($deliveryNote->invoice_file_path)) {
-                Storage::disk('media')->delete($deliveryNote->invoice_file_path);
-            }
-            if (Storage::disk('public')->exists($deliveryNote->invoice_file_path)) {
-                Storage::disk('public')->delete($deliveryNote->invoice_file_path);
-            }
-        }
-
-        $deliveryNote->update([
-            'invoice_file_path' => null,
-            'invoice_file_name' => null,
-            'invoice_file_mime' => null,
-            'invoice_file_size' => null,
-        ]);
-
-        ActivityLogger::logUpdate('Bon de livraison', $deliveryNote);
-
-        return back()->with('success', 'Fichier de facture/BL supprimé avec succès.');
-    }
-
-    /**
      * Générer et télécharger le bon de livraison PDF
      */
     public function downloadDeliveryNote(Request $request, DeliveryNote $deliveryNote)
@@ -577,11 +497,11 @@ class DeliveryNoteController extends Controller
         
         try {
             $pdf = $this->generateDeliveryNotePdf($deliveryNote);
-            $filename = 'Bon_de_livraison_' . $deliveryNote->delivery_number . '.pdf';
-            return $this->pdfDownloadResponse($pdf, $filename);
+
+            return $this->pdfDownloadResponse($pdf, $this->deliveryNotePdfFilename($deliveryNote));
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la génération du bon de livraison PDF: ' . $e->getMessage());
-            abort(500, 'Erreur lors de la génération du bon de livraison. Veuillez réessayer.');
+            abort(500, 'Impossible de générer le PDF du bon de livraison.');
         }
     }
 
@@ -594,11 +514,11 @@ class DeliveryNoteController extends Controller
         
         try {
             $pdf = $this->generateDeliveryNotePdf($deliveryNote);
-            $filename = 'Bon_de_livraison_' . $deliveryNote->delivery_number . '.pdf';
-            return $this->pdfInlineResponse($pdf, $filename);
+
+            return $this->pdfInlineResponse($pdf, $this->deliveryNotePdfFilename($deliveryNote));
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la génération du bon de livraison PDF: ' . $e->getMessage());
-            abort(500, 'Erreur lors de la génération du bon de livraison. Veuillez réessayer.');
+            abort(500, 'Impossible de générer le PDF du bon de livraison.');
         }
     }
 
@@ -608,7 +528,13 @@ class DeliveryNoteController extends Controller
     private function generateDeliveryNotePdf(DeliveryNote $deliveryNote)
     {
         $deliveryNote->load(['supplier', 'user', 'purchaseOrder', 'items.product']);
+
         return $this->generatePdfFromView('delivery-notes.delivery-note', ['deliveryNote' => $deliveryNote]);
+    }
+
+    private function deliveryNotePdfFilename(DeliveryNote $deliveryNote): string
+    {
+        return 'BL-' . $deliveryNote->delivery_number . '.pdf';
     }
 
     /**
@@ -631,5 +557,34 @@ class DeliveryNoteController extends Controller
             'allowedExtensions' => config('attachments.allowed_extensions', []),
             'accept' => '.pdf,.jpg,.jpeg,.png,.webp',
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function eligiblePurchaseOrdersForDelivery(): array
+    {
+        return PurchaseOrder::with('supplier')
+            ->whereIn('status', PurchaseOrderDeliveryService::DELIVERABLE_PO_STATUSES)
+            ->orderByDesc('order_date')
+            ->orderBy('po_number')
+            ->get()
+            ->filter(fn (PurchaseOrder $purchaseOrder) => $this->deliveryService->canCreateDelivery($purchaseOrder))
+            ->map(function (PurchaseOrder $purchaseOrder) {
+                $summary = $this->deliveryService->buildReceiptSummary($purchaseOrder);
+
+                return [
+                    'id' => $purchaseOrder->id,
+                    'po_number' => $purchaseOrder->po_number,
+                    'supplier' => $purchaseOrder->supplier,
+                    'order_date' => $purchaseOrder->order_date,
+                    'status' => $purchaseOrder->status,
+                    'status_label' => $purchaseOrder->status_label,
+                    'total_amount' => $purchaseOrder->total_amount,
+                    'receipt_summary' => $summary,
+                ];
+            })
+            ->values()
+            ->all();
     }
 }

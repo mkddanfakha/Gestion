@@ -187,8 +187,9 @@ export async function loadDraft(
   formType: DraftFormType,
   mode: DraftMode,
   entityId: number | null,
+  scopeContext?: string | null,
 ): Promise<FormDraftRecord | null> {
-  const key = buildDraftStorageKey(userId, formType, mode, entityId)
+  const key = buildDraftStorageKey(userId, formType, mode, entityId, scopeContext)
   return loadDraftByKey(key, formType)
 }
 
@@ -205,9 +206,10 @@ export async function saveDraft(
     serverId?: string | null
     existing?: FormDraftRecord | null
   },
+  scopeContext?: string | null,
 ): Promise<FormDraftRecord | null> {
   const config = getDraftConfig(formType)
-  const key = buildDraftStorageKey(userId, formType, mode, entityId)
+  const key = buildDraftStorageKey(userId, formType, mode, entityId, scopeContext)
   const now = new Date().toISOString()
   const sanitized = sanitizeDraftData(data, config.excludedFields)
 
@@ -247,8 +249,9 @@ export async function deleteDraft(
   formType: DraftFormType,
   mode: DraftMode,
   entityId: number | null,
+  scopeContext?: string | null,
 ): Promise<void> {
-  const key = buildDraftStorageKey(userId, formType, mode, entityId)
+  const key = buildDraftStorageKey(userId, formType, mode, entityId, scopeContext)
   await deleteDraftByKey(key, formType)
 }
 

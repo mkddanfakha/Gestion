@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Vérifier si l'index existe avant de le supprimer
         $indexExists = DB::select("SHOW INDEX FROM products WHERE Key_name = 'products_sku_unique'");
         
@@ -28,6 +32,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         Schema::table('products', function (Blueprint $table) {
             // Revenir à la longueur par défaut (255 caractères)
             $table->dropUnique(['sku']);

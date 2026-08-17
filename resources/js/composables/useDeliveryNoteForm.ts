@@ -101,6 +101,7 @@ interface DeliveryNotePayload {
 interface UseDeliveryNoteFormOptions {
   mode: DeliveryNoteFormMode
   deliveryNote?: DeliveryNoteFormDeliveryNote
+  standalone?: boolean
   suppliers: Ref<DeliveryNoteFormSupplier[]> | DeliveryNoteFormSupplier[]
   products: Ref<DeliveryNoteFormProduct[]> | DeliveryNoteFormProduct[]
   purchaseOrders: Ref<DeliveryNoteFormPurchaseOrder[]> | DeliveryNoteFormPurchaseOrder[]
@@ -246,6 +247,7 @@ function buildInitialForm(
 export function useDeliveryNoteForm({
   mode,
   deliveryNote,
+  standalone = false,
   suppliers: _suppliers,
   products,
   purchaseOrders,
@@ -332,10 +334,27 @@ export function useDeliveryNoteForm({
 
   const deliveryNoteDraftSnapshot = computed(() => getDeliveryNoteDraftData())
 
+  const draftScopeContext = computed(() => {
+    if (mode !== 'create') {
+      return null
+    }
+
+    if (standalone) {
+      return 'standalone'
+    }
+
+    if (form.purchase_order_id) {
+      return `from-po:${form.purchase_order_id}`
+    }
+
+    return 'from-po:select'
+  })
+
   const draft = useFormDraft({
     formType: 'delivery_note',
     mode,
     entityId: deliveryNote?.id ?? null,
+    scopeContext: draftScopeContext,
     watchSource: deliveryNoteDraftSnapshot,
     getData: () => getDeliveryNoteDraftData(),
     restoreData: (data) => restoreDeliveryNoteDraftData(data as Record<string, unknown>),
@@ -354,11 +373,21 @@ export function useDeliveryNoteForm({
       : 'Nouveau bon de livraison',
   )
 
-  const pageSubtitle = computed(() =>
-    mode === 'edit'
-      ? deliveryNote?.delivery_number ?? 'Modifiez les informations du bon de livraison'
-      : 'Enregistrez une nouvelle livraison fournisseur',
-  )
+  const pageSubtitle = computed(() => {
+    if (mode === 'edit') {
+      return deliveryNote?.delivery_number ?? 'Modifiez les informations du bon de livraison'
+    }
+
+    if (standalone) {
+      return 'Bon de livraison autonome sans bon de commande'
+    }
+
+    if (form.purchase_order_id) {
+      return 'Bon de livraison lié à un bon de commande — quantités restantes préremplies'
+    }
+
+    return 'Enregistrez une nouvelle livraison fournisseur'
+  })
 
   const submitLabel = computed(() =>
     mode === 'edit' ? 'Enregistrer les modifications' : 'Créer le bon de livraison',
@@ -834,7 +863,7 @@ export function useDeliveryNoteForm({
       errors.supplier_id = 'Le fournisseur est requis.'
     }
 
-    if (!form.purchase_order_id) {
+    if (!standalone && !form.purchase_order_id) {
       errors.purchase_order_id = 'Le bon de commande est requis.'
     }
 
@@ -1279,6 +1308,7 @@ export function useDeliveryNoteForm({
   return {
     mode,
     deliveryNote,
+    standalone,
     form,
     errors: computed(() => form.errors),
     processing: computed(() => form.processing),

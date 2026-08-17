@@ -2,6 +2,7 @@
   <AppLayout>
     <DeliveryNoteForm
       mode="create"
+      :standalone="standalone"
       :suppliers="suppliers"
       :products="products"
       :purchase-orders="purchaseOrders"
@@ -30,6 +31,7 @@ defineProps<{
   purchaseOrders: DeliveryNoteFormPurchaseOrder[]
   purchaseOrder?: DeliveryNoteFormPurchaseOrder | null
   purchaseOrderReceipt?: PurchaseOrderReceiptSummary | null
+  standalone?: boolean
   attachmentConfig: AttachmentConfig
 }>()
 </script>

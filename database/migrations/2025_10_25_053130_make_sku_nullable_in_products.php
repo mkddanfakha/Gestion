@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Supprimer temporairement la contrainte unique
         DB::statement('ALTER TABLE products DROP INDEX products_sku_unique');
         
@@ -27,6 +31,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement('ALTER TABLE products DROP INDEX products_sku_unique');
         DB::statement('ALTER TABLE products MODIFY sku VARCHAR(6) NOT NULL');
         DB::statement('ALTER TABLE products ADD UNIQUE KEY products_sku_unique (sku)');

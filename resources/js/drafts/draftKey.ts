@@ -7,9 +7,11 @@ export function buildDraftStorageKey(
   formType: DraftFormType,
   mode: DraftMode,
   entityId: number | null,
+  scopeContext?: string | null,
 ): string {
   const entityPart = entityId === null ? 'new' : String(entityId)
-  return `${KEY_PREFIX}:${userId}:${formType}:${mode}:${entityPart}`
+  const contextPart = scopeContext ? `:ctx:${scopeContext}` : ''
+  return `${KEY_PREFIX}:${userId}:${formType}:${mode}:${entityPart}${contextPart}`
 }
 
 export function createInstanceId(): string {

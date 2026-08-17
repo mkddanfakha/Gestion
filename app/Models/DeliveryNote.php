@@ -23,10 +23,6 @@ class DeliveryNote extends Model
         'total_amount',
         'notes',
         'invoice_number',
-        'invoice_file_path',
-        'invoice_file_name',
-        'invoice_file_mime',
-        'invoice_file_size',
         'user_id'
     ];
 
@@ -36,6 +32,13 @@ class DeliveryNote extends Model
         'tax_amount' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+    ];
+
+    protected $hidden = [
+        'invoice_file_path',
+        'invoice_file_name',
+        'invoice_file_mime',
+        'invoice_file_size',
     ];
 
     /**
@@ -128,21 +131,6 @@ class DeliveryNote extends Model
         ];
 
         return $labels[$this->status] ?? $this->status;
-    }
-
-    /**
-     * URL publique du fichier de facture fournisseur (si stockée sur le disque public)
-     */
-    public function getInvoiceFileUrlAttribute(): ?string
-    {
-        if (!$this->invoice_file_path) {
-            return null;
-        }
-        try {
-            return \Storage::disk('public')->url($this->invoice_file_path);
-        } catch (\Throwable $e) {
-            return null;
-        }
     }
 
     /**

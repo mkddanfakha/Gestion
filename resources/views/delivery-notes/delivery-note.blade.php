@@ -70,7 +70,7 @@
                         <p><strong>Bon de commande:</strong> {{ $deliveryNote->purchaseOrder->po_number }}</p>
                     @endif
                     @if($deliveryNote->invoice_number)
-                        <p><strong>Numéro de facture:</strong> {{ $deliveryNote->invoice_number }}</p>
+                        <p><strong>Réf. facture fournisseur:</strong> {{ $deliveryNote->invoice_number }}</p>
                     @endif
                     <table style="width: 100%; border-collapse: collapse; margin: 3px 0;">
                         <tr>

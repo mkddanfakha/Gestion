@@ -7,13 +7,10 @@
         icon="bi-clipboard-check"
       >
         <template #actions-primary>
-          <Link
-            :href="route('delivery-notes.create')"
-            class="btn btn-primary"
-          >
+          <button type="button" class="btn btn-primary" @click="showCreateModal = true">
             <i class="bi bi-plus-circle me-1"></i>
-            Nouveau bon de livraison
-          </Link>
+            Créer un BL
+          </button>
         </template>
       </PageHeader>
 
@@ -111,6 +108,7 @@
               <tr>
                 <th>Numéro</th>
                 <th>Fournisseur</th>
+                <th>Bon de commande</th>
                 <th>Date de livraison</th>
                 <th>Facture</th>
                 <th>Montant total</th>
@@ -135,6 +133,16 @@
                       <div class="fw-medium">{{ dn.supplier?.name || 'N/A' }}</div>
                     </div>
                   </div>
+                </td>
+                <td>
+                  <Link
+                    v-if="dn.purchase_order?.po_number"
+                    :href="route('purchase-orders.show', { id: dn.purchase_order.id })"
+                    class="text-decoration-none"
+                  >
+                    <code>{{ dn.purchase_order.po_number }}</code>
+                  </Link>
+                  <span v-else class="badge bg-light text-muted border">Sans BC</span>
                 </td>
                 <td>
                   <div class="small">
@@ -206,6 +214,58 @@
         />
       </section>
     </IndexPageLayout>
+
+    <div
+      class="modal fade"
+      :class="{ show: showCreateModal }"
+      :style="{ display: showCreateModal ? 'block' : 'none' }"
+      tabindex="-1"
+      role="dialog"
+      aria-modal="true"
+      @click.self="showCreateModal = false"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Comment créer le BL ?</h5>
+            <button type="button" class="btn-close" aria-label="Fermer" @click="showCreateModal = false"></button>
+          </div>
+          <div class="modal-body">
+            <div class="d-grid gap-3">
+              <Link
+                :href="route('delivery-notes.create-from-purchase-order')"
+                class="btn btn-outline-primary text-start p-3"
+                @click="showCreateModal = false"
+              >
+                <div class="d-flex align-items-start gap-3">
+                  <i class="bi bi-box-seam fs-4"></i>
+                  <div>
+                    <div class="fw-semibold">Depuis un bon de commande</div>
+                    <div class="small text-muted">
+                      Recommandé — préremplit automatiquement le BL avec les quantités restantes.
+                    </div>
+                  </div>
+                </div>
+              </Link>
+              <Link
+                :href="route('delivery-notes.create', { standalone: 1 })"
+                class="btn btn-outline-secondary text-start p-3"
+                @click="showCreateModal = false"
+              >
+                <div class="d-flex align-items-start gap-3">
+                  <i class="bi bi-file-earmark fs-4"></i>
+                  <div>
+                    <div class="fw-semibold">Sans bon de commande</div>
+                    <div class="small text-muted">Pour une livraison exceptionnelle ou sans BC enregistré.</div>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="showCreateModal" class="modal-backdrop fade show"></div>
   </AppLayout>
 </template>
 
@@ -224,6 +284,7 @@ interface DeliveryNote {
   id: number
   delivery_number: string
   supplier?: any
+  purchase_order?: { id: number; po_number: string }
   delivery_date: string
   invoice_number?: string
   total_amount: number
@@ -264,6 +325,7 @@ const { success, error, confirm } = useSweetAlert()
 
 const filters = ref({ ...props.filters })
 const validatingIds = ref<Set<number>>(new Set())
+const showCreateModal = ref(false)
 
 // Computed pour les statistiques
 const validatedCount = computed(() => {

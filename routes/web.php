@@ -94,6 +94,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Bons de livraison
     // Routes spécifiques AVANT la route resource pour éviter les conflits
+    Route::get('/delivery-notes/create/from-purchase-order', [DeliveryNoteController::class, 'selectPurchaseOrder'])
+        ->name('delivery-notes.create-from-purchase-order');
     Route::post('/delivery-notes/{deliveryNote}/validate', [DeliveryNoteController::class, 'validate'])
         ->middleware(EnsureUserIsAdmin::class)
         ->name('delivery-notes.validate');
@@ -102,19 +104,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/delivery-notes/{deliveryNote}/download', [DeliveryNoteController::class, 'downloadDeliveryNote'])->name('delivery-notes.download');
     Route::get('/delivery-notes/{deliveryNote}/print', [DeliveryNoteController::class, 'printDeliveryNote'])->name('delivery-notes.print');
     Route::post('/delivery-notes/preview', [DocumentPreviewController::class, 'deliveryNote'])->name('delivery-notes.preview');
-    // Facture/BL fournisseur: upload/affichage/suppression (AVANT la route resource)
-    // Utiliser des contraintes pour éviter les conflits avec la route resource
-    Route::post('/delivery-notes/{deliveryNote}/invoice', [DeliveryNoteController::class, 'uploadInvoice'])
-        ->where('deliveryNote', '[0-9]+')
-        ->name('delivery-notes.invoice.upload');
-    Route::get('/delivery-notes/{deliveryNote}/invoice', [DeliveryNoteController::class, 'showInvoice'])
-        ->where('deliveryNote', '[0-9]+')
-        ->name('delivery-notes.invoice.show');
-    Route::delete('/delivery-notes/{deliveryNote}/invoice', [DeliveryNoteController::class, 'deleteInvoice'])
-        ->where('deliveryNote', '[0-9]+')
-        ->name('delivery-notes.invoice.delete');
-    // Route resource en dernier avec exclusion de 'invoice' pour éviter les conflits
-    Route::resource('delivery-notes', DeliveryNoteController::class)->except(['invoice']);
+    Route::resource('delivery-notes', DeliveryNoteController::class);
     
     // Informations de l'entreprise
     Route::get('/company', [CompanyController::class, 'edit'])->name('company.edit');

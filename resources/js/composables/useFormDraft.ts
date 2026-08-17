@@ -34,6 +34,7 @@ export function useFormDraft<T extends Record<string, unknown>>(
 
   const userId = computed(() => page.props.auth?.user?.id as number | undefined)
   const entityId = computed(() => options.entityId ?? null)
+  const scopeContext = computed(() => unref(options.scopeContext) ?? null)
 
   const status = ref<DraftSaveState>('clean')
   const lastSavedAt = ref<string | null>(null)
@@ -48,9 +49,10 @@ export function useFormDraft<T extends Record<string, unknown>>(
 
   let disposed = false
 
-  const draftScopeKey = computed(
-    () => `${options.formType}:${options.mode}:${entityId.value ?? 'new'}`,
-  )
+  const draftScopeKey = computed(() => {
+    const base = `${options.formType}:${options.mode}:${entityId.value ?? 'new'}`
+    return scopeContext.value ? `${base}:${scopeContext.value}` : base
+  })
 
   const broadcast = createDraftBroadcastManager({
     isActive: () => !disposed && enabled,
@@ -121,6 +123,7 @@ export function useFormDraft<T extends Record<string, unknown>>(
         instanceId,
         version: currentVersion.value,
       },
+      scopeContext.value,
     )
 
     if (disposed) {
@@ -231,6 +234,7 @@ export function useFormDraft<T extends Record<string, unknown>>(
       options.formType,
       options.mode,
       entityId.value,
+      scopeContext.value,
     )
 
     let remoteDraft: FormDraftRecord | null = null
@@ -304,7 +308,7 @@ export function useFormDraft<T extends Record<string, unknown>>(
 
     isPaused.value = true
 
-    await deleteDraft(currentUserId, options.formType, options.mode, entityId.value)
+    await deleteDraft(currentUserId, options.formType, options.mode, entityId.value, scopeContext.value)
 
     if (config.serverSync && !disposed) {
       await deleteServerDraftByScope(options.formType, options.mode, entityId.value)

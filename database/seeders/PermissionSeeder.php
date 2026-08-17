@@ -83,7 +83,6 @@ class PermissionSeeder extends Seeder
             'validate' => 'Valider un bon de livraison',
             'download' => 'Télécharger un bon de livraison',
             'print' => 'Imprimer un bon de livraison',
-            'invoice' => 'Gérer les factures/BL fournisseur',
         ],
         'company' => [
             'view' => 'Voir les informations de l\'entreprise',

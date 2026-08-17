@@ -31,6 +31,22 @@
 
     <form novalidate @submit.prevent="submit">
       <div class="form-page__body">
+        <div v-if="isFormDisabled" class="alert alert-warning mb-4" role="alert">
+          <i class="bi bi-lock me-1"></i>
+          Ce bon de livraison validé ne peut plus être modifié.
+        </div>
+
+        <div v-else-if="standalone" class="alert alert-secondary mb-4" role="status">
+          <i class="bi bi-file-earmark me-1"></i>
+          <strong>BL sans bon de commande</strong> — livraison autonome, non liée à un BC.
+        </div>
+
+        <div v-else-if="form.purchase_order_id" class="alert alert-primary mb-4" role="status">
+          <i class="bi bi-link-45deg me-1"></i>
+          <strong>Lié au BC</strong>
+          <span v-if="selectedPurchaseOrder"> — {{ selectedPurchaseOrder.po_number }}</span>
+        </div>
+
         <div class="row g-3 mb-4">
           <div class="col-6 col-md-3">
             <div class="sale-stat-card h-100">
@@ -80,6 +96,7 @@
           </div>
         </div>
 
+        <fieldset class="delivery-note-form-fields border-0 p-0 m-0 min-w-0 w-100" :disabled="isFormDisabled">
         <div class="card sale-card mb-4">
           <div class="card-body p-0">
             <div v-if="form.items.length === 0" class="text-center py-5 text-muted">
@@ -134,6 +151,7 @@
                         :products="productsForSelection"
                         :exclude-product-ids="getExcludedProductIds(index)"
                         :is-invalid="isProductDuplicate(index) || !!getItemError(index, 'product_id')"
+                        :disabled="isFormDisabled"
                         placeholder="Rechercher un produit..."
                         @selected="(product) => handleProductSelected(product, index)"
                       />
@@ -251,6 +269,7 @@
                               :products="productsForSelection"
                               :exclude-product-ids="getExcludedProductIds(index)"
                               :is-invalid="isProductDuplicate(index) || !!getItemError(index, 'product_id')"
+                              :disabled="isFormDisabled"
                               placeholder="Rechercher un produit..."
                               @selected="(product) => handleProductSelected(product, index)"
                             />
@@ -395,7 +414,7 @@
                   </div>
                 </div>
 
-                <div class="mb-3">
+                <div v-if="!standalone" class="mb-3">
                   <label class="form-label">
                     <i class="bi bi-search me-1 text-muted"></i>
                     Bon de commande
@@ -458,6 +477,13 @@
                   </div>
                 </div>
 
+                <div v-else class="mb-3">
+                  <label class="form-label text-muted">Bon de commande</label>
+                  <p class="mb-0 text-muted small">
+                    Non applicable — ce BL est créé sans bon de commande.
+                  </p>
+                </div>
+
                 <div class="row g-3 mb-3">
                   <div class="col-md-6">
                     <label class="form-label">Date de livraison</label>
@@ -473,7 +499,7 @@
                     </div>
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">N° facture fournisseur</label>
+                    <label class="form-label">Réf. facture fournisseur</label>
                     <input
                       v-model="form.invoice_number"
                       type="text"
@@ -673,6 +699,7 @@
             </div>
           </div>
         </div>
+        </fieldset>
 
         <div v-if="!isFormDisabled" class="card sale-card mb-4">
           <div class="card-header sale-card-header d-flex justify-content-between align-items-center">
@@ -710,7 +737,7 @@
               v-if="canPreviewDeliveryNote"
               type="button"
               class="btn btn-outline-primary"
-              :disabled="processing || isPreviewing || form.items.length === 0 || !form.supplier_id || !form.purchase_order_id"
+              :disabled="isFormDisabled || processing || isPreviewing || !canSubmitForm"
               :aria-busy="isPreviewing"
               @click="previewDeliveryNote"
             >
@@ -726,7 +753,7 @@
             <button
               type="submit"
               class="btn btn-success"
-              :disabled="processing || form.items.length === 0 || !form.supplier_id || !form.purchase_order_id"
+              :disabled="isFormDisabled || processing || !canSubmitForm"
               :aria-busy="processing"
             >
               <span
@@ -773,6 +800,7 @@ import {
 const props = defineProps<{
   mode: DeliveryNoteFormMode
   deliveryNote?: DeliveryNoteFormDeliveryNote
+  standalone?: boolean
   suppliers: DeliveryNoteFormSupplier[]
   products: DeliveryNoteFormProduct[]
   purchaseOrders: DeliveryNoteFormPurchaseOrder[]
@@ -795,10 +823,12 @@ const isPreviewing = ref(false)
 const {
   mode,
   deliveryNote,
+  standalone,
   form,
   errors,
   processing,
   clientErrors,
+  isFormDisabled,
   taxMode,
   discountMode,
   taxPercent,
@@ -847,6 +877,7 @@ const {
 } = useDeliveryNoteForm({
   mode: props.mode,
   deliveryNote: props.deliveryNote,
+  standalone: props.standalone ?? false,
   suppliers: props.suppliers,
   products: toRef(props, 'products'),
   purchaseOrders: toRef(props, 'purchaseOrders'),
@@ -870,6 +901,13 @@ const hasReceiptInfo = (index: number): boolean => {
 const getItemError = (index: number, field: string): string | undefined =>
   clientErrors.value[`items.${index}.${field}`]
 
+const canSubmitForm = computed(
+  () =>
+    form.items.length > 0 &&
+    !!form.supplier_id &&
+    (standalone || !!form.purchase_order_id),
+)
+
 const canAddItem = computed(() => {
   if (!form.purchase_order_id || !receiptSummary.value) {
     return true
@@ -891,9 +929,9 @@ const previewDeliveryNote = async () => {
   try {
     const filename =
       props.mode === 'edit' && props.deliveryNote
-        ? `BL_${props.deliveryNote.delivery_number}.pdf`
+        ? `BL-${props.deliveryNote.delivery_number}.pdf`
         : 'Apercu_BL.pdf'
-    await openFromPayload('delivery-notes.preview', payload, filename)
+    await openFromPayload('delivery-notes.preview', payload, filename, 'Bon de livraison')
   } finally {
     isPreviewing.value = false
   }

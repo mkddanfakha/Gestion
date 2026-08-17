@@ -11,20 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('notification_reads', function (Blueprint $table) {
-            // Ajouter les index si la table existe déjà
-            try {
-                $table->unique(['user_id', 'notification_type', 'notification_id'], 'notif_reads_unique');
-            } catch (\Exception $e) {
-                // L'index existe peut-être déjà, on continue
-            }
-            
-            try {
+        if (! $this->indexExists('notif_reads_user_type_idx')) {
+            Schema::table('notification_reads', function (Blueprint $table) {
                 $table->index(['user_id', 'notification_type'], 'notif_reads_user_type_idx');
-            } catch (\Exception $e) {
-                // L'index existe peut-être déjà, on continue
-            }
-        });
+            });
+        }
     }
 
     /**
@@ -32,9 +23,36 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('notification_reads', function (Blueprint $table) {
-            $table->dropUnique('notif_reads_unique');
-            $table->dropIndex('notif_reads_user_type_idx');
-        });
+        if ($this->indexExists('notif_reads_user_type_idx')) {
+            Schema::table('notification_reads', function (Blueprint $table) {
+                $table->dropIndex('notif_reads_user_type_idx');
+            });
+        }
+    }
+
+    private function indexExists(string $name): bool
+    {
+        $connection = Schema::getConnection();
+
+        if ($connection->getDriverName() === 'sqlite') {
+            $indexes = $connection->select("PRAGMA index_list('notification_reads')");
+
+            foreach ($indexes as $index) {
+                if (($index->name ?? null) === $name) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        $database = $connection->getDatabaseName();
+
+        $result = $connection->select(
+            'SELECT COUNT(*) AS aggregate FROM information_schema.statistics WHERE table_schema = ? AND table_name = ? AND index_name = ?',
+            [$database, 'notification_reads', $name]
+        );
+
+        return (int) ($result[0]->aggregate ?? 0) > 0;
     }
 };

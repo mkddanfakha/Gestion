@@ -20,6 +20,9 @@ class PurchaseOrderDeliveryService
     /** @var list<string> */
     public const BLOCKED_PO_STATUSES = ['cancelled'];
 
+    /** @var list<string> */
+    public const DELIVERABLE_PO_STATUSES = ['confirmed', 'partially_received', 'sent'];
+
     /**
      * @return array<string, int>
      */
@@ -108,7 +111,8 @@ class PurchaseOrderDeliveryService
             ? round(($totalDelivered / $totalOrdered) * 100, 1)
             : 0.0;
 
-        $canCreateDelivery = ! in_array($purchaseOrder->status, self::BLOCKED_PO_STATUSES, true)
+        $canCreateDelivery = in_array($purchaseOrder->status, self::DELIVERABLE_PO_STATUSES, true)
+            && ! in_array($purchaseOrder->status, self::BLOCKED_PO_STATUSES, true)
             && $purchaseOrder->status !== 'received'
             && $totalRemaining > 0;
 
@@ -133,6 +137,10 @@ class PurchaseOrderDeliveryService
         }
 
         if ($purchaseOrder->status === 'received') {
+            return false;
+        }
+
+        if (! in_array($purchaseOrder->status, self::DELIVERABLE_PO_STATUSES, true)) {
             return false;
         }
 
@@ -204,9 +212,9 @@ class PurchaseOrderDeliveryService
                 throw ValidationException::withMessages([
                     'items' => [
                         sprintf(
-                            'Impossible de livrer %d unité(s) de « %s » : seulement %d unité(s) restent à livrer.',
-                            $requestedQty,
+                            'Cette quantité dépasse la quantité restante du bon de commande. « %s » : %d demandée(s), %d disponible(s).',
                             $productName,
+                            $requestedQty,
                             $availableQty,
                         ),
                     ],
@@ -232,29 +240,35 @@ class PurchaseOrderDeliveryService
             }
 
             $lockedNote->load(['items.product', 'purchaseOrder.items.product']);
-            $purchaseOrder = PurchaseOrder::query()
-                ->whereKey($lockedNote->purchase_order_id)
-                ->lockForUpdate()
-                ->firstOrFail();
 
-            $this->assertDeliveryQuantities(
-                $purchaseOrder,
-                $lockedNote->items->map(fn (DeliveryNoteItem $item) => [
-                    'product_id' => $item->product_id,
-                    'quantity' => $item->quantity,
-                ])->all(),
-                $lockedNote,
-            );
+            if ($lockedNote->purchase_order_id) {
+                $purchaseOrder = PurchaseOrder::query()
+                    ->whereKey($lockedNote->purchase_order_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $this->assertDeliveryQuantities(
+                    $purchaseOrder,
+                    $lockedNote->items->map(fn (DeliveryNoteItem $item) => [
+                        'product_id' => $item->product_id,
+                        'quantity' => $item->quantity,
+                    ])->all(),
+                    $lockedNote,
+                );
+            }
 
             foreach ($lockedNote->items as $item) {
                 $this->applyStockDelta($item->product_id, (int) $item->quantity, (float) $item->unit_price);
             }
 
-            $oldStatus = $lockedNote->status;
             $lockedNote->status = 'validated';
             $lockedNote->save();
 
-            $this->recalculatePurchaseOrderStatus($purchaseOrder);
+            if ($lockedNote->purchase_order_id) {
+                $this->recalculatePurchaseOrderStatus(
+                    PurchaseOrder::query()->whereKey($lockedNote->purchase_order_id)->lockForUpdate()->firstOrFail(),
+                );
+            }
 
             ActivityLogger::logValidate('Bon de livraison', $lockedNote);
 

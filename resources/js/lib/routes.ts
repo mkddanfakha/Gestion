@@ -89,6 +89,7 @@ export function route(name: string, params: any = {}) {
         'purchase-orders.preview': '/purchase-orders/preview',
         'delivery-notes.index': '/delivery-notes',
         'delivery-notes.create': '/delivery-notes/create',
+        'delivery-notes.create-from-purchase-order': '/delivery-notes/create/from-purchase-order',
         'delivery-notes.store': '/delivery-notes',
         'delivery-notes.show': '/delivery-notes/{id}',
         'delivery-notes.edit': '/delivery-notes/{id}/edit',
@@ -99,10 +100,6 @@ export function route(name: string, params: any = {}) {
         'delivery-notes.download': '/delivery-notes/{deliveryNote}/download',
         'delivery-notes.print': '/delivery-notes/{deliveryNote}/print',
         'delivery-notes.preview': '/delivery-notes/preview',
-        // Fichier facture/BL fournisseur
-        'delivery-notes.invoice.upload': '/delivery-notes/{deliveryNote}/invoice',
-        'delivery-notes.invoice.show': '/delivery-notes/{deliveryNote}/invoice',
-        'delivery-notes.invoice.delete': '/delivery-notes/{deliveryNote}/invoice',
         'company.edit': '/company',
         'company.update': '/company',
         'company.logo.upload': '/company/logo',

@@ -59,6 +59,7 @@ export interface UseFormDraftOptions<T extends Record<string, unknown>> {
   getBaseline?: () => T
   watchSource?: MaybeRef<object>
   enabled?: boolean
+  scopeContext?: MaybeRef<string | null | undefined>
 }
 
 export interface DraftSyncPayload {

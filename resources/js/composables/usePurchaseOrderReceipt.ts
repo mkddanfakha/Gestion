@@ -52,7 +52,7 @@ export function validateDeliveryQuantityAgainstReceipt(
   }
 
   if (quantity > line.available_quantity) {
-    return `Impossible de livrer ${quantity} unité(s) : seulement ${line.available_quantity} unité(s) restent à livrer.`
+    return `Cette quantité dépasse la quantité restante du bon de commande. (${line.available_quantity} disponible(s))`
   }
 
   return ''

@@ -123,7 +123,7 @@
                 class="btn btn-primary"
               >
                 <i class="bi bi-plus-circle me-1"></i>
-                Créer un bon de livraison
+                Créer un BL
               </Link>
             </div>
           </div>
@@ -274,7 +274,7 @@
                 class="btn btn-primary btn-sm"
               >
                 <i class="bi bi-plus-circle me-1"></i>
-                Créer un bon de livraison
+                Créer un BL
               </Link>
             </div>
             
