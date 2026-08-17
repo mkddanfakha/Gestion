@@ -68,6 +68,7 @@ export function route(name: string, params: any = {}) {
         'drafts.destroy-scope': '/drafts/scope',
         'drafts.destroy': '/drafts/{draft}',
         'suppliers.index': '/suppliers',
+        'suppliers.autocomplete': '/suppliers/autocomplete',
         'suppliers.create': '/suppliers/create',
         'suppliers.store': '/suppliers',
         'suppliers.show': '/suppliers/{id}',

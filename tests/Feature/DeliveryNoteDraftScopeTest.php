@@ -319,4 +319,63 @@ class DeliveryNoteDraftScopeTest extends TestCase
             ->assertOk()
             ->assertJsonPath('draft.data.customer_id', 4);
     }
+
+    public function test_standalone_draft_preserves_items_when_supplier_changes(): void
+    {
+        $user = User::factory()->create();
+
+        $items = [
+            [
+                'product_id' => 10,
+                'quantity' => 10,
+                'unit_price' => 12000,
+                'total_price' => 120000,
+            ],
+        ];
+
+        $this->upsertDeliveryNoteDraft($user, 'standalone', [
+            'supplier_id' => 1,
+            'purchase_order_id' => null,
+            'items' => $items,
+        ])->assertOk();
+
+        $this->upsertDeliveryNoteDraft($user, 'standalone', [
+            'supplier_id' => 2,
+            'purchase_order_id' => null,
+            'items' => $items,
+        ])->assertOk();
+
+        $this->fetchDeliveryNoteDraft($user, 'standalone')
+            ->assertOk()
+            ->assertJsonPath('draft.data.supplier_id', 2)
+            ->assertJsonPath('draft.data.purchase_order_id', null)
+            ->assertJsonPath('draft.data.items.0.product_id', 10)
+            ->assertJsonPath('draft.data.items.0.quantity', 10);
+    }
+
+    public function test_from_po_draft_preserves_purchase_order_context(): void
+    {
+        $user = User::factory()->create();
+
+        $this->upsertDeliveryNoteDraft($user, 'from-po:12', [
+            'supplier_id' => 5,
+            'purchase_order_id' => 12,
+            'items' => [
+                [
+                    'product_id' => 3,
+                    'quantity' => 4,
+                    'unit_price' => 5000,
+                    'total_price' => 20000,
+                ],
+            ],
+        ])->assertOk();
+
+        $this->fetchDeliveryNoteDraft($user, 'from-po:12')
+            ->assertOk()
+            ->assertJsonPath('draft.scopeContext', 'from-po:12')
+            ->assertJsonPath('draft.data.supplier_id', 5)
+            ->assertJsonPath('draft.data.purchase_order_id', 12)
+            ->assertJsonPath('draft.data.items.0.product_id', 3)
+            ->assertJsonPath('draft.data.items.0.quantity', 4);
+    }
 }

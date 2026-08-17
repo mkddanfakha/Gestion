@@ -11,6 +11,34 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+test('customer store redirects to show page on successful creation', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->post(route('customers.store'), [
+        'name' => 'Nouveau Client CRM',
+        'is_active' => true,
+    ]);
+
+    $customer = Customer::query()->where('name', 'Nouveau Client CRM')->first();
+
+    $response->assertRedirect(route('customers.show', $customer));
+    expect($customer)->not->toBeNull();
+    $this->assertDatabaseHas('customers', ['id' => $customer->id, 'name' => 'Nouveau Client CRM']);
+});
+
+test('invalid customer store does not redirect to show page', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->postJson(route('customers.store'), [
+        'name' => '',
+        'is_active' => true,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['name']);
+    expect(Customer::query()->count())->toBe(0);
+});
+
 function createCrmProduct(float $price = 100000): Product
 {
     $category = Category::create([

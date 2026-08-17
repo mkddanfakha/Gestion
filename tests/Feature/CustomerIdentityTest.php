@@ -20,9 +20,9 @@ test('customer identity can be created with senegalese national id', function ()
         'is_active' => true,
     ]);
 
-    $response->assertRedirect(route('customers.index'));
-
     $customer = Customer::query()->first();
+
+    $response->assertRedirect(route('customers.show', $customer));
 
     expect($customer)->not->toBeNull()
         ->and($customer->nationality)->toBe(Countries::SENEGAL_CODE)
@@ -57,9 +57,11 @@ test('senegalese passport must match A plus eight digits on create', function ()
         'is_active' => true,
     ]);
 
-    $response->assertRedirect(route('customers.index'));
+    $customer = Customer::query()->first();
 
-    expect(Customer::query()->first()?->identity_document_number_normalized)->toBe('A12345678');
+    $response->assertRedirect(route('customers.show', $customer));
+
+    expect($customer?->identity_document_number_normalized)->toBe('A12345678');
 });
 
 test('invalid senegalese passport is rejected on create', function () {
@@ -88,9 +90,11 @@ test('foreign passport is accepted without senegalese format rules', function ()
         'is_active' => true,
     ]);
 
-    $response->assertRedirect(route('customers.index'));
+    $customer = Customer::query()->first();
 
-    expect(Customer::query()->first()?->identity_document_number)->toBe('21AB45678');
+    $response->assertRedirect(route('customers.show', $customer));
+
+    expect($customer?->identity_document_number)->toBe('21AB45678');
 });
 
 test('duplicate identity document is rejected on create', function () {
@@ -131,7 +135,12 @@ test('same normalized number with different document type is allowed', function 
         'is_active' => true,
     ]);
 
-    $response->assertRedirect(route('customers.index'));
+    $customer = Customer::query()
+        ->where('identity_document_type', Customer::IDENTITY_TYPE_PASSPORT)
+        ->where('identity_document_number', 'A12345678')
+        ->first();
+
+    $response->assertRedirect(route('customers.show', $customer));
 
     expect(Customer::query()->count())->toBe(2);
 });
@@ -222,7 +231,11 @@ test('two customers with same name but different identity are allowed', function
         'is_active' => true,
     ]);
 
-    $response->assertRedirect(route('customers.index'));
+    $customer = Customer::query()
+        ->where('identity_document_number', '2222222222222')
+        ->first();
+
+    $response->assertRedirect(route('customers.show', $customer));
 });
 
 test('duplicate check detects phone match without blocking', function () {
@@ -599,5 +612,7 @@ test('senegalese national id remains valid when country of residence differs', f
         'is_active' => true,
     ]);
 
-    $response->assertRedirect(route('customers.index'));
+    $customer = Customer::query()->first();
+
+    $response->assertRedirect(route('customers.show', $customer));
 });

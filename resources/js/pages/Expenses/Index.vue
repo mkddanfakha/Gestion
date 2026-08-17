@@ -121,6 +121,15 @@
               </select>
             </div>
             <div class="col-md-2">
+              <label class="form-label">Fournisseur</label>
+              <select v-model="selectedSupplierId" class="form-select" @change="applyFilters">
+                <option value="">Tous les fournisseurs</option>
+                <option v-for="supplier in suppliers" :key="supplier.id" :value="String(supplier.id)">
+                  {{ supplier.name }}
+                </option>
+              </select>
+            </div>
+            <div class="col-md-2">
               <label class="form-label">Date de début</label>
               <input
                 v-model="startDate"
@@ -288,6 +297,11 @@ interface Expense {
   expense_date: string
   receipt_number?: string
   vendor?: string
+  supplier_id?: number | null
+  supplier?: {
+    id: number
+    name: string
+  } | null
   notes?: string
   attachments_count?: number
   user: User
@@ -307,8 +321,14 @@ interface Statistics {
   weekly: number
 }
 
+interface SupplierOption {
+  id: number
+  name: string
+}
+
 interface Props {
   expenses: PaginatedExpenses
+  suppliers: SupplierOption[]
   statistics: Statistics
 }
 
@@ -319,6 +339,7 @@ const { success, error, confirm } = useSweetAlert()
 const searchQuery = ref('')
 const selectedCategory = ref('')
 const selectedPaymentMethod = ref('')
+const selectedSupplierId = ref('')
 const startDate = ref('')
 const endDate = ref('')
 
@@ -357,6 +378,7 @@ const filteredExpenses = computed(() => {
       expense.title.toLowerCase().includes(query) ||
       (expense.description && expense.description.toLowerCase().includes(query)) ||
       expense.vendor?.toLowerCase().includes(query) ||
+      expense.supplier?.name.toLowerCase().includes(query) ||
       expense.receipt_number?.toLowerCase().includes(query)
     )
   }
@@ -369,6 +391,11 @@ const filteredExpenses = computed(() => {
   // Filtre par méthode de paiement
   if (selectedPaymentMethod.value) {
     filtered = filtered.filter(expense => expense.payment_method === selectedPaymentMethod.value)
+  }
+
+  if (selectedSupplierId.value) {
+    const supplierId = Number(selectedSupplierId.value)
+    filtered = filtered.filter(expense => expense.supplier_id === supplierId)
   }
 
   // Filtre par date
@@ -396,6 +423,7 @@ const clearFilters = () => {
   searchQuery.value = ''
   selectedCategory.value = ''
   selectedPaymentMethod.value = ''
+  selectedSupplierId.value = ''
   startDate.value = ''
   endDate.value = ''
 }

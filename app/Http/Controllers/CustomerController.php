@@ -85,7 +85,7 @@ class CustomerController extends Controller
             return response()->json($this->formatCustomerPayload($customer), 201);
         }
 
-        return redirect()->route('customers.index')
+        return redirect()->route('customers.show', $customer)
             ->with('success', 'Client créé avec succès.');
     }
 

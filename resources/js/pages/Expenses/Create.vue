@@ -154,22 +154,21 @@
                 </div>
               </div>
               <div class="col-12 col-md-6">
-                <label for="vendor" class="form-label">Fournisseur</label>
-                <input
-                  v-model="form.vendor"
-                  type="text"
-                  class="form-control"
-                  :class="{ 'is-invalid': errors.vendor || clientErrors.vendor }"
-                  id="vendor"
-                  placeholder="Ex: Magasin ABC"
-                  @input="validateField('vendor')"
-                  @blur="validateField('vendor')"
+                <label class="form-label">
+                  <i class="bi bi-building me-1 text-muted"></i>
+                  Fournisseur <span class="text-muted fw-normal">(facultatif)</span>
+                </label>
+                <SupplierCombobox
+                  ref="supplierComboboxRef"
+                  v-model="form.supplier_id"
+                  :suppliers="localSuppliers"
+                  placeholder="Rechercher ou ajouter un fournisseur..."
+                  :is-invalid="!!errors.supplier_id"
+                  :allow-create="canCreateSupplier"
+                  @created="handleSupplierCreated"
                 />
-                <div v-if="errors.vendor" class="invalid-feedback">
-                  {{ errors.vendor }}
-                </div>
-                <div v-if="clientErrors.vendor" class="invalid-feedback">
-                  {{ clientErrors.vendor }}
+                <div v-if="errors.supplier_id" class="invalid-feedback d-block">
+                  {{ errors.supplier_id }}
                 </div>
               </div>
             </div>
@@ -294,16 +293,53 @@ import { useFormDraft } from '@/composables/useFormDraft'
 import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import AttachmentUploader from '@/components/attachments/AttachmentUploader.vue'
+import SupplierCombobox from '@/components/forms/SupplierCombobox.vue'
+import type { SupplierOption } from '@/types/supplier'
+import { usePermissions } from '@/composables/usePermissions'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 import { normalizeFormDateFields } from '@/utils/dateFormatter'
 import type { AttachmentConfig } from '@/types/attachment'
 
+interface ExpenseFormSupplier {
+  id: number
+  name: string
+  email?: string | null
+  phone?: string | null
+  mobile?: string | null
+}
+
 interface Props {
+  suppliers: ExpenseFormSupplier[]
   attachmentConfig: AttachmentConfig
 }
 
-const { attachmentConfig } = defineProps<Props>()
+const props = defineProps<Props>()
+const { attachmentConfig } = props
+const { canCreate } = usePermissions()
+const canCreateSupplier = canCreate('suppliers')
 const { success, error } = useSweetAlert()
+
+const localSuppliers = ref<ExpenseFormSupplier[]>([...props.suppliers])
+const supplierComboboxRef = ref<InstanceType<typeof SupplierCombobox> | null>(null)
+
+const handleSupplierCreated = (supplier: SupplierOption) => {
+  const normalizedSupplier: ExpenseFormSupplier = {
+    id: supplier.id,
+    name: supplier.name,
+    email: supplier.email ?? null,
+    phone: supplier.phone ?? supplier.mobile ?? null,
+  }
+
+  const exists = localSuppliers.value.some((item) => item.id === normalizedSupplier.id)
+  if (!exists) {
+    localSuppliers.value = [...localSuppliers.value, normalizedSupplier].sort((left, right) =>
+      left.name.localeCompare(right.name, 'fr'),
+    )
+  }
+
+  form.supplier_id = normalizedSupplier.id
+  supplierComboboxRef.value?.selectSupplier(normalizedSupplier)
+}
 
 // Form data
 const form = useForm({
@@ -314,7 +350,7 @@ const form = useForm({
   payment_method: '',
   expense_date: getTodayForInput(),
   receipt_number: '',
-  vendor: '',
+  supplier_id: null as number | null,
   notes: ''
 })
 
@@ -328,6 +364,12 @@ const draft = useFormDraft({
   restoreData: (data) => {
     restoreInertiaFormData(form as unknown as Record<string, unknown>, data)
     normalizeFormDateFields(form as unknown as Record<string, unknown>, ['expense_date'])
+    if (form.supplier_id) {
+      const supplier = localSuppliers.value.find((item) => item.id === form.supplier_id)
+      if (supplier) {
+        supplierComboboxRef.value?.selectSupplier(supplier)
+      }
+    }
   },
   getBaseline: () => expenseCreateBaseline,
 })
@@ -433,11 +475,22 @@ const submit = () => {
     const formDataObj = data as Record<string, unknown>
 
     Object.keys(formDataObj).forEach((key) => {
+      if (key === 'supplier_id') {
+        return
+      }
+
       const value = formDataObj[key]
       if (value !== null && value !== undefined && value !== '') {
         formData.append(key, String(value))
       }
     })
+
+    formData.append(
+      'supplier_id',
+      formDataObj.supplier_id != null && formDataObj.supplier_id !== ''
+        ? String(formDataObj.supplier_id)
+        : '',
+    )
 
     pendingFiles.value.forEach((file) => {
       formData.append('attachments[]', file)

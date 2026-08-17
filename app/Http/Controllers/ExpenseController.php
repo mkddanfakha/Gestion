@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Expense;
+use App\Models\Supplier;
 use App\Services\ActivityLogger;
 use App\Services\AttachmentService;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class ExpenseController extends Controller
         $query = Expense::query()->visibleTo($request->user());
         
         $expenses = (clone $query)
-            ->with('user')
+            ->with(['user', 'supplier:id,name'])
             ->withCount('attachments')
             ->orderBy('expense_date', 'desc')
             ->orderBy('created_at', 'desc')
@@ -72,6 +73,7 @@ class ExpenseController extends Controller
 
         return Inertia::render('Expenses/Index', [
             'expenses' => $expenses,
+            'suppliers' => Supplier::where('status', 'active')->orderBy('name')->get(['id', 'name']),
             'statistics' => [
                 'total' => $totalExpenses,
                 'monthly' => $monthlyExpenses,
@@ -88,6 +90,7 @@ class ExpenseController extends Controller
         $this->checkPermission($request, 'expenses', 'create');
         
         return Inertia::render('Expenses/Create', [
+            'suppliers' => Supplier::where('status', 'active')->orderBy('name')->get(['id', 'name', 'email', 'phone', 'mobile']),
             'attachmentConfig' => $this->attachmentConfig(),
         ]);
     }
@@ -98,6 +101,8 @@ class ExpenseController extends Controller
     public function store(Request $request)
     {
         $this->checkPermission($request, 'expenses', 'create');
+
+        $this->normalizeSupplierId($request);
         
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -107,13 +112,15 @@ class ExpenseController extends Controller
             'payment_method' => 'required|in:cash,bank_transfer,credit_card,mobile_money,orange_money,wave,check',
             'expense_date' => 'required|date',
             'receipt_number' => 'nullable|string|max:255',
-            'vendor' => 'nullable|string|max:255',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'notes' => 'nullable|string|max:1000',
             'attachments' => 'nullable|array|max:' . config('attachments.max_files', 10),
             'attachments.*' => 'file',
         ]);
 
         unset($validated['attachments']);
+
+        $this->syncVendorFromSupplier($validated);
 
         // Générer automatiquement le numéro de dépense
         $validated['expense_number'] = Expense::generateExpenseNumber();
@@ -150,7 +157,7 @@ class ExpenseController extends Controller
         $this->checkPermission($request, 'expenses', 'view');
         $this->authorizeExpenseAccess($request, $expense);
         
-        $expense->load(['user', 'attachments.uploadedBy']);
+        $expense->load(['user', 'supplier:id,name,email,phone,mobile', 'attachments.uploadedBy']);
 
         // Ajouter les attributs calculés
         $expense->setAttribute('category_label', $expense->category_label);
@@ -170,10 +177,16 @@ class ExpenseController extends Controller
         $this->checkPermission($request, 'expenses', 'edit');
         $this->authorizeExpenseAccess($request, $expense);
 
-        $expense->load(['attachments.uploadedBy']);
+        $expense->load(['attachments.uploadedBy', 'supplier:id,name,email,phone,mobile']);
+
+        $suppliers = Supplier::where('status', 'active')->orderBy('name')->get(['id', 'name', 'email', 'phone', 'mobile']);
+        if ($expense->supplier_id && !$suppliers->contains('id', $expense->supplier_id) && $expense->supplier) {
+            $suppliers->push($expense->supplier);
+        }
         
         return Inertia::render('Expenses/Edit', [
             'expense' => $expense,
+            'suppliers' => $suppliers->sortBy('name')->values(),
             'attachmentConfig' => $this->attachmentConfig(),
         ]);
     }
@@ -185,6 +198,8 @@ class ExpenseController extends Controller
     {
         $this->checkPermission($request, 'expenses', 'update');
         $this->authorizeExpenseAccess($request, $expense);
+
+        $this->normalizeSupplierId($request);
         
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -194,13 +209,15 @@ class ExpenseController extends Controller
             'payment_method' => 'required|in:cash,bank_transfer,credit_card,mobile_money,orange_money,wave,check',
             'expense_date' => 'required|date',
             'receipt_number' => 'nullable|string|max:255',
-            'vendor' => 'nullable|string|max:255',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'notes' => 'nullable|string|max:1000',
             'attachments' => 'nullable|array|max:' . config('attachments.max_files', 10),
             'attachments.*' => 'file',
         ]);
 
         unset($validated['attachments']);
+
+        $this->syncVendorFromSupplier($validated, $expense);
 
         $expense->update($validated);
 
@@ -246,5 +263,38 @@ class ExpenseController extends Controller
             'allowedExtensions' => config('attachments.allowed_extensions', []),
             'accept' => '.pdf,.jpg,.jpeg,.png,.webp',
         ];
+    }
+
+    protected function normalizeSupplierId(Request $request): void
+    {
+        if ($request->has('supplier_id') && blank($request->input('supplier_id'))) {
+            $request->merge(['supplier_id' => null]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    protected function syncVendorFromSupplier(array &$validated, ?Expense $expense = null): void
+    {
+        if (!array_key_exists('supplier_id', $validated)) {
+            return;
+        }
+
+        if (!empty($validated['supplier_id'])) {
+            $validated['vendor'] = Supplier::query()
+                ->whereKey($validated['supplier_id'])
+                ->value('name');
+
+            return;
+        }
+
+        if ($expense === null || $expense->supplier_id !== null) {
+            $validated['vendor'] = null;
+
+            return;
+        }
+
+        unset($validated['vendor']);
     }
 }

@@ -272,6 +272,7 @@ export function useDeliveryNoteForm({
   const showPOSuggestions = ref(false)
   const selectedPurchaseOrder = ref<DeliveryNoteFormPurchaseOrder | null>(purchaseOrder ?? null)
   const receiptSummary = ref<PurchaseOrderReceiptSummary | null>(purchaseOrderReceipt ?? null)
+  const isRestoringDraft = ref(false)
 
   const form = useForm(
     buildInitialForm(mode, deliveryNote, purchaseOrder, purchaseOrderReceipt, initialPurchaseOrderId),
@@ -308,28 +309,34 @@ export function useDeliveryNoteForm({
   })
 
   const restoreDeliveryNoteDraftData = (data: Record<string, unknown>) => {
-    const { ui, ...formData } = data
-    restoreInertiaFormData(form as unknown as Record<string, unknown>, formData)
-    normalizeFormDateFields(form as unknown as Record<string, unknown>, ['delivery_date'])
+    isRestoringDraft.value = true
 
-    if (ui && typeof ui === 'object') {
-      const uiState = ui as Record<string, unknown>
-      if (uiState.taxMode === 'amount' || uiState.taxMode === 'percent') {
-        taxMode.value = uiState.taxMode
+    try {
+      const { ui, ...formData } = data
+      restoreInertiaFormData(form as unknown as Record<string, unknown>, formData)
+      normalizeFormDateFields(form as unknown as Record<string, unknown>, ['delivery_date'])
+
+      if (ui && typeof ui === 'object') {
+        const uiState = ui as Record<string, unknown>
+        if (uiState.taxMode === 'amount' || uiState.taxMode === 'percent') {
+          taxMode.value = uiState.taxMode
+        }
+        if (uiState.discountMode === 'amount' || uiState.discountMode === 'percent') {
+          discountMode.value = uiState.discountMode
+        }
+        taxPercent.value = toNumber(uiState.taxPercent)
+        discountPercent.value = toNumber(uiState.discountPercent)
+        taxEnabled.value = Boolean(uiState.taxEnabled)
+        discountEnabled.value = Boolean(uiState.discountEnabled)
+        if (typeof uiState.poSearchQuery === 'string') {
+          poSearchQuery.value = uiState.poSearchQuery
+        }
       }
-      if (uiState.discountMode === 'amount' || uiState.discountMode === 'percent') {
-        discountMode.value = uiState.discountMode
-      }
-      taxPercent.value = toNumber(uiState.taxPercent)
-      discountPercent.value = toNumber(uiState.discountPercent)
-      taxEnabled.value = Boolean(uiState.taxEnabled)
-      discountEnabled.value = Boolean(uiState.discountEnabled)
-      if (typeof uiState.poSearchQuery === 'string') {
-        poSearchQuery.value = uiState.poSearchQuery
-      }
+
+      syncSelectedPurchaseOrderFromForm()
+    } finally {
+      isRestoringDraft.value = false
     }
-
-    syncSelectedPurchaseOrderFromForm()
   }
 
   const deliveryNoteDraftSnapshot = computed(() => getDeliveryNoteDraftData())
@@ -504,7 +511,17 @@ export function useDeliveryNoteForm({
     }
   }
 
+  /**
+   * Réinitialise la sélection BC/lignes lorsque le fournisseur change
+   * dans le workflow « BL depuis BC » (sélection manuelle du BC).
+   * BL autonome : ne touche ni aux lignes ni au purchase_order_id.
+   * BL déjà rattaché à un BC : aucune action (fournisseur verrouillé côté UI).
+   */
   const handleSupplierChange = () => {
+    if (standalone || form.purchase_order_id) {
+      return
+    }
+
     form.purchase_order_id = null
     form.items = []
     poSearchQuery.value = ''
@@ -516,6 +533,10 @@ export function useDeliveryNoteForm({
   watch(
     () => form.supplier_id,
     (newSupplierId, oldSupplierId) => {
+      if (isRestoringDraft.value) {
+        return
+      }
+
       if (newSupplierId && newSupplierId !== oldSupplierId) {
         handleSupplierChange()
       }

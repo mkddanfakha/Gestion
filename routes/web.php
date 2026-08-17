@@ -81,6 +81,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     
     // Fournisseurs
+    Route::get('/suppliers/autocomplete', [SupplierController::class, 'autocomplete'])->name('suppliers.autocomplete');
     Route::resource('suppliers', SupplierController::class);
     Route::get('/suppliers/export/excel', [SupplierController::class, 'exportExcel'])->name('suppliers.export.excel');
     Route::get('/suppliers/export/pdf', [SupplierController::class, 'exportPdf'])->name('suppliers.export.pdf');

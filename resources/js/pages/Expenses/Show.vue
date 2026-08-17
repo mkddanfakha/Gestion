@@ -64,7 +64,9 @@
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-medium">Fournisseur</label>
-                <div class="form-control-plaintext text-dark-emphasis">{{ expense.vendor || 'Non spécifié' }}</div>
+                <div class="form-control-plaintext text-dark-emphasis">
+                  {{ expense.supplier?.name || expense.vendor || 'Non renseigné' }}
+                </div>
               </div>
             </div>
             <div class="row g-3 mt-2" v-if="expense.receipt_number">
@@ -244,6 +246,10 @@ interface Expense {
   expense_date: string
   receipt_number?: string
   vendor?: string
+  supplier?: {
+    id: number
+    name: string
+  } | null
   notes?: string
   user: User
   attachments?: AttachmentRecord[]

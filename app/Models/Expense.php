@@ -20,6 +20,7 @@ class Expense extends Model
         'expense_date',
         'receipt_number',
         'vendor',
+        'supplier_id',
         'notes',
         'user_id'
     ];
@@ -35,6 +36,14 @@ class Expense extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Relation avec le fournisseur (optionnel).
+     */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     /**

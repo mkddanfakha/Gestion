@@ -397,17 +397,18 @@
                     <i class="bi bi-building me-1 text-muted"></i>
                     Fournisseur
                   </label>
-                  <select
+                  <SupplierCombobox
+                    ref="supplierComboboxRef"
                     v-model="form.supplier_id"
-                    class="form-select"
-                    :class="{ 'is-invalid': errors.supplier_id || clientErrors.supplier_id }"
-                    @change="handleSupplierChange"
-                  >
-                    <option :value="null">Sélectionner un fournisseur</option>
-                    <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
-                      {{ supplier.name }}
-                    </option>
-                  </select>
+                    :suppliers="localSuppliers"
+                    :is-invalid="!!errors.supplier_id || !!clientErrors.supplier_id"
+                    :allow-create="canCreateSupplier"
+                    :disabled="isSupplierLocked"
+                    @created="handleSupplierCreated"
+                  />
+                  <div v-if="isSupplierLocked" class="form-text text-muted">
+                    Fournisseur imposé par le bon de commande associé.
+                  </div>
                   <div v-if="errors.supplier_id" class="invalid-feedback d-block">{{ errors.supplier_id }}</div>
                   <div v-if="clientErrors.supplier_id" class="invalid-feedback d-block">
                     {{ clientErrors.supplier_id }}
@@ -781,6 +782,8 @@ import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
+import SupplierCombobox from '@/components/forms/SupplierCombobox.vue'
+import type { SupplierOption } from '@/types/supplier'
 import AttachmentUploader from '@/components/attachments/AttachmentUploader.vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
@@ -814,11 +817,15 @@ const resolvedAttachmentConfig = computed(() => props.attachmentConfig ?? DEFAUL
 const pendingFiles = ref<File[]>([])
 const existingAttachments = computed<AttachmentRecord[]>(() => props.deliveryNote?.attachments ?? [])
 
-const { canAny } = usePermissions()
+const { canAny, canCreate } = usePermissions()
+const canCreateSupplier = canCreate('suppliers')
 const canPreviewDeliveryNote = canAny('delivery-notes', ['print', 'create', 'update'])
 const { openFromPayload } = useDocumentPdfPreview()
 const { openAttachment } = useDocumentPreview()
 const isPreviewing = ref(false)
+
+const localSuppliers = ref<DeliveryNoteFormSupplier[]>([...props.suppliers])
+const supplierComboboxRef = ref<InstanceType<typeof SupplierCombobox> | null>(null)
 
 const {
   mode,
@@ -870,7 +877,6 @@ const {
   onDiscountPercentInput,
   handlePOSearch,
   selectPurchaseOrder,
-  handleSupplierChange,
   preparePreview,
   submit,
   draft,
@@ -886,6 +892,27 @@ const {
   initialPurchaseOrderId: props.initialPurchaseOrderId,
   pendingFiles,
 })
+
+const isSupplierLocked = computed(() => !!form.purchase_order_id)
+
+const handleSupplierCreated = (supplier: SupplierOption) => {
+  const normalizedSupplier: DeliveryNoteFormSupplier = {
+    id: supplier.id,
+    name: supplier.name,
+    email: supplier.email ?? null,
+    phone: supplier.phone ?? supplier.mobile ?? null,
+  }
+
+  const exists = localSuppliers.value.some((item) => item.id === normalizedSupplier.id)
+  if (!exists) {
+    localSuppliers.value = [...localSuppliers.value, normalizedSupplier].sort((left, right) =>
+      left.name.localeCompare(right.name, 'fr'),
+    )
+  }
+
+  form.supplier_id = normalizedSupplier.id
+  supplierComboboxRef.value?.selectSupplier(normalizedSupplier)
+}
 
 const openAttachmentPreview = (attachment: AttachmentRecord) => {
   void openAttachment(attachment, `Aperçu — ${attachment.original_name}`)
