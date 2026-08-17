@@ -35,6 +35,8 @@
         "@tanstack/vue-virtual": "^3.13.35",
         "@vee-validate/rules": "^4.15.1",
         "@vueuse/core": "^12.8.2",
+        "@zxing/browser": "^0.2.1",
+        "@zxing/library": "^0.23.0",
         "bootstrap": "^5.3.8",
         "bootstrap-icons": "^1.13.1",
         "chart.js": "^4.5.1",

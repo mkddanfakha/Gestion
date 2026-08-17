@@ -72,6 +72,21 @@
         </div>
       </div>
 
+      <div class="card sale-card mb-3">
+        <div class="card-body">
+          <BarcodeScanner
+            :disabled="processing"
+            :processing="barcodeProcessing"
+            :not-found-barcode="barcodeNotFound"
+            :status-message="barcodeStatusMessage"
+            :status-variant="barcodeStatusVariant"
+            @barcode-detected="handleBarcodeDetected"
+            @search-request="handleBarcodeSearchRequest"
+            @dismiss-not-found="dismissBarcodeNotFound"
+          />
+        </div>
+      </div>
+
       <!-- Table articles -->
       <div class="card sale-card mb-4">
         <div class="card-body p-0">
@@ -702,6 +717,7 @@ import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
+import BarcodeScanner from '@/components/BarcodeScanner.vue'
 import CustomerAutocomplete from '@/components/CustomerAutocomplete.vue'
 import CustomerQuickCreateModal from '@/components/customers/CustomerQuickCreateModal.vue'
 import type { CreatedCustomer } from '@/components/customers/CustomerQuickCreateModal.vue'
@@ -790,6 +806,12 @@ const {
   isQuantityExceedsStock,
   getAvailableStock,
   getProductUnit,
+  handleBarcodeDetected,
+  barcodeProcessing,
+  barcodeNotFound,
+  barcodeStatusMessage,
+  barcodeStatusVariant,
+  dismissBarcodeNotFound,
   formatCurrency,
   onDownPaymentInput,
   onTaxPercentInput,
@@ -803,6 +825,14 @@ const {
   sale: props.sale,
   products: toRef(props, 'products'),
 })
+
+const handleBarcodeSearchRequest = (_barcode: string) => {
+  dismissBarcodeNotFound()
+
+  if (form.items.length === 0) {
+    addItem()
+  }
+}
 
 const previewInvoice = async () => {
   const payload = preparePreview()

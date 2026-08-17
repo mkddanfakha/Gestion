@@ -1,9 +1,10 @@
 import { formatCurrency } from '@/utils/currencyFormatter'
 import { useForm } from '@inertiajs/vue3'
-import { computed, onMounted, ref, watch, type Ref } from 'vue'
+import { computed, onMounted, ref, toRef, watch, type Ref } from 'vue'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useFormDraft } from '@/composables/useFormDraft'
+import { useDocumentProductBarcode } from '@/composables/useDocumentProductBarcode'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 import { formatDateForInput, getTodayForInput, normalizeFormDateFields } from '@/utils/dateFormatter'
 import type { AttachmentRecord } from '@/types/attachment'
@@ -447,6 +448,43 @@ export function usePurchaseOrderForm({ mode, purchaseOrder, products, pendingFil
     })
 
     form.items = Array.from(productMap.values())
+  }
+
+  const barcodeNotFound = ref<string | null>(null)
+  const barcodeStatusMessage = ref('')
+  const barcodeStatusVariant = ref<'info' | 'success' | 'warning' | 'danger'>('info')
+
+  const { handleBarcodeDetected, isProcessing: barcodeProcessing } = useDocumentProductBarcode({
+    items: toRef(form, 'items'),
+    getProduct,
+    addItem,
+    handleProductSelected,
+    incrementQuantity,
+    canIncrementQuantity,
+    onNotFound: (barcode) => {
+      barcodeNotFound.value = barcode
+      barcodeStatusMessage.value = 'Produit introuvable.'
+      barcodeStatusVariant.value = 'warning'
+    },
+    onError: (message) => {
+      barcodeNotFound.value = null
+      barcodeStatusMessage.value = message
+      barcodeStatusVariant.value = 'danger'
+      error(message)
+    },
+    onSuccess: (product, _index, action) => {
+      barcodeNotFound.value = null
+      barcodeStatusMessage.value =
+        action === 'incremented'
+          ? `${product.name} : quantité augmentée.`
+          : `${product.name} ajouté.`
+      barcodeStatusVariant.value = 'success'
+    },
+  })
+
+  const dismissBarcodeNotFound = () => {
+    barcodeNotFound.value = null
+    barcodeStatusMessage.value = ''
   }
 
   const getProductUnit = (index: number): string => {
@@ -977,6 +1015,12 @@ export function usePurchaseOrderForm({ mode, purchaseOrder, products, pendingFil
     isProductDuplicate,
     mergeDuplicateProducts,
     getProductUnit,
+    handleBarcodeDetected,
+    barcodeProcessing,
+    barcodeNotFound,
+    barcodeStatusMessage,
+    barcodeStatusVariant,
+    dismissBarcodeNotFound,
     formatCurrency,
     onTaxPercentInput,
     onDiscountPercentInput,

@@ -71,6 +71,21 @@
           </div>
         </div>
 
+        <div class="card sale-card mb-3">
+          <div class="card-body">
+            <BarcodeScanner
+              :disabled="processing"
+              :processing="barcodeProcessing"
+              :not-found-barcode="barcodeNotFound"
+              :status-message="barcodeStatusMessage"
+              :status-variant="barcodeStatusVariant"
+              @barcode-detected="handleBarcodeDetected"
+              @search-request="handleBarcodeSearchRequest"
+              @dismiss-not-found="dismissBarcodeNotFound"
+            />
+          </div>
+        </div>
+
         <div class="card sale-card mb-4">
           <div class="card-body p-0">
             <div v-if="form.items.length === 0" class="text-center py-5 text-muted">
@@ -613,6 +628,7 @@ import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import ProductAutocomplete from '@/components/ProductAutocomplete.vue'
+import BarcodeScanner from '@/components/BarcodeScanner.vue'
 import SupplierCombobox from '@/components/forms/SupplierCombobox.vue'
 import type { SupplierOption } from '@/types/supplier'
 import AttachmentUploader from '@/components/attachments/AttachmentUploader.vue'
@@ -689,6 +705,12 @@ const {
   isProductDuplicate,
   mergeDuplicateProducts,
   getProductUnit,
+  handleBarcodeDetected,
+  barcodeProcessing,
+  barcodeNotFound,
+  barcodeStatusMessage,
+  barcodeStatusVariant,
+  dismissBarcodeNotFound,
   formatCurrency,
   onTaxPercentInput,
   onDiscountPercentInput,
@@ -701,6 +723,14 @@ const {
   products: toRef(props, 'products'),
   pendingFiles,
 })
+
+const handleBarcodeSearchRequest = (_barcode: string) => {
+  dismissBarcodeNotFound()
+
+  if (form.items.length === 0) {
+    addItem()
+  }
+}
 
 const handleSupplierCreated = (supplier: SupplierOption) => {
   const normalizedSupplier: PurchaseOrderFormSupplier = {

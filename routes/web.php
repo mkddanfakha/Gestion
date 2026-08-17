@@ -35,6 +35,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Produits
     Route::get('/products/autocomplete', [ProductController::class, 'autocomplete'])->name('products.autocomplete');
+    Route::get('/products/barcode/{barcode}', [ProductController::class, 'findByBarcode'])
+        ->where('barcode', '[A-Za-z0-9]+')
+        ->name('products.barcode');
     Route::resource('products', ProductController::class);
     Route::post('/products/generate-sku', [ProductController::class, 'generateSku'])->name('products.generate-sku');
     Route::post('/products/upload-image', [ProductController::class, 'uploadImage'])->name('products.upload-image');

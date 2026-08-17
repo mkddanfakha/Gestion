@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\ProductBarcodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -413,23 +415,9 @@ class ProductController extends Controller
     /**
      * Recherche légère pour les autocomplétions (ventes, devis, etc.).
      */
-    public function autocomplete(Request $request)
+    public function autocomplete(Request $request, ProductBarcodeService $barcodeService)
     {
-        $user = $request->user();
-
-        if (!$user) {
-            abort(401);
-        }
-
-        $user->refresh();
-
-        $canSearch = $user->hasPermission('sales', 'create')
-            || $user->hasPermission('sales', 'edit')
-            || $user->hasPermission('products', 'view');
-
-        if (!$canSearch) {
-            abort(403);
-        }
+        $this->ensureUserCanSearchProducts($request);
 
         $search = trim((string) $request->query('q', ''));
 
@@ -447,20 +435,67 @@ class ProductController extends Controller
             });
         }
 
-        $products = $query->get()->map(function (Product $product) {
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'sku' => $product->sku,
-                'barcode' => $product->barcode,
-                'price' => (float) $product->price,
-                'stock_quantity' => (int) $product->stock_quantity,
-                'unit' => $product->unit,
-                'category' => $product->category,
-                'image_url' => $product->getThumbImageUrl(),
-            ];
-        });
+        $products = $query->get()->map(
+            fn (Product $product) => $barcodeService->formatProductPayload($product)
+        );
 
         return response()->json($products);
+    }
+
+    /**
+     * Recherche exacte d'un produit par code-barres (scan).
+     */
+    public function findByBarcode(Request $request, string $barcode, ProductBarcodeService $barcodeService)
+    {
+        $this->ensureUserCanSearchProducts($request);
+
+        $normalized = $barcodeService->normalize($barcode);
+
+        if ($normalized === '') {
+            return response()->json([
+                'message' => 'Code-barres invalide.',
+            ], 422);
+        }
+
+        $product = $barcodeService->findByBarcode($normalized);
+
+        if (!$product) {
+            return response()->json([
+                'message' => 'Produit introuvable.',
+                'barcode' => $normalized,
+            ], 404);
+        }
+
+        return response()->json($barcodeService->formatProductPayload($product));
+    }
+
+    /**
+     * @return User
+     */
+    private function ensureUserCanSearchProducts(Request $request): User
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            abort(401);
+        }
+
+        $user->refresh();
+
+        $canSearch = $user->hasPermission('sales', 'create')
+            || $user->hasPermission('sales', 'edit')
+            || $user->hasPermission('quotes', 'create')
+            || $user->hasPermission('quotes', 'edit')
+            || $user->hasPermission('purchase-orders', 'create')
+            || $user->hasPermission('purchase-orders', 'edit')
+            || $user->hasPermission('delivery-notes', 'create')
+            || $user->hasPermission('delivery-notes', 'edit')
+            || $user->hasPermission('products', 'view');
+
+        if (!$canSearch) {
+            abort(403);
+        }
+
+        return $user;
     }
 }

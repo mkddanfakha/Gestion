@@ -3,6 +3,7 @@ export function route(name: string, params: any = {}) {
     const routes: Record<string, string> = {
         'dashboard': '/dashboard',
         'products.autocomplete': '/products/autocomplete',
+        'products.barcode': '/products/barcode/{barcode}',
         'products.index': '/products',
         'products.create': '/products/create',
         'products.store': '/products',
