@@ -24,7 +24,7 @@ interface UseDocumentProductBarcodeOptions<TProduct extends { id: number }, TIte
 
 const DUPLICATE_EVENT_WINDOW_MS = 150
 
-export function useDocumentProductBarcode<TProduct extends { id: number }, TItem extends DocumentProductBarcodeItem>(
+export function useDocumentProductBarcode<TProduct extends { id: number; name?: string; barcode?: string | null }, TItem extends DocumentProductBarcodeItem>(
   options: UseDocumentProductBarcodeOptions<TProduct, TItem>,
 ) {
   const { lookupProductByBarcode } = useProductBarcodeLookup()

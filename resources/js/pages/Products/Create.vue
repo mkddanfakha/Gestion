@@ -105,14 +105,13 @@
 
                   <div class="col-12 col-md-6">
                     <label class="form-label">Code-barres</label>
-                  <input
-                    v-model="form.barcode"
-                    type="text"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.barcode }"
-                  />
-                  <div v-if="errors.barcode" class="invalid-feedback">{{ errors.barcode }}</div>
-                </div>
+                    <ProductBarcodeField
+                      ref="barcodeFieldRef"
+                      v-model="form.barcode"
+                      :server-error="errors.barcode"
+                      @update:client-error="syncBarcodeClientError"
+                    />
+                  </div>
                 </div>
               </FormSection>
 
@@ -396,6 +395,7 @@ import DraftSaveStatus from '@/components/drafts/DraftSaveStatus.vue'
 import DraftRestoreDialog from '@/components/drafts/DraftRestoreDialog.vue'
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 import { normalizeFormDateFields } from '@/utils/dateFormatter'
+import ProductBarcodeField from '@/components/products/ProductBarcodeField.vue'
 
 interface Category {
   id: number
@@ -413,6 +413,18 @@ const { getCsrfToken } = useCsrfToken()
 
 // État des erreurs de validation côté client
 const clientErrors = ref<Record<string, string>>({})
+const barcodeFieldRef = ref<InstanceType<typeof ProductBarcodeField> | null>(null)
+
+function syncBarcodeClientError(message: string): void {
+  if (message) {
+    clientErrors.value.barcode = message
+    return
+  }
+
+  if (clientErrors.value.barcode) {
+    delete clientErrors.value.barcode
+  }
+}
 
 const STOCK_QUANTITY_INVALID_MESSAGE = 'La quantité en stock est requise et doit être supérieure ou égale à 0'
 const MIN_STOCK_LEVEL_INVALID_MESSAGE = 'Le stock minimum est requis et doit être supérieur ou égal à 0'
@@ -446,12 +458,17 @@ const validateForm = () => {
     errors.sku = 'Le SKU doit être au format CCNNNN (2 lettres majuscules + 4 chiffres)'
   }
   
-  if (form.barcode && form.barcode.length > 255) {
-    errors.barcode = 'Le code-barres ne peut pas dépasser 255 caractères'
-  }
-  
-  if (form.barcode && !/^[a-zA-Z0-9]+$/.test(form.barcode)) {
-    errors.barcode = 'Le code-barres ne peut contenir que des caractères alphanumériques'
+  if (form.barcode) {
+    const barcodeError = barcodeFieldRef.value?.validateForSubmit(form.barcode)
+      ?? (form.barcode.length > 255
+        ? 'Le code-barres ne peut pas dépasser 255 caractères'
+        : !/^[a-zA-Z0-9]+$/.test(form.barcode)
+          ? 'Le code-barres ne peut contenir que des caractères alphanumériques'
+          : null)
+
+    if (barcodeError) {
+      errors.barcode = barcodeError
+    }
   }
   
   if (!form.price || form.price < 0) {
@@ -729,9 +746,13 @@ const generateSku = async () => {
   }
 }
 
-const submit = () => {
+const submit = async () => {
   // Effacer les erreurs précédentes
   clientErrors.value = {}
+
+  if (form.barcode && barcodeFieldRef.value) {
+    await barcodeFieldRef.value.checkAvailability(form.barcode)
+  }
   
   const validationErrors = validateForm()
   

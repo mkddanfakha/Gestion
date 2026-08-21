@@ -7,6 +7,13 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Request;
+
+$trustedProxies = env('TRUSTED_PROXIES');
+
+if ($trustedProxies === null && env('APP_ENV', 'production') === 'local') {
+    $trustedProxies = '127.0.0.1,::1';
+}
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,8 +22,19 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware) {
+    ->withMiddleware(function (Middleware $middleware) use ($trustedProxies) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+
+        if (is_string($trustedProxies) && $trustedProxies !== '') {
+            $middleware->trustProxies(
+                at: $trustedProxies === '*' ? '*' : array_map('trim', explode(',', $trustedProxies)),
+                headers: Request::HEADER_X_FORWARDED_FOR
+                    | Request::HEADER_X_FORWARDED_HOST
+                    | Request::HEADER_X_FORWARDED_PORT
+                    | Request::HEADER_X_FORWARDED_PROTO
+                    | Request::HEADER_X_FORWARDED_PREFIX,
+            );
+        }
 
         $middleware->web(append: [
             HandleAppearance::class,

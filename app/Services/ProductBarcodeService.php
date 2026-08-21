@@ -35,6 +35,26 @@ class ProductBarcodeService
     }
 
     /**
+     * Vérifie qu'aucun autre produit n'utilise déjà ce code-barres.
+     */
+    public function isBarcodeAvailable(string $barcode, ?int $excludeProductId = null): bool
+    {
+        $normalized = $this->normalize($barcode);
+
+        if ($normalized === '') {
+            return true;
+        }
+
+        $query = Product::query()->where('barcode', $normalized);
+
+        if ($excludeProductId !== null) {
+            $query->where('id', '!=', $excludeProductId);
+        }
+
+        return ! $query->exists();
+    }
+
+    /**
      * Formate un produit pour les réponses JSON (autocomplete / scan).
      *
      * @return array<string, mixed>

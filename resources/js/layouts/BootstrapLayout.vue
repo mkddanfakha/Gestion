@@ -35,6 +35,16 @@
               <span class="nav-label">Produits</span>
             </Link>
           </li>
+          <li v-if="canView('products') && canUpdate('products')" class="nav-item">
+            <Link
+              :href="route('stock-inventory.index')"
+              class="nav-link nav-link-pill"
+              :class="{ active: $page.url.startsWith('/stock-inventory') }"
+            >
+              <span class="nav-icon-wrap nav-icon-wrap--catalog"><i class="bi bi-clipboard-check"></i></span>
+              <span class="nav-label">Inventaire</span>
+            </Link>
+          </li>
           <li v-if="canView('categories')" class="nav-item">
             <Link :href="route('categories.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/categories') }">
               <span class="nav-icon-wrap nav-icon-wrap--catalog"><i class="bi bi-tags"></i></span>
@@ -263,7 +273,7 @@ import NotificationBell from '@/components/NotificationBell.vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { toggleAppearance } from '@/composables/useAppearance'
 
-const { canView, isAdmin: isAdminFromPermissions } = usePermissions()
+const { canView, canUpdate, isAdmin: isAdminFromPermissions } = usePermissions()
 
 interface Props {
   breadcrumbs?: BreadcrumbItemType[]

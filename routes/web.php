@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\StockInventoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
@@ -35,12 +36,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Produits
     Route::get('/products/autocomplete', [ProductController::class, 'autocomplete'])->name('products.autocomplete');
+    Route::get('/products/barcode/{barcode}/availability', [ProductController::class, 'checkBarcodeAvailability'])
+        ->where('barcode', '[A-Za-z0-9]+')
+        ->name('products.barcode.availability');
     Route::get('/products/barcode/{barcode}', [ProductController::class, 'findByBarcode'])
         ->where('barcode', '[A-Za-z0-9]+')
         ->name('products.barcode');
     Route::resource('products', ProductController::class);
     Route::post('/products/generate-sku', [ProductController::class, 'generateSku'])->name('products.generate-sku');
     Route::post('/products/upload-image', [ProductController::class, 'uploadImage'])->name('products.upload-image');
+
+    Route::get('/stock-inventory', [StockInventoryController::class, 'index'])->name('stock-inventory.index');
+    Route::post('/stock-inventory/count', [StockInventoryController::class, 'count'])->name('stock-inventory.count');
     
     // Catégories
     Route::resource('categories', CategoryController::class);
@@ -134,6 +141,118 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/settings/notifications', [\App\Http\Controllers\Admin\NotificationSettingsController::class, 'edit'])->name('settings.notifications');
     });
 });
+
+if (app()->environment('local')) {
+    Route::middleware(['auth', 'verified'])->group(function () {
+        Route::get('/dev/barcode-reader-test', function () {
+            return Inertia::render('dev/BarcodeReaderTest');
+        })->name('dev.barcode-reader-test');
+
+        Route::get('/dev/barcode-scanner-lab', function () {
+            return Inertia::render('dev/BarcodeScannerLab');
+        })->name('dev.barcode-scanner-lab');
+
+        Route::get('/dev/native-barcode-detector-test', function () {
+            return Inertia::render('dev/NativeBarcodeDetectorTest');
+        })->name('dev.native-barcode-detector-test');
+
+        Route::get('/dev/native-camera-minimal-test', function () {
+            return Inertia::render('dev/NativeCameraMinimalTest');
+        })->name('dev.native-camera-minimal-test');
+
+        Route::get('/dev/native-camera-visual-test', function () {
+            return Inertia::render('dev/NativeCameraVisualTest');
+        })->name('dev.native-camera-visual-test');
+
+        Route::get('/dev/barcode-engine-test', function () {
+            return Inertia::render('dev/BarcodeEngineTest');
+        })->name('dev.barcode-engine-test');
+
+        Route::get('/dev/native-barcode-detector-live-test', function () {
+            return Inertia::render('dev/NativeBarcodeDetectorLiveTest');
+        })->name('dev.native-barcode-detector-live-test');
+
+        Route::get('/dev/native-camera-stream-diagnostic', function () {
+            return Inertia::render('dev/NativeCameraStreamDiagnostic');
+        })->name('dev.native-camera-stream-diagnostic');
+
+        Route::get('/dev/barcode-detector-resolution-test', function () {
+            return Inertia::render('dev/BarcodeDetectorResolutionTest');
+        })->name('dev.barcode-detector-resolution-test');
+
+        Route::get('/dev/barcode-detector-roi-test', function () {
+            return Inertia::render('dev/BarcodeDetectorRoiTest');
+        })->name('dev.barcode-detector-roi-test');
+
+        Route::get('/dev/barcode-detector-camera-controls-test', function () {
+            return Inertia::render('dev/BarcodeDetectorCameraControlsTest');
+        })->name('dev.barcode-detector-camera-controls-test');
+
+        Route::get('/dev/barcode-detector-focus-sharpness-test', function () {
+            return Inertia::render('dev/BarcodeDetectorFocusSharpnessTest');
+        })->name('dev.barcode-detector-focus-sharpness-test');
+
+        Route::get('/dev/barcode-detector-manual-focus-test', function () {
+            return Inertia::render('dev/BarcodeDetectorManualFocusTest');
+        })->name('dev.barcode-detector-manual-focus-test');
+
+        Route::get('/dev/barcode-detector-manual-focus-experiment', function () {
+            return Inertia::render('dev/BarcodeDetectorManualFocusExperiment');
+        })->name('dev.barcode-detector-manual-focus-experiment');
+
+        Route::get('/dev/barcode-detector-focus-distance-mapping', function () {
+            return Inertia::render('dev/BarcodeDetectorFocusDistanceMapping');
+        })->name('dev.barcode-detector-focus-distance-mapping');
+
+        Route::get('/dev/barcode-detector-focus-zoom-benchmark', function () {
+            return Inertia::render('dev/BarcodeDetectorFocusZoomBenchmark');
+        })->name('dev.barcode-detector-focus-zoom-benchmark');
+
+        Route::get('/dev/barcode-detector-size-zoom-comparison', function () {
+            return Inertia::render('dev/BarcodeDetectorSizeZoomComparison');
+        })->name('dev.barcode-detector-size-zoom-comparison');
+
+        Route::get('/dev/barcode-detector-distance-focus', function () {
+            return Inertia::render('dev/BarcodeDetectorDistanceFocusExperiment');
+        })->name('dev.barcode-detector-distance-focus');
+
+        Route::get('/dev/barcode-detector-fine-focus', function () {
+            return Inertia::render('dev/BarcodeDetectorFineFocusSweep');
+        })->name('dev.barcode-detector-fine-focus');
+
+        Route::get('/dev/barcode-detector-stability-focus-repeatability', function () {
+            return Inertia::render('dev/BarcodeDetectorStabilityFocusRepeatability');
+        })->name('dev.barcode-detector-stability-focus-repeatability');
+
+        Route::get('/dev/barcode-detector-decode-reliability', function () {
+            return Inertia::render('dev/BarcodeDecodeReliabilityExperiment');
+        })->name('dev.barcode-detector-decode-reliability');
+
+        Route::get('/dev/barcode-detector-decode-reliability-matrix', function () {
+            return Inertia::render('dev/BarcodeDetectorDecodeReliabilityMatrix');
+        })->name('dev.barcode-detector-decode-reliability-matrix');
+
+        Route::get('/dev/barcode-detector-reliability-phase-2', function () {
+            return Inertia::render('dev/BarcodeDetectorReliabilityBenchmarkPhase2');
+        })->name('dev.barcode-detector-reliability-phase-2');
+
+        Route::get('/dev/barcode-quagga2', function () {
+            return Inertia::render('dev/BarcodeDetectorQuagga2Experiment');
+        })->name('dev.barcode-quagga2');
+
+        Route::get('/dev/barcode-quagga2-benchmark', function () {
+            return Inertia::render('dev/BarcodeQuagga2Benchmark');
+        })->name('dev.barcode-quagga2-benchmark');
+
+        Route::get('/dev/barcode/html5-qrcode-benchmark', function () {
+            return Inertia::render('dev/Html5QrcodeBenchmark');
+        })->name('dev.barcode-html5-qrcode-benchmark');
+
+        Route::get('/dev/barcode-engines-comparison', function () {
+            return Inertia::render('dev/BarcodeEngineComparison');
+        })->name('dev.barcode-engines-comparison');
+    });
+}
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

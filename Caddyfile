@@ -1,0 +1,5 @@
+https://192.168.1.24 {
+    tls .cert/mkd-pro.pem .cert/mkd-pro-key.pem
+
+    reverse_proxy 127.0.0.1:8000
+}

@@ -821,6 +821,4070 @@ html.supplier-quick-create-modal-open body {
     color: var(--color-text-primary);
 }
 
+.barcode-scanner-modal__diagnostic {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 2;
+    max-height: 62%;
+    overflow: auto;
+    padding: 0.65rem 0.75rem;
+    background-color: color-mix(in srgb, var(--color-surface-elevated) 92%, transparent);
+    border-top: 1px solid var(--color-border-subtle);
+    backdrop-filter: blur(6px);
+    color: var(--color-text-primary);
+    font-size: 0.72rem;
+    line-height: 1.35;
+}
+
+.barcode-scanner-modal__diagnostic-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.barcode-scanner-modal__diagnostic-title {
+    font-weight: 600;
+}
+
+.barcode-scanner-modal__diagnostic-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.barcode-scanner-modal__diagnostic-actions .btn {
+    --bs-btn-padding-y: 0.1rem;
+    --bs-btn-padding-x: 0.45rem;
+    --bs-btn-font-size: 0.68rem;
+}
+
+.barcode-scanner-modal__diagnostic-section {
+    margin: 0.35rem 0 0.25rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.barcode-scanner-modal__diagnostic-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.2rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-scanner-modal__diagnostic-grid--full {
+    grid-template-columns: 1fr;
+}
+
+.barcode-scanner-modal__diagnostic-grid div {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, auto) 1fr;
+    gap: 0.35rem;
+    align-items: start;
+}
+
+.barcode-scanner-modal__diagnostic-grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.barcode-scanner-modal__diagnostic-grid dd {
+    margin: 0;
+    word-break: break-word;
+}
+
+.barcode-scanner-modal__diagnostic-notice {
+    margin-top: 0.5rem;
+    color: var(--color-text-secondary);
+    font-size: 0.68rem;
+}
+
+.barcode-scanner-modal__diagnostic-pipeline {
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.barcode-scanner-modal__diagnostic-pipeline--compact {
+    margin-top: 0.35rem;
+}
+
+.barcode-scanner .barcode-scanner-modal__diagnostic-pipeline {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 0.5rem;
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+}
+
+.barcode-scanner-modal__diagnostic-journal {
+    max-height: 9rem;
+    overflow: auto;
+    padding: 0.35rem 0.45rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 0.35rem;
+    background-color: color-mix(in srgb, var(--color-surface-elevated) 88%, transparent);
+}
+
+.barcode-scanner-modal__diagnostic-journal-line {
+    font-size: 0.68rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.barcode-scanner-modal__diagnostic-history {
+    margin-bottom: 0.5rem;
+}
+
+.barcode-scanner-modal__diagnostic-frame {
+    display: block;
+    max-width: 100%;
+    max-height: 240px;
+    margin-top: 0.5rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+}
+
+.barcode-scanner-modal__diagnostic-variant-list {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.barcode-scanner-modal__diagnostic-variant-card {
+    padding: 0.5rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background-color: color-mix(in srgb, var(--color-surface-elevated) 88%, transparent);
+}
+
+.barcode-scanner-modal__diagnostic-variant-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.barcode-scanner-modal__diagnostic-variant-meta {
+    color: var(--color-text-secondary);
+    font-size: 0.68rem;
+    word-break: break-word;
+}
+
+.barcode-scanner-modal__diagnostic-variant-error {
+    margin-top: 0.25rem;
+    color: var(--color-text-secondary);
+    font-size: 0.68rem;
+}
+
+.barcode-scanner-modal__diagnostic-summary {
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border-subtle);
+    font-size: 0.72rem;
+}
+
+.barcode-scanner-modal__diagnostic-format-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--color-text-secondary);
+    font-size: 0.68rem;
+}
+
+.vue-qrcode-reader-diagnostic {
+    position: fixed;
+    inset: 0;
+    z-index: 1085;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.vue-qrcode-reader-diagnostic__backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: color-mix(in srgb, var(--color-surface-base) 35%, transparent);
+    backdrop-filter: blur(2px);
+}
+
+.vue-qrcode-reader-diagnostic__panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 42rem);
+    max-height: calc(100dvh - 2rem);
+    overflow: auto;
+    padding: 1rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    box-shadow: var(--shadow-lg, 0 1rem 2rem rgba(0, 0, 0, 0.18));
+}
+
+.vue-qrcode-reader-diagnostic__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.vue-qrcode-reader-diagnostic__title {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+.vue-qrcode-reader-diagnostic__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.vue-qrcode-reader-diagnostic__viewport {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-base);
+}
+
+.vue-qrcode-reader-diagnostic__viewport video,
+.vue-qrcode-reader-diagnostic__viewport canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.vue-qrcode-reader-diagnostic__placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.vue-qrcode-reader-diagnostic__section {
+    margin-top: 0.75rem;
+    margin-bottom: 0.35rem;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.vue-qrcode-reader-diagnostic__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 0.75rem;
+    margin: 0;
+    font-size: 0.72rem;
+}
+
+.vue-qrcode-reader-diagnostic__grid--full {
+    grid-template-columns: 1fr;
+}
+
+.vue-qrcode-reader-diagnostic__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.vue-qrcode-reader-diagnostic__grid dd {
+    margin: 0;
+    word-break: break-word;
+}
+
+.vue-qrcode-reader-diagnostic__notice {
+    margin-top: 0.75rem;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+}
+
+.vue-qrcode-reader-diagnostic__error {
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--color-danger, #dc3545) 35%, var(--color-border-subtle));
+    border-radius: var(--radius-sm);
+    background-color: color-mix(in srgb, var(--color-danger, #dc3545) 10%, transparent);
+    color: var(--color-text-primary);
+    font-size: 0.72rem;
+}
+
+.barcode-vue-qrcode-reader-diagnostic {
+    position: fixed;
+    inset: 0;
+    z-index: 1085;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: color-mix(in srgb, var(--color-surface-base) 35%, transparent);
+    backdrop-filter: blur(2px);
+}
+
+.barcode-vue-qrcode-reader-diagnostic__panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 42rem);
+    max-height: calc(100dvh - 2rem);
+    overflow: auto;
+    padding: 1rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    box-shadow: var(--shadow-lg, 0 1rem 2rem rgba(0, 0, 0, 0.18));
+}
+
+.barcode-vue-qrcode-reader-diagnostic__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__title {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__viewport {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-base);
+}
+
+.barcode-vue-qrcode-reader-diagnostic__viewport video,
+.barcode-vue-qrcode-reader-diagnostic__viewport canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__placeholder,
+.barcode-vue-qrcode-reader-diagnostic__notice,
+.barcode-vue-qrcode-reader-diagnostic__meta {
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__section {
+    margin-top: 0.75rem;
+    margin-bottom: 0.35rem;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 0.75rem;
+    margin: 0;
+    font-size: 0.72rem;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__grid--full {
+    grid-template-columns: 1fr;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__grid dd {
+    margin: 0;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__break {
+    word-break: break-word;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__pre {
+    margin: 0 0 0.5rem;
+    padding: 0.5rem 0.65rem;
+    overflow-x: auto;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background-color: color-mix(in srgb, var(--color-surface-base) 88%, transparent);
+    color: var(--color-text-primary);
+    font-size: 0.72rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__pass {
+    color: var(--color-success, #198754);
+    font-weight: 600;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__fail {
+    color: var(--color-danger, #dc3545);
+    font-weight: 600;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__origin-list,
+.barcode-vue-qrcode-reader-diagnostic__history {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--color-text-secondary);
+    font-size: 0.68rem;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__origin-list li,
+.barcode-vue-qrcode-reader-diagnostic__history li {
+    margin-bottom: 0.35rem;
+    word-break: break-word;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__conclusion {
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border-subtle);
+    color: var(--color-text-primary);
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__raw-video-host {
+    margin-bottom: 0.75rem;
+}
+
+.barcode-vue-qrcode-reader-diagnostic__raw-video {
+    display: block;
+    width: 100%;
+    max-height: 240px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    background-color: var(--color-surface-base);
+}
+
+.barcode-vue-qrcode-reader-diagnostic__error-block {
+    margin-bottom: 0.75rem;
+}
+
+.barcode-vue-qrcode-reader-diagnostic--embedded .barcode-vue-qrcode-reader-diagnostic__panel {
+    width: 100%;
+    max-height: none;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+}
+
+.barcode-reader-test-page {
+    min-height: 100dvh;
+    padding: 1rem;
+    background-color: var(--color-surface-base);
+    color: var(--color-text-primary);
+}
+
+.barcode-reader-test-page__container {
+    width: min(100%, 42rem);
+    margin: 0 auto;
+}
+
+.barcode-reader-test-page__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.barcode-reader-test-page__badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.barcode-reader-test-page__title {
+    margin: 0 0 0.35rem;
+    font-size: 1.25rem;
+}
+
+.barcode-reader-test-page__intro {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.native-barcode-detector-test__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.native-barcode-detector-test__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.native-barcode-detector-test__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.native-barcode-detector-test__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.native-barcode-detector-test__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.native-barcode-detector-test__grid-full {
+    grid-column: 1 / -1;
+}
+
+.native-barcode-detector-test__break {
+    word-break: break-word;
+}
+
+.native-barcode-detector-test__video-wrap {
+    overflow: hidden;
+    margin-bottom: 0.85rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: #000;
+}
+
+.native-barcode-detector-test__video {
+    display: block;
+    width: 100%;
+    max-height: 55dvh;
+    object-fit: contain;
+    background: #000;
+}
+
+.native-barcode-detector-test__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.native-barcode-detector-test__actions .btn {
+    min-height: 2.75rem;
+    padding-inline: 0.85rem;
+}
+
+.native-barcode-detector-test__variant {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.native-barcode-detector-test__variant:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.native-barcode-detector-test__variant-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+}
+
+.native-barcode-detector-test__preview-image {
+    display: block;
+    width: 100%;
+    max-height: 40dvh;
+    margin: 0.75rem 0;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+    background: var(--color-surface-base);
+}
+
+.native-barcode-detector-test__file-input {
+    display: none;
+}
+
+.native-barcode-detector-test__error {
+    margin: 0.75rem 0 0;
+    color: var(--color-danger);
+    font-size: 0.85rem;
+}
+
+.native-barcode-detector-test__success {
+    color: var(--color-success);
+    font-weight: 600;
+}
+
+.native-barcode-detector-test__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.native-barcode-detector-test__interpretation {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+    color: var(--color-text-primary);
+    font-size: 0.85rem;
+}
+
+.native-barcode-detector-test__conclusion {
+    border-color: var(--color-border);
+}
+
+@media (max-width: 480px) {
+    .native-barcode-detector-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.native-camera-minimal-test__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.native-camera-minimal-test__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.native-camera-minimal-test__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.native-camera-minimal-test__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.native-camera-minimal-test__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.native-camera-minimal-test__grid-full {
+    grid-column: 1 / -1;
+}
+
+.native-camera-minimal-test__break {
+    word-break: break-word;
+}
+
+.native-camera-minimal-test__video-wrap {
+    overflow: hidden;
+    margin-bottom: 0.85rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: #000;
+}
+
+.native-camera-minimal-test__video {
+    display: block;
+    width: 100%;
+    max-height: 55dvh;
+    object-fit: contain;
+    background: #000;
+}
+
+.native-camera-minimal-test__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.native-camera-minimal-test__actions .btn {
+    min-height: 2.75rem;
+    padding-inline: 0.85rem;
+}
+
+.native-camera-minimal-test__error-block {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
+.native-camera-minimal-test__error-title {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+@media (max-width: 480px) {
+    .native-camera-minimal-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.native-camera-visual-test__container {
+    width: min(100%, 48rem);
+}
+
+.native-camera-visual-test__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.native-camera-visual-test__section--video {
+    padding-bottom: 1rem;
+}
+
+.native-camera-visual-test__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.native-camera-visual-test__notice,
+.native-camera-visual-test__instruction,
+.native-camera-visual-test__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.native-camera-visual-test__instruction {
+    line-height: 1.45;
+}
+
+.native-camera-visual-test__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.native-camera-visual-test__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.native-camera-visual-test__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.native-camera-visual-test__grid-full {
+    grid-column: 1 / -1;
+}
+
+.native-camera-visual-test__break {
+    word-break: break-word;
+}
+
+.native-camera-visual-test__video-wrap {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 0.85rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: #000;
+}
+
+.native-camera-visual-test__video {
+    display: block;
+    width: 100%;
+    min-height: 220px;
+    max-height: 62dvh;
+    object-fit: contain;
+    background: #000;
+}
+
+.native-camera-visual-test__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.native-camera-visual-test__guide {
+    width: min(88%, 20rem);
+    min-height: 5.5rem;
+    padding: 0.75rem;
+    border: 2px dashed color-mix(in srgb, var(--color-accent) 70%, #fff);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, #000 35%, transparent);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.native-camera-visual-test__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.native-camera-visual-test__actions .btn {
+    min-height: 2.75rem;
+    padding-inline: 0.85rem;
+}
+
+.native-camera-visual-test__error-block {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
+.native-camera-visual-test__error-title {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.native-camera-visual-test__frame-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.native-camera-visual-test__captured-image {
+    display: block;
+    width: 100%;
+    max-height: 62dvh;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+    background: var(--color-surface-base);
+}
+
+.native-camera-visual-test__conclusion {
+    margin-top: 0.85rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+}
+
+.native-camera-visual-test__conclusion-title {
+    margin: 0;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.native-camera-visual-test__multi-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+}
+
+.native-camera-visual-test__multi-item {
+    margin: 0;
+}
+
+.native-camera-visual-test__multi-item figcaption {
+    margin-top: 0.35rem;
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+}
+
+@media (min-width: 640px) {
+    .native-camera-visual-test__multi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .native-camera-visual-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.native-barcode-detector-live-test__container {
+    width: min(100%, 48rem);
+}
+
+.native-barcode-detector-live-test__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.native-barcode-detector-live-test__section--video {
+    padding-bottom: 1rem;
+}
+
+.native-barcode-detector-live-test__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.native-barcode-detector-live-test__reference,
+.native-barcode-detector-live-test__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.native-barcode-detector-live-test__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.native-barcode-detector-live-test__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.native-barcode-detector-live-test__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.native-barcode-detector-live-test__grid-full {
+    grid-column: 1 / -1;
+}
+
+.native-barcode-detector-live-test__break {
+    word-break: break-word;
+}
+
+.native-barcode-detector-live-test__video-wrap {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 0.85rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: #000;
+}
+
+.native-barcode-detector-live-test__video {
+    display: block;
+    width: 100%;
+    min-height: 220px;
+    max-height: 62dvh;
+    object-fit: contain;
+    background: #000;
+}
+
+.native-barcode-detector-live-test__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.native-barcode-detector-live-test__guide {
+    width: min(88%, 20rem);
+    min-height: 5.5rem;
+    padding: 0.75rem;
+    border: 2px dashed color-mix(in srgb, var(--color-accent) 70%, #fff);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, #000 35%, transparent);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.native-barcode-detector-live-test__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.native-barcode-detector-live-test__actions .btn {
+    min-height: 2.75rem;
+    padding-inline: 0.85rem;
+}
+
+.native-barcode-detector-live-test__error-block {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
+.native-barcode-detector-live-test__error-title {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.native-barcode-detector-live-test__success {
+    color: var(--color-success);
+    font-weight: 600;
+}
+
+.native-barcode-detector-live-test__conclusion {
+    border-color: var(--color-border);
+}
+
+.native-barcode-detector-live-test__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.native-barcode-detector-live-test__history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.native-barcode-detector-live-test__history {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.native-barcode-detector-live-test__history-item {
+    padding: 0.65rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+    font-size: 0.8rem;
+}
+
+@media (max-width: 480px) {
+    .native-barcode-detector-live-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .native-barcode-detector-live-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-detector-resolution-test__container {
+    width: min(100%, 52rem);
+}
+
+.barcode-detector-resolution-test__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-detector-resolution-test__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-detector-resolution-test__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-detector-resolution-test__reference,
+.barcode-detector-resolution-test__muted {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.barcode-detector-resolution-test__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+    margin: 0;
+}
+
+.barcode-detector-resolution-test__grid dt {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.barcode-detector-resolution-test__grid dd {
+    margin: 0 0 0.35rem;
+    font-size: 0.9rem;
+    word-break: break-word;
+}
+
+.barcode-detector-resolution-test__grid-full {
+    grid-column: 1 / -1;
+}
+
+.barcode-detector-resolution-test__break {
+    word-break: break-word;
+}
+
+.barcode-detector-resolution-test__video-wrap {
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+}
+
+.barcode-detector-resolution-test__video {
+    display: block;
+    width: 100%;
+    max-height: 55vh;
+    object-fit: contain;
+    background: #000;
+}
+
+.barcode-detector-resolution-test__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.barcode-detector-resolution-test__actions .btn {
+    min-height: 2.5rem;
+}
+
+.barcode-detector-resolution-test__error-block {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(220, 53, 69, 0.35);
+    border-radius: var(--radius-sm);
+    background: rgba(220, 53, 69, 0.06);
+}
+
+.barcode-detector-resolution-test__error-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--bs-danger, #dc3545);
+}
+
+.barcode-detector-resolution-test__success {
+    color: var(--bs-success, #198754);
+    font-weight: 700;
+}
+
+.barcode-detector-resolution-test__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-detector-resolution-test__table {
+    min-width: 42rem;
+}
+
+.barcode-detector-resolution-test__history {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.barcode-detector-resolution-test__history-item {
+    font-size: 0.82rem;
+    word-break: break-word;
+}
+
+.barcode-detector-resolution-test__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+    font-size: 0.9rem;
+}
+
+.barcode-detector-resolution-test__conclusion {
+    border-color: var(--color-border-strong, var(--color-border-subtle));
+}
+
+.barcode-detector-resolution-test__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 768px) {
+    .barcode-detector-resolution-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-detector-roi-test__container {
+    width: min(100%, 52rem);
+}
+
+.barcode-detector-roi-test__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-detector-roi-test__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-detector-roi-test__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-detector-roi-test__reference,
+.barcode-detector-roi-test__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-detector-roi-test__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-detector-roi-test__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.barcode-detector-roi-test__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.barcode-detector-roi-test__grid-full {
+    grid-column: 1 / -1;
+}
+
+.barcode-detector-roi-test__break {
+    word-break: break-word;
+}
+
+.barcode-detector-roi-test__video-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 4 / 3;
+}
+
+.barcode-detector-roi-test__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-detector-roi-test__roi-overlay {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px dashed rgba(255, 193, 7, 0.95);
+    background: rgba(255, 193, 7, 0.08);
+    pointer-events: none;
+}
+
+.barcode-detector-roi-test__roi-label {
+    position: absolute;
+    top: 0.25rem;
+    left: 0.25rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.25rem;
+    background: rgba(0, 0, 0, 0.65);
+    color: #ffc107;
+    font-size: 0.65rem;
+    line-height: 1.2;
+}
+
+.barcode-detector-roi-test__hidden-canvas {
+    display: none;
+}
+
+.barcode-detector-roi-test__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.barcode-detector-roi-test__actions .btn {
+    white-space: nowrap;
+}
+
+.barcode-detector-roi-test__error-block {
+    padding: 0.75rem;
+    border: 1px solid var(--bs-danger-border-subtle, #f1aeb5);
+    border-radius: var(--radius-md);
+    background: var(--bs-danger-bg-subtle, #f8d7da);
+}
+
+.barcode-detector-roi-test__error-title {
+    margin: 0;
+    color: var(--bs-danger-text-emphasis, #58151c);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.barcode-detector-roi-test__success {
+    color: var(--bs-success-text-emphasis, #0a3622);
+    font-weight: 600;
+}
+
+.barcode-detector-roi-test__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-detector-roi-test__table {
+    font-size: 0.82rem;
+}
+
+.barcode-detector-roi-test__history {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.barcode-detector-roi-test__history-item {
+    font-size: 0.82rem;
+    word-break: break-word;
+}
+
+.barcode-detector-roi-test__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+    font-size: 0.9rem;
+}
+
+.barcode-detector-roi-test__conclusion {
+    border-color: var(--color-border-strong, var(--color-border-subtle));
+}
+
+.barcode-detector-roi-test__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+.barcode-detector-roi-test__preview-image {
+    display: block;
+    max-width: 100%;
+    margin-top: 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+}
+
+.barcode-detector-roi-test__capture-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: 0.75rem;
+}
+
+.barcode-detector-roi-test__capture-item {
+    margin: 0;
+}
+
+.barcode-detector-roi-test__capture-item figcaption {
+    margin-bottom: 0.35rem;
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+}
+
+@media (max-width: 768px) {
+    .barcode-detector-roi-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-detector-camera-controls-test__container {
+    width: min(100%, 52rem);
+}
+
+.barcode-detector-camera-controls-test__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-detector-camera-controls-test__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-detector-camera-controls-test__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-detector-camera-controls-test__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-detector-camera-controls-test__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-detector-camera-controls-test__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.barcode-detector-camera-controls-test__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.barcode-detector-camera-controls-test__grid-full {
+    grid-column: 1 / -1;
+}
+
+.barcode-detector-camera-controls-test__video-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 4 / 3;
+}
+
+.barcode-detector-camera-controls-test__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-detector-camera-controls-test__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.barcode-detector-camera-controls-test__actions .btn {
+    white-space: nowrap;
+}
+
+.barcode-detector-camera-controls-test__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-detector-camera-controls-test__table {
+    font-size: 0.82rem;
+}
+
+.barcode-detector-camera-controls-test__history {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.barcode-detector-camera-controls-test__history-item {
+    font-size: 0.82rem;
+    word-break: break-word;
+}
+
+.barcode-detector-camera-controls-test__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+    font-size: 0.9rem;
+}
+
+.barcode-detector-camera-controls-test__conclusion {
+    border-color: var(--color-border-strong, var(--color-border-subtle));
+}
+
+.barcode-detector-camera-controls-test__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+.barcode-detector-camera-controls-test__preview-image {
+    display: block;
+    max-width: 100%;
+    margin-top: 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+}
+
+@media (max-width: 768px) {
+    .barcode-detector-camera-controls-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-detector-focus-sharpness-test__container {
+    width: min(100%, 52rem);
+}
+
+.barcode-detector-focus-sharpness-test__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-detector-focus-sharpness-test__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-detector-focus-sharpness-test__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-detector-focus-sharpness-test__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-detector-focus-sharpness-test__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-detector-focus-sharpness-test__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.barcode-detector-focus-sharpness-test__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.barcode-detector-focus-sharpness-test__grid-full {
+    grid-column: 1 / -1;
+}
+
+.barcode-detector-focus-sharpness-test__video-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 3 / 4;
+    max-height: 70vh;
+}
+
+.barcode-detector-focus-sharpness-test__video,
+.barcode-detector-focus-sharpness-test__overlay-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-detector-focus-sharpness-test__overlay-canvas {
+    pointer-events: none;
+}
+
+.barcode-detector-focus-sharpness-test__bbox-indicator {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 193, 7, 0.95);
+    pointer-events: none;
+}
+
+.barcode-detector-focus-sharpness-test__hidden-canvas {
+    display: none;
+}
+
+.barcode-detector-focus-sharpness-test__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+}
+
+.barcode-detector-focus-sharpness-test__actions .btn {
+    white-space: nowrap;
+}
+
+.barcode-detector-focus-sharpness-test__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: 0.75rem;
+}
+
+.barcode-detector-focus-sharpness-test__card {
+    padding: 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.barcode-detector-focus-sharpness-test__card h3 {
+    margin: 0 0 0.25rem;
+    font-size: 0.85rem;
+}
+
+.barcode-detector-focus-sharpness-test__card p {
+    margin: 0 0 0.5rem;
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+}
+
+.barcode-detector-focus-sharpness-test__card dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem 0.5rem;
+    margin: 0;
+    font-size: 0.78rem;
+}
+
+.barcode-detector-focus-sharpness-test__history {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.barcode-detector-focus-sharpness-test__history-item {
+    font-size: 0.78rem;
+    word-break: break-word;
+}
+
+.barcode-detector-focus-sharpness-test__alert {
+    border-color: var(--bs-warning-border-subtle, #ffe69c);
+    background: var(--bs-warning-bg-subtle, #fff3cd);
+}
+
+.barcode-detector-focus-sharpness-test__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.barcode-detector-focus-sharpness-test__conclusion {
+    border-color: var(--color-border-strong, var(--color-border-subtle));
+}
+
+.barcode-detector-focus-sharpness-test__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+.barcode-detector-focus-sharpness-test__preview-image {
+    display: block;
+    max-width: 100%;
+    margin-top: 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+}
+
+@media (max-width: 768px) {
+    .barcode-detector-focus-sharpness-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-detector-manual-focus-test__container {
+    width: min(100%, 52rem);
+}
+
+.barcode-detector-manual-focus-test__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-detector-manual-focus-test__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-detector-manual-focus-test__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-detector-manual-focus-test__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-detector-manual-focus-test__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-detector-manual-focus-test__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+.barcode-detector-manual-focus-test__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.barcode-detector-manual-focus-test__grid-full {
+    grid-column: 1 / -1;
+}
+
+.barcode-detector-manual-focus-test__video-banner {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md);
+    background: rgba(0, 0, 0, 0.75);
+    color: #ffc107;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.barcode-detector-manual-focus-test__video-wrap {
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 3 / 4;
+    max-height: 70vh;
+}
+
+.barcode-detector-manual-focus-test__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-detector-manual-focus-test__hidden-canvas {
+    display: none;
+}
+
+.barcode-detector-manual-focus-test__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.barcode-detector-manual-focus-test__focus-status {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border-subtle);
+}
+
+.barcode-detector-manual-focus-test__focus-status h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+}
+
+.barcode-detector-manual-focus-test__focus-status--applied {
+    border-color: #198754;
+    background: rgba(25, 135, 84, 0.08);
+}
+
+.barcode-detector-manual-focus-test__focus-status--not-applied {
+    border-color: #dc3545;
+    background: rgba(220, 53, 69, 0.08);
+}
+
+.barcode-detector-manual-focus-test__focus-status--unknown {
+    border-color: #ffc107;
+    background: rgba(255, 193, 7, 0.08);
+}
+
+.barcode-detector-manual-focus-test__invalid-manual {
+    color: #dc3545;
+    font-weight: 700;
+}
+
+.barcode-detector-manual-focus-test__warning-box,
+.barcode-detector-manual-focus-test__alert {
+    margin-bottom: 1rem;
+    padding: 0.9rem;
+    border-radius: var(--radius-md);
+    background: var(--bs-warning-bg-subtle, #fff3cd);
+    border: 1px solid var(--bs-warning-border-subtle, #ffe69c);
+}
+
+.barcode-detector-manual-focus-test__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-detector-manual-focus-test__history {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.barcode-detector-manual-focus-test__history-item {
+    font-size: 0.78rem;
+    word-break: break-word;
+}
+
+.barcode-detector-manual-focus-test__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.85rem;
+}
+
+.barcode-detector-manual-focus-test__preview-image {
+    display: block;
+    max-width: 100%;
+    margin-top: 0.75rem;
+    border-radius: var(--radius-md);
+}
+
+.barcode-detector-manual-focus-test__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+@media (max-width: 768px) {
+    .barcode-detector-manual-focus-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-detector-manual-focus-experiment__container {
+    width: min(100%, 52rem);
+}
+
+.barcode-detector-manual-focus-experiment__banner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(13, 110, 253, 0.08);
+    border: 1px solid rgba(13, 110, 253, 0.25);
+    font-size: 0.9rem;
+}
+
+.barcode-detector-manual-focus-experiment__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-detector-manual-focus-experiment__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-detector-manual-focus-experiment__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-detector-manual-focus-experiment__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-detector-manual-focus-experiment__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-detector-manual-focus-experiment__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+.barcode-detector-manual-focus-experiment__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.barcode-detector-manual-focus-experiment__grid-full {
+    grid-column: 1 / -1;
+}
+
+.barcode-detector-manual-focus-experiment__video-banner {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md);
+    background: rgba(0, 0, 0, 0.75);
+    color: #ffc107;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.barcode-detector-manual-focus-experiment__video-wrap {
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 3 / 4;
+    max-height: 70vh;
+}
+
+.barcode-detector-manual-focus-experiment__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-detector-manual-focus-experiment__hidden-canvas {
+    display: none;
+}
+
+.barcode-detector-manual-focus-experiment__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.barcode-detector-manual-focus-experiment__form-row {
+    margin-bottom: 0.75rem;
+}
+
+.barcode-detector-manual-focus-experiment__form-row label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.barcode-detector-manual-focus-experiment__focus-status {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border-subtle);
+}
+
+.barcode-detector-manual-focus-experiment__focus-status h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+}
+
+.barcode-detector-manual-focus-experiment__focus-status--valid {
+    border-color: #198754;
+    background: rgba(25, 135, 84, 0.08);
+}
+
+.barcode-detector-manual-focus-experiment__focus-status--invalid {
+    border-color: #dc3545;
+    background: rgba(220, 53, 69, 0.08);
+}
+
+.barcode-detector-manual-focus-experiment__focus-status--error {
+    border-color: #fd7e14;
+    background: rgba(253, 126, 20, 0.12);
+}
+
+.barcode-detector-manual-focus-experiment__alert {
+    margin-bottom: 1rem;
+    padding: 0.9rem;
+    border-radius: var(--radius-md);
+    background: var(--bs-warning-bg-subtle, #fff3cd);
+    border: 1px solid var(--bs-warning-border-subtle, #ffe69c);
+}
+
+.barcode-detector-manual-focus-experiment__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-detector-manual-focus-experiment__history {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.barcode-detector-manual-focus-experiment__history-item {
+    font-size: 0.78rem;
+    word-break: break-word;
+}
+
+.barcode-detector-manual-focus-experiment__result--correct {
+    color: #198754;
+    font-weight: 600;
+}
+
+.barcode-detector-manual-focus-experiment__result--incorrect {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.barcode-detector-manual-focus-experiment__result--not-found {
+    color: var(--color-text-secondary);
+}
+
+.barcode-detector-manual-focus-experiment__result--error {
+    color: #fd7e14;
+    font-weight: 600;
+}
+
+.barcode-detector-manual-focus-experiment__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.85rem;
+}
+
+.barcode-detector-manual-focus-experiment__preview-image {
+    display: block;
+    max-width: 100%;
+    margin-top: 0.75rem;
+    border-radius: var(--radius-md);
+}
+
+.barcode-detector-manual-focus-experiment__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.barcode-detector-manual-focus-experiment__recommended-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+@media (max-width: 768px) {
+    .barcode-detector-manual-focus-experiment__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-focus-distance-mapping__container {
+    width: min(100%, 52rem);
+}
+
+.barcode-focus-distance-mapping__header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.barcode-focus-distance-mapping__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-focus-distance-mapping__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-focus-distance-mapping__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-focus-distance-mapping__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-focus-distance-mapping__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.barcode-focus-distance-mapping__alert {
+    margin-bottom: 1rem;
+    padding: 0.9rem;
+    border-radius: var(--radius-md);
+    background: rgba(220, 53, 69, 0.08);
+    border: 1px solid rgba(220, 53, 69, 0.25);
+}
+
+.barcode-focus-distance-mapping__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-focus-distance-mapping__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+.barcode-focus-distance-mapping__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.barcode-focus-distance-mapping__grid-full {
+    grid-column: 1 / -1;
+}
+
+.barcode-focus-distance-mapping__video-wrap {
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 16 / 9;
+    max-height: 40vh;
+}
+
+.barcode-focus-distance-mapping__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-focus-distance-mapping__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.barcode-focus-distance-mapping__form-row label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.barcode-focus-distance-mapping__inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.barcode-focus-distance-mapping__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-focus-distance-mapping__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.78rem;
+    max-height: 16rem;
+    overflow: auto;
+}
+
+.barcode-focus-distance-mapping__graph {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    color: var(--color-text-primary, #212529);
+}
+
+.barcode-focus-distance-mapping__graph-label {
+    font-size: 10px;
+    fill: currentColor;
+    opacity: 0.75;
+}
+
+.barcode-focus-distance-mapping__graph-point {
+    stroke: #fff;
+    stroke-width: 1;
+}
+
+.barcode-focus-distance-mapping__graph-point--match {
+    fill: #198754;
+}
+
+.barcode-focus-distance-mapping__graph-point--mismatch {
+    fill: #dc3545;
+}
+
+.barcode-focus-distance-mapping__graph-point--unknown,
+.barcode-focus-distance-mapping__graph-point--apply-error {
+    fill: #fd7e14;
+}
+
+.barcode-focus-distance-mapping__status--match {
+    color: #198754;
+    font-weight: 600;
+}
+
+.barcode-focus-distance-mapping__status--mismatch {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.barcode-focus-distance-mapping__status--unknown,
+.barcode-focus-distance-mapping__status--apply-error {
+    color: #fd7e14;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .barcode-focus-distance-mapping__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-focus-zoom-benchmark__container {
+    width: min(100%, 56rem);
+}
+
+.barcode-focus-zoom-benchmark__header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.barcode-focus-zoom-benchmark__banner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(13, 110, 253, 0.08);
+    border: 1px solid rgba(13, 110, 253, 0.25);
+}
+
+.barcode-focus-zoom-benchmark__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-focus-zoom-benchmark__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-focus-zoom-benchmark__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-focus-zoom-benchmark__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-focus-zoom-benchmark__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.barcode-focus-zoom-benchmark__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-focus-zoom-benchmark__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+.barcode-focus-zoom-benchmark__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.barcode-focus-zoom-benchmark__video-wrap {
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 16 / 9;
+    max-height: 40vh;
+}
+
+.barcode-focus-zoom-benchmark__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-focus-zoom-benchmark__hidden-canvas {
+    display: none;
+}
+
+.barcode-focus-zoom-benchmark__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.barcode-focus-zoom-benchmark__form-row {
+    margin-bottom: 0.75rem;
+}
+
+.barcode-focus-zoom-benchmark__form-row label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.barcode-focus-zoom-benchmark__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.82rem;
+}
+
+.barcode-focus-zoom-benchmark__table-wrap,
+.barcode-focus-zoom-benchmark__heatmap {
+    overflow-x: auto;
+}
+
+.barcode-focus-zoom-benchmark__matrix {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: 0.35rem;
+}
+
+.barcode-focus-zoom-benchmark__matrix-item {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+    font-size: 0.78rem;
+}
+
+.barcode-focus-zoom-benchmark__heatmap-header,
+.barcode-focus-zoom-benchmark__heatmap-row {
+    display: grid;
+    grid-template-columns: 4.5rem repeat(6, minmax(3rem, 1fr));
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.barcode-focus-zoom-benchmark__heatmap-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.barcode-focus-zoom-benchmark__heatmap-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2rem;
+    border-radius: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.barcode-focus-zoom-benchmark__heatmap-cell--high {
+    background: rgba(25, 135, 84, 0.25);
+}
+
+.barcode-focus-zoom-benchmark__heatmap-cell--mid {
+    background: rgba(255, 193, 7, 0.25);
+}
+
+.barcode-focus-zoom-benchmark__heatmap-cell--low {
+    background: rgba(220, 53, 69, 0.18);
+}
+
+.barcode-focus-zoom-benchmark__heatmap-cell--empty {
+    background: rgba(108, 117, 125, 0.12);
+}
+
+.barcode-focus-zoom-benchmark__graphs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.barcode-focus-zoom-benchmark__graph {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    color: var(--color-text-primary, #212529);
+}
+
+@media (max-width: 768px) {
+    .barcode-focus-zoom-benchmark__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-size-zoom-comparison__container {
+    width: min(100%, 56rem);
+}
+
+.barcode-size-zoom-comparison__header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.barcode-size-zoom-comparison__banner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(13, 110, 253, 0.08);
+    border: 1px solid rgba(13, 110, 253, 0.25);
+}
+
+.barcode-size-zoom-comparison__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-size-zoom-comparison__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-size-zoom-comparison__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-size-zoom-comparison__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-size-zoom-comparison__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.barcode-size-zoom-comparison__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.82rem;
+}
+
+.barcode-size-zoom-comparison__video-wrap {
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 16 / 9;
+    max-height: 40vh;
+}
+
+.barcode-size-zoom-comparison__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-size-zoom-comparison__hidden-canvas {
+    display: none;
+}
+
+.barcode-size-zoom-comparison__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.barcode-size-zoom-comparison__form-row {
+    margin-bottom: 0.75rem;
+}
+
+.barcode-size-zoom-comparison__form-row label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.barcode-size-zoom-comparison__grid-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.barcode-size-zoom-comparison__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-size-zoom-comparison__raw-item {
+    font-size: 0.78rem;
+    margin-bottom: 0.35rem;
+    word-break: break-word;
+}
+
+.barcode-size-zoom-comparison__graphs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.barcode-size-zoom-comparison__graph {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    color: var(--color-text-primary, #212529);
+}
+
+@media (max-width: 768px) {
+    .barcode-size-zoom-comparison__grid-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-distance-focus-experiment__container {
+    width: min(100%, 56rem);
+}
+
+.barcode-distance-focus-experiment__header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.barcode-distance-focus-experiment__banner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(13, 110, 253, 0.08);
+    border: 1px solid rgba(13, 110, 253, 0.25);
+}
+
+.barcode-distance-focus-experiment__config-card {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(25, 135, 84, 0.12);
+    border: 2px solid rgba(25, 135, 84, 0.45);
+}
+
+.barcode-distance-focus-experiment__config-card-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.barcode-distance-focus-experiment__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-distance-focus-experiment__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-distance-focus-experiment__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-distance-focus-experiment__subsection-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.88rem;
+}
+
+.barcode-distance-focus-experiment__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-distance-focus-experiment__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.barcode-distance-focus-experiment__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.82rem;
+}
+
+.barcode-distance-focus-experiment__video-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 16 / 9;
+    max-height: 40vh;
+}
+
+.barcode-distance-focus-experiment__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-distance-focus-experiment__size-guide {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px dashed rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.04);
+    pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
+}
+
+.barcode-distance-focus-experiment__size-guide-label {
+    position: absolute;
+    top: -1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.barcode-distance-focus-experiment__diag-overlay {
+    position: absolute;
+    left: 0.5rem;
+    bottom: 0.5rem;
+    max-width: calc(100% - 1rem);
+    padding: 0.45rem 0.55rem;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    pointer-events: none;
+}
+
+.barcode-distance-focus-experiment__hidden-canvas {
+    display: none;
+}
+
+.barcode-distance-focus-experiment__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.barcode-distance-focus-experiment__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+    margin: 0;
+}
+
+.barcode-distance-focus-experiment__grid dt {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+}
+
+.barcode-distance-focus-experiment__grid dd {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+}
+
+.barcode-distance-focus-experiment__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-distance-focus-experiment__order-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.82rem;
+}
+
+.barcode-distance-focus-experiment__raw-item {
+    font-size: 0.78rem;
+    margin-bottom: 0.75rem;
+    word-break: break-word;
+}
+
+.barcode-distance-focus-experiment__conclusion {
+    border-color: rgba(25, 135, 84, 0.35);
+}
+
+@media (max-width: 768px) {
+    .barcode-distance-focus-experiment__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-fine-focus-sweep__container {
+    width: min(100%, 56rem);
+}
+
+.barcode-fine-focus-sweep__header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.barcode-fine-focus-sweep__banner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(13, 110, 253, 0.08);
+    border: 1px solid rgba(13, 110, 253, 0.25);
+}
+
+.barcode-fine-focus-sweep__config-card {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(25, 135, 84, 0.12);
+    border: 2px solid rgba(25, 135, 84, 0.45);
+}
+
+.barcode-fine-focus-sweep__config-card-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.barcode-fine-focus-sweep__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-fine-focus-sweep__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-fine-focus-sweep__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-fine-focus-sweep__subsection-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.88rem;
+}
+
+.barcode-fine-focus-sweep__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-fine-focus-sweep__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.barcode-fine-focus-sweep__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.82rem;
+}
+
+.barcode-fine-focus-sweep__countdown {
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.barcode-fine-focus-sweep__video-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 16 / 9;
+    max-height: 40vh;
+}
+
+.barcode-fine-focus-sweep__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-fine-focus-sweep__size-guide {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px dashed rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.04);
+    pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
+}
+
+.barcode-fine-focus-sweep__size-guide-label {
+    position: absolute;
+    top: -1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.barcode-fine-focus-sweep__live-status {
+    position: absolute;
+    left: 0.5rem;
+    bottom: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    pointer-events: none;
+}
+
+.barcode-fine-focus-sweep__hidden-canvas {
+    display: none;
+}
+
+.barcode-fine-focus-sweep__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.barcode-fine-focus-sweep__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+    margin: 0;
+}
+
+.barcode-fine-focus-sweep__grid dt {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+}
+
+.barcode-fine-focus-sweep__grid dd {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+}
+
+.barcode-fine-focus-sweep__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-fine-focus-sweep__order-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.82rem;
+}
+
+.barcode-fine-focus-sweep__raw-item {
+    font-size: 0.78rem;
+    margin-bottom: 0.75rem;
+    word-break: break-word;
+}
+
+.barcode-fine-focus-sweep__conclusion {
+    border-color: rgba(25, 135, 84, 0.35);
+}
+
+@media (max-width: 768px) {
+    .barcode-fine-focus-sweep__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-stability-focus-repeatability__container {
+    width: min(100%, 56rem);
+}
+
+.barcode-stability-focus-repeatability__header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.barcode-stability-focus-repeatability__banner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(13, 110, 253, 0.08);
+    border: 1px solid rgba(13, 110, 253, 0.25);
+}
+
+.barcode-stability-focus-repeatability__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-stability-focus-repeatability__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-stability-focus-repeatability__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-stability-focus-repeatability__subsection-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.88rem;
+}
+
+.barcode-stability-focus-repeatability__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-stability-focus-repeatability__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.barcode-stability-focus-repeatability__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.82rem;
+}
+
+.barcode-stability-focus-repeatability__video-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 16 / 9;
+    max-height: 40vh;
+}
+
+.barcode-stability-focus-repeatability__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-stability-focus-repeatability__size-guide {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px dashed rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.04);
+    pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
+}
+
+.barcode-stability-focus-repeatability__size-guide-label {
+    position: absolute;
+    top: -1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.barcode-stability-focus-repeatability__live-status {
+    position: absolute;
+    left: 0.5rem;
+    bottom: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    pointer-events: none;
+}
+
+.barcode-stability-focus-repeatability__hidden-canvas {
+    display: none;
+}
+
+.barcode-stability-focus-repeatability__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.barcode-stability-focus-repeatability__grid-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.barcode-stability-focus-repeatability__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+    margin: 0;
+}
+
+.barcode-stability-focus-repeatability__grid dt {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+}
+
+.barcode-stability-focus-repeatability__grid dd {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+    word-break: break-word;
+}
+
+.barcode-stability-focus-repeatability__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-stability-focus-repeatability__order-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.82rem;
+}
+
+.barcode-stability-focus-repeatability__result-card {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface, transparent);
+}
+
+.barcode-stability-focus-repeatability__result-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.88rem;
+}
+
+.barcode-stability-focus-repeatability__raw-item {
+    font-size: 0.78rem;
+    margin-bottom: 0.75rem;
+    word-break: break-word;
+}
+
+.barcode-stability-focus-repeatability__conclusion {
+    border-color: rgba(25, 135, 84, 0.35);
+}
+
+@media (max-width: 768px) {
+    .barcode-stability-focus-repeatability__grid-form,
+    .barcode-stability-focus-repeatability__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-decode-reliability__container {
+    width: min(100%, 58rem);
+}
+
+.barcode-decode-reliability__header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.barcode-decode-reliability__banner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(13, 110, 253, 0.08);
+    border: 1px solid rgba(13, 110, 253, 0.25);
+}
+
+.barcode-decode-reliability__banner--warning {
+    background: rgba(255, 193, 7, 0.12);
+    border-color: rgba(255, 193, 7, 0.45);
+}
+
+.barcode-decode-reliability__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-decode-reliability__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-decode-reliability__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-decode-reliability__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-decode-reliability__warning {
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.barcode-decode-reliability__pre,
+.barcode-decode-reliability__live-panel {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.78rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.barcode-decode-reliability__live-panel {
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface, rgba(0, 0, 0, 0.04));
+    border: 1px solid var(--color-border-subtle);
+}
+
+.barcode-decode-reliability__video-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: #000;
+    aspect-ratio: 16 / 9;
+    max-height: 42vh;
+}
+
+.barcode-decode-reliability__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode-decode-reliability__debug-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.barcode-decode-reliability__debug-canvas--visible {
+    opacity: 1;
+}
+
+.barcode-decode-reliability__guide-stack {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.barcode-decode-reliability__size-guide {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px dashed rgba(255, 255, 255, 0.35);
+    opacity: 0.45;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.barcode-decode-reliability__size-guide span {
+    margin-top: -1.2rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.62rem;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+}
+
+.barcode-decode-reliability__size-guide--active {
+    border-color: #00ff88;
+    border-width: 2px;
+    opacity: 1;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.15);
+}
+
+.barcode-decode-reliability__hidden-canvas {
+    display: none;
+}
+
+.barcode-decode-reliability__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.barcode-decode-reliability__grid-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.barcode-decode-reliability__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-decode-reliability__capture-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.5rem;
+}
+
+.barcode-decode-reliability__capture-image {
+    width: 100%;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-subtle);
+}
+
+.barcode-decode-reliability__capture-item {
+    margin-bottom: 1rem;
+}
+
+.barcode-decode-reliability__conclusion {
+    border-color: rgba(25, 135, 84, 0.35);
+}
+
+@media (max-width: 768px) {
+    .barcode-decode-reliability__grid-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-decode-reliability-matrix__container {
+    width: min(100%, 52rem);
+}
+
+.barcode-decode-reliability-matrix__header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.barcode-decode-reliability-matrix__banner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-decode-reliability-matrix__banner--warning {
+    border-color: rgba(255, 193, 7, 0.45);
+}
+
+.barcode-decode-reliability-matrix__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-decode-reliability-matrix__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-decode-reliability-matrix__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-decode-reliability-matrix__subsection-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+}
+
+.barcode-decode-reliability-matrix__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.82rem;
+}
+
+.barcode-decode-reliability-matrix__warning {
+    color: #b45309;
+    font-size: 0.82rem;
+}
+
+.barcode-decode-reliability-matrix__pre,
+.barcode-decode-reliability-matrix__live-panel {
+    padding: 0.65rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.85);
+    color: #e8e8e8;
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.barcode-decode-reliability-matrix__live-panel {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    max-width: calc(100% - 1rem);
+}
+
+.barcode-decode-reliability-matrix__video-wrap {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: #000;
+}
+
+.barcode-decode-reliability-matrix__video {
+    display: block;
+    width: 100%;
+    max-height: 55vh;
+    object-fit: contain;
+}
+
+.barcode-decode-reliability-matrix__hidden-canvas {
+    display: none;
+}
+
+.barcode-decode-reliability-matrix__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.barcode-decode-reliability-matrix__grid-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.barcode-decode-reliability-matrix__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-decode-reliability-matrix__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+.barcode-decode-reliability-matrix__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.barcode-decode-reliability-matrix__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-decode-reliability-matrix__result-card {
+    margin-bottom: 0.65rem;
+    padding: 0.65rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+.barcode-decode-reliability-matrix__result-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.barcode-decode-reliability-matrix__chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+}
+
+.barcode-decode-reliability-matrix__chart-row {
+    display: grid;
+    grid-template-columns: 4.5rem 1fr 3rem;
+    gap: 0.35rem;
+    align-items: center;
+    font-size: 0.75rem;
+}
+
+.barcode-decode-reliability-matrix__chart-bar-wrap {
+    height: 0.65rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.barcode-decode-reliability-matrix__chart-bar {
+    height: 100%;
+    border-radius: 999px;
+    background: rgba(25, 135, 84, 0.75);
+}
+
+.barcode-decode-reliability-matrix__conclusion {
+    border-color: rgba(25, 135, 84, 0.35);
+}
+
+@media (max-width: 768px) {
+    .barcode-decode-reliability-matrix__grid-form,
+    .barcode-decode-reliability-matrix__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-reliability-phase2__container {
+    width: min(100%, 54rem);
+}
+
+.barcode-reliability-phase2__header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.barcode-reliability-phase2__banner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid rgba(255, 193, 7, 0.45);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-reliability-phase2__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-reliability-phase2__section--video {
+    padding-bottom: 1rem;
+}
+
+.barcode-reliability-phase2__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-reliability-phase2__subsection-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+}
+
+.barcode-reliability-phase2__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.82rem;
+}
+
+.barcode-reliability-phase2__warning {
+    color: #b45309;
+    font-size: 0.82rem;
+}
+
+.barcode-reliability-phase2__danger {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.barcode-reliability-phase2__pre,
+.barcode-reliability-phase2__live-panel {
+    padding: 0.65rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.85);
+    color: #e8e8e8;
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.barcode-reliability-phase2__live-panel {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    left: 0.5rem;
+}
+
+.barcode-reliability-phase2__video-wrap {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: #000;
+}
+
+.barcode-reliability-phase2__video {
+    display: block;
+    width: 100%;
+    max-height: 55vh;
+    object-fit: contain;
+}
+
+.barcode-reliability-phase2__size-guide {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px dashed rgba(255, 255, 255, 0.55);
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.barcode-reliability-phase2__size-guide-label {
+    position: absolute;
+    top: -1.4rem;
+    left: 0;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 0.65rem;
+}
+
+.barcode-reliability-phase2__hidden-canvas {
+    display: none;
+}
+
+.barcode-reliability-phase2__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.barcode-reliability-phase2__grid-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.barcode-reliability-phase2__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-reliability-phase2__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+.barcode-reliability-phase2__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.barcode-reliability-phase2__table-wrap {
+    overflow-x: auto;
+}
+
+.barcode-reliability-phase2__best-card {
+    padding: 0.85rem;
+    border: 1px solid rgba(25, 135, 84, 0.45);
+    border-radius: var(--radius-md);
+    background: rgba(25, 135, 84, 0.06);
+}
+
+.barcode-reliability-phase2__event-log {
+    max-height: 16rem;
+    overflow-y: auto;
+    font-family: ui-monospace, monospace;
+    font-size: 0.72rem;
+}
+
+.barcode-reliability-phase2__event-item {
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.barcode-reliability-phase2__chart-row {
+    display: grid;
+    grid-template-columns: 5rem 1fr 3rem;
+    gap: 0.35rem;
+    align-items: center;
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.barcode-reliability-phase2__chart-bar-wrap {
+    height: 0.65rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.barcode-reliability-phase2__chart-bar {
+    height: 100%;
+    border-radius: 999px;
+    background: rgba(25, 135, 84, 0.75);
+}
+
+.barcode-reliability-phase2__scatter {
+    position: relative;
+    width: 100%;
+    max-width: 22rem;
+    aspect-ratio: 1;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: linear-gradient(to top, rgba(25, 135, 84, 0.05), rgba(220, 53, 69, 0.05));
+}
+
+.barcode-reliability-phase2__scatter-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #0d6efd;
+    transform: translate(-50%, 50%);
+}
+
+.barcode-reliability-phase2__heatmap {
+    display: grid;
+    gap: 2px;
+    overflow-x: auto;
+}
+
+.barcode-reliability-phase2__heatmap-cell {
+    min-width: 2.5rem;
+    min-height: 2rem;
+    padding: 0.15rem;
+    border-radius: 3px;
+    font-size: 0.62rem;
+    text-align: center;
+    color: #fff;
+}
+
+@media (max-width: 768px) {
+    .barcode-reliability-phase2__grid-form,
+    .barcode-reliability-phase2__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.native-camera-stream-diagnostic__container {
+    width: min(100%, 48rem);
+}
+
+.native-camera-stream-diagnostic__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.native-camera-stream-diagnostic__section--video {
+    padding-bottom: 1rem;
+}
+
+.native-camera-stream-diagnostic__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.native-camera-stream-diagnostic__track-title {
+    margin: 0.75rem 0 0.5rem;
+    font-size: 0.82rem;
+}
+
+.native-camera-stream-diagnostic__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.native-camera-stream-diagnostic__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.native-camera-stream-diagnostic__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.native-camera-stream-diagnostic__grid-full {
+    grid-column: 1 / -1;
+}
+
+.native-camera-stream-diagnostic__break {
+    word-break: break-word;
+}
+
+.native-camera-stream-diagnostic__video-wrap {
+    overflow: hidden;
+    margin-bottom: 0.85rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: #000;
+}
+
+.native-camera-stream-diagnostic__video {
+    display: block;
+    width: 100%;
+    max-width: 640px;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: #000;
+}
+
+.native-camera-stream-diagnostic__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.native-camera-stream-diagnostic__actions .btn {
+    min-height: 2.75rem;
+    padding-inline: 0.85rem;
+}
+
+.native-camera-stream-diagnostic__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.native-camera-stream-diagnostic__log {
+    max-height: 16rem;
+    overflow: auto;
+    padding: 0.65rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
+.native-camera-stream-diagnostic__log-line {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+}
+
+.native-camera-stream-diagnostic__log-time {
+    color: var(--color-text-secondary);
+    flex: 0 0 auto;
+}
+
+.native-camera-stream-diagnostic__error {
+    border-color: var(--color-danger);
+}
+
+.native-camera-stream-diagnostic__conclusion {
+    border-color: var(--color-border);
+}
+
+.native-camera-stream-diagnostic__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 480px) {
+    .native-camera-stream-diagnostic__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.barcode-engine-test__container {
+    width: min(100%, 52rem);
+}
+
+.barcode-engine-test__section {
+    margin-bottom: 1.25rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+}
+
+.barcode-engine-test__section-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.barcode-engine-test__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    margin: 0;
+}
+
+.barcode-engine-test__grid dt {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.barcode-engine-test__grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.barcode-engine-test__grid-full {
+    grid-column: 1 / -1;
+}
+
+.barcode-engine-test__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.barcode-engine-test__actions .btn {
+    min-height: 2.75rem;
+    padding-inline: 0.85rem;
+}
+
+.barcode-engine-test__file-input {
+    display: none;
+}
+
+.barcode-engine-test__video-wrap,
+.barcode-engine-test__reference-image {
+    overflow: hidden;
+    margin-top: 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: #000;
+}
+
+.barcode-engine-test__video,
+.barcode-engine-test__reference-image {
+    display: block;
+    width: 100%;
+    max-height: 55dvh;
+    object-fit: contain;
+}
+
+.barcode-engine-test__muted {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.barcode-engine-test__error {
+    color: var(--color-danger);
+    font-size: 0.85rem;
+}
+
+.barcode-engine-test__success {
+    color: var(--color-success);
+    font-weight: 600;
+}
+
+.barcode-engine-test__cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+.barcode-engine-test__card {
+    padding: 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+}
+
+.barcode-engine-test__card-title {
+    margin: 0 0 0.25rem;
+    font-size: 0.9rem;
+}
+
+.barcode-engine-test__card-meta {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+}
+
+.barcode-engine-test__status {
+    font-weight: 600;
+}
+
+.barcode-engine-test__status--success {
+    color: var(--color-success);
+}
+
+.barcode-engine-test__status--muted {
+    color: var(--color-text-secondary);
+}
+
+.barcode-engine-test__variant-list {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.barcode-engine-test__variant-item {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.65rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+    font-size: 0.82rem;
+}
+
+.barcode-engine-test__conclusion {
+    border-color: var(--color-border);
+}
+
+.barcode-engine-test__pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.barcode-engine-test__history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.barcode-engine-test__history {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.barcode-engine-test__history-item {
+    padding: 0.65rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-base);
+    font-size: 0.8rem;
+}
+
+@media (min-width: 768px) {
+    .barcode-engine-test__cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .barcode-engine-test__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* --------------------------------------------------------------------------
    Buttons — outline variants (theme-safe hover)
    -------------------------------------------------------------------------- */

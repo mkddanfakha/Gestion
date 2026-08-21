@@ -9,6 +9,7 @@ use App\Services\ActivityLogger;
 use App\Services\ProductBarcodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class ProductController extends Controller
@@ -111,15 +112,23 @@ class ProductController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ProductBarcodeService $barcodeService)
     {
         $this->checkPermission($request, 'products', 'create');
+
+        $this->mergeNormalizedBarcode($request, $barcodeService);
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'sku' => 'nullable|string|max:6|unique:products',
-            'barcode' => 'nullable|string|max:255',
+            'barcode' => [
+                'nullable',
+                'string',
+                'max:255',
+                'regex:/^[A-Za-z0-9]+$/',
+                Rule::unique('products', 'barcode')->where(fn ($query) => $query->whereNotNull('barcode')),
+            ],
             'price' => 'required|numeric|min:0',
             'cost_price' => 'nullable|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
@@ -131,6 +140,9 @@ class ProductController extends Controller
             'expiration_date' => 'nullable|date',
             'alert_threshold_value' => 'nullable|integer|min:1',
             'alert_threshold_unit' => 'nullable|in:days,weeks,months',
+        ], [
+            'barcode.unique' => 'Ce code-barres est déjà associé à un autre produit.',
+            'barcode.regex' => 'Le code-barres ne peut contenir que des caractères alphanumériques.',
         ]);
 
         // Générer automatiquement le SKU si non fourni
@@ -255,18 +267,28 @@ class ProductController extends Controller
         ]);
     }
 
-    public function update(Request $request, Product $product)
+    public function update(Request $request, Product $product, ProductBarcodeService $barcodeService)
     {
         $this->checkPermission($request, 'products', 'update');
         
         $user = $request->user();
         $isVendeur = $user && $user->hasRole('vendeur');
+
+        $this->mergeNormalizedBarcode($request, $barcodeService);
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'sku' => 'required|string|max:6|unique:products,sku,' . $product->id,
-            'barcode' => 'nullable|string|max:255',
+            'barcode' => [
+                'nullable',
+                'string',
+                'max:255',
+                'regex:/^[A-Za-z0-9]+$/',
+                Rule::unique('products', 'barcode')
+                    ->ignore($product->id)
+                    ->where(fn ($query) => $query->whereNotNull('barcode')),
+            ],
             'price' => 'required|numeric|min:0',
             'cost_price' => 'nullable|numeric|min:0',
             'stock_quantity' => $isVendeur ? 'prohibited' : 'required|integer|min:0',
@@ -282,6 +304,9 @@ class ProductController extends Controller
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max par image
             'delete_images' => 'nullable|array',
             'delete_images.*' => 'nullable|integer',
+        ], [
+            'barcode.unique' => 'Ce code-barres est déjà associé à un autre produit.',
+            'barcode.regex' => 'Le code-barres ne peut contenir que des caractères alphanumériques.',
         ]);
 
         // Si c'est un vendeur, retirer les champs de stock des données validées
@@ -443,6 +468,31 @@ class ProductController extends Controller
     }
 
     /**
+     * Vérifie la disponibilité d'un code-barres (formulaire produit).
+     */
+    public function checkBarcodeAvailability(Request $request, string $barcode, ProductBarcodeService $barcodeService)
+    {
+        $this->checkPermission($request, 'products', 'view');
+
+        $normalized = $barcodeService->normalize($barcode);
+
+        if ($normalized === '' || ! preg_match('/^[A-Za-z0-9]+$/', $normalized)) {
+            return response()->json([
+                'available' => false,
+                'barcode' => $normalized,
+                'reason' => 'invalid',
+            ], 422);
+        }
+
+        $excludeProductId = $request->filled('exclude') ? $request->integer('exclude') : null;
+
+        return response()->json([
+            'available' => $barcodeService->isBarcodeAvailable($normalized, $excludeProductId),
+            'barcode' => $normalized,
+        ]);
+    }
+
+    /**
      * Recherche exacte d'un produit par code-barres (scan).
      */
     public function findByBarcode(Request $request, string $barcode, ProductBarcodeService $barcodeService)
@@ -497,5 +547,20 @@ class ProductController extends Controller
         }
 
         return $user;
+    }
+
+    private function mergeNormalizedBarcode(Request $request, ProductBarcodeService $barcodeService): void
+    {
+        $rawBarcode = $request->input('barcode');
+
+        if (! is_string($rawBarcode)) {
+            return;
+        }
+
+        $normalized = $barcodeService->normalize($rawBarcode);
+
+        $request->merge([
+            'barcode' => $normalized !== '' ? $normalized : null,
+        ]);
     }
 }

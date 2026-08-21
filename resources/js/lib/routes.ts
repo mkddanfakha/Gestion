@@ -4,6 +4,7 @@ export function route(name: string, params: any = {}) {
         'dashboard': '/dashboard',
         'products.autocomplete': '/products/autocomplete',
         'products.barcode': '/products/barcode/{barcode}',
+        'products.barcode.availability': '/products/barcode/{barcode}/availability',
         'products.index': '/products',
         'products.create': '/products/create',
         'products.store': '/products',

@@ -22,13 +22,20 @@
         <div class="card-body">
           <div class="row g-3">
             <div class="col-12 col-md-3">
-              <label class="form-label">Recherche</label>
-              <input
-                v-model="filters.search"
-                type="text"
-                placeholder="Nom, SKU ou code-barres..."
-                class="form-control"
-                @input="search"
+              <label class="form-label" for="products-index-search">Recherche</label>
+              <BarcodeInput
+                v-model="searchQuery"
+                input-id="products-index-search"
+                label=""
+                hint=""
+                retain-on-scan
+                :autofocus="false"
+                :show-submit-button="false"
+                :clearable="false"
+                prepend-icon-class="bi-search"
+                input-aria-label="Rechercher un produit, une référence ou scanner un code-barres"
+                placeholder="Rechercher un produit, une référence ou scanner un code-barres..."
+                @scanned="handleSearchScan"
               />
             </div>
             <div class="col-12 col-md-3">
@@ -253,9 +260,11 @@ import PageHeader from '@/components/page/PageHeader.vue'
 import PagePagination from '@/components/page/PagePagination.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
+import { debounce } from 'lodash-es'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { usePermissions } from '@/composables/usePermissions'
+import BarcodeInput from '@/components/BarcodeInput.vue'
 
 const { canCreate, canEdit, canDelete } = usePermissions()
 
@@ -320,6 +329,66 @@ const formatDate = (date: string) => {
 }
 
 const filters = ref({ ...props.filters })
+const searchQuery = ref(props.filters.search ?? '')
+
+watch(
+  () => props.filters.search,
+  (value) => {
+    const nextValue = value ?? ''
+    if (nextValue !== searchQuery.value) {
+      searchQuery.value = nextValue
+    }
+  },
+)
+
+let skipDebouncedSearch = false
+
+const runSearch = () => {
+  if (searchQuery.value.trim()) {
+    filters.value.search = searchQuery.value.trim()
+  } else {
+    delete filters.value.search
+    searchQuery.value = ''
+  }
+
+  router.get(route('products.index'), filters.value, {
+    preserveState: true,
+    replace: true,
+  })
+}
+
+const debouncedSearch = debounce(() => {
+  runSearch()
+}, 300)
+
+watch(searchQuery, () => {
+  if (skipDebouncedSearch) {
+    skipDebouncedSearch = false
+    return
+  }
+
+  debouncedSearch()
+})
+
+const search = () => {
+  debouncedSearch.cancel()
+  runSearch()
+}
+
+const handleSearchScan = (barcode: string) => {
+  debouncedSearch.cancel()
+  skipDebouncedSearch = true
+  searchQuery.value = barcode
+  filters.value.search = barcode
+  runSearch()
+}
+
+const clearFilters = () => {
+  debouncedSearch.cancel()
+  filters.value = {}
+  searchQuery.value = ''
+  search()
+}
 
 const getStockClass = (stockQuantity: number, minStockLevel: number) => {
   if (stockQuantity === 0) {
@@ -329,18 +398,6 @@ const getStockClass = (stockQuantity: number, minStockLevel: number) => {
   } else {
     return 'text-success'
   }
-}
-
-const search = () => {
-  router.get(route('products.index'), filters.value, {
-    preserveState: true,
-    replace: true
-  })
-}
-
-const clearFilters = () => {
-  filters.value = {}
-  search()
 }
 
 const deleteProduct = async (product: Product) => {
