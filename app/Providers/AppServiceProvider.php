@@ -13,6 +13,7 @@ use App\Repositories\NotificationRepository;
 use App\Services\ActivityLogger;
 use App\Services\Audit\ChangeDetector;
 use App\Services\NotificationService;
+use App\Services\StockService;
 use App\Services\Notifications\NotificationAudienceResolver;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ActivityLogger::class);
         $this->app->singleton(ChangeDetector::class);
+        $this->app->singleton(StockService::class);
     }
 
     public function boot(): void

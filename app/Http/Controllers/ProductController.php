@@ -7,13 +7,19 @@ use App\Models\Category;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\ProductBarcodeService;
+use App\Services\ProductStockInitializationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class ProductController extends Controller
 {
+    public function __construct(
+        protected ProductStockInitializationService $productStockInitializationService,
+    ) {}
+
     public function index(Request $request)
     {
         $this->checkPermission($request, 'products', 'view');
@@ -150,7 +156,19 @@ class ProductController extends Controller
             $validated['sku'] = Product::generateSku($validated['name'], $validated['category_id']);
         }
 
-        $product = Product::create($validated);
+        $initialStock = (int) $validated['stock_quantity'];
+
+        $product = DB::transaction(function () use ($validated, $request, $initialStock) {
+            $product = Product::create($validated);
+
+            $this->productStockInitializationService->initializeMainStock(
+                $product,
+                $initialStock,
+                $request->user(),
+            );
+
+            return $product;
+        });
 
         // Gérer l'upload d'images
         if ($request->hasFile('images')) {
@@ -291,7 +309,7 @@ class ProductController extends Controller
             ],
             'price' => 'required|numeric|min:0',
             'cost_price' => 'nullable|numeric|min:0',
-            'stock_quantity' => $isVendeur ? 'prohibited' : 'required|integer|min:0',
+            'stock_quantity' => 'prohibited',
             'min_stock_level' => $isVendeur ? 'prohibited' : 'required|integer|min:0',
             'unit' => 'required|string|max:50',
             'location' => 'nullable|string|max:255',
@@ -309,9 +327,11 @@ class ProductController extends Controller
             'barcode.regex' => 'Le code-barres ne peut contenir que des caractères alphanumériques.',
         ]);
 
-        // Si c'est un vendeur, retirer les champs de stock des données validées
+        // Le stock existant n'est plus modifiable via le CRUD produit (Phase 3C).
+        unset($validated['stock_quantity']);
+
         if ($isVendeur) {
-            unset($validated['stock_quantity'], $validated['min_stock_level']);
+            unset($validated['min_stock_level']);
         }
 
         // Convertir les chaînes vides en null pour expiration_date

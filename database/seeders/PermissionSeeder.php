@@ -92,6 +92,17 @@ class PermissionSeeder extends Seeder
         'dashboard' => [
             'view' => 'Voir le tableau de bord',
         ],
+        'inventory' => [
+            'view' => 'Voir les sessions d\'inventaire',
+            'create' => 'Créer et démarrer une session d\'inventaire',
+            'count' => 'Compter les produits d\'une session d\'inventaire',
+            'submit' => 'Soumettre une session d\'inventaire en revue',
+            'review' => 'Revoir une session d\'inventaire',
+            'validate' => 'Valider une session d\'inventaire',
+            'apply' => 'Appliquer les écarts d\'inventaire au stock',
+            'cancel' => 'Annuler une session d\'inventaire',
+            'close' => 'Clôturer une session d\'inventaire',
+        ],
         'backups' => [
             'view' => 'Voir les sauvegardes',
             'create' => 'Créer une sauvegarde',

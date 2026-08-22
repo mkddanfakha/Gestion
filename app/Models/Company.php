@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 class Company extends Model
@@ -45,6 +47,33 @@ class Company extends Model
         'signature_url',
         'stamp_url',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (Company $company): void {
+            Store::ensureDefaultForCompany($company);
+        });
+    }
+
+    public function stores(): HasMany
+    {
+        return $this->hasMany(Store::class);
+    }
+
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    public function inventorySessions(): HasMany
+    {
+        return $this->hasMany(InventorySession::class);
+    }
+
+    public function defaultStore(): HasOne
+    {
+        return $this->hasOne(Store::class)->where('is_default', true);
+    }
 
     protected function casts(): array
     {

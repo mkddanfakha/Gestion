@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\StockInventoryController;
+use App\Http\Controllers\InventorySessionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
@@ -46,8 +46,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/products/generate-sku', [ProductController::class, 'generateSku'])->name('products.generate-sku');
     Route::post('/products/upload-image', [ProductController::class, 'uploadImage'])->name('products.upload-image');
 
-    Route::get('/stock-inventory', [StockInventoryController::class, 'index'])->name('stock-inventory.index');
-    Route::post('/stock-inventory/count', [StockInventoryController::class, 'count'])->name('stock-inventory.count');
+    Route::get('/inventory', [InventorySessionController::class, 'index'])->name('inventory.index');
+    Route::get('/inventory/{session}', [InventorySessionController::class, 'show'])->name('inventory.show');
+    Route::post('/inventory', [InventorySessionController::class, 'store'])->name('inventory.store');
+    Route::post('/inventory/{session}/start', [InventorySessionController::class, 'start'])->name('inventory.start');
+    Route::post('/inventory/{session}/scan', [InventorySessionController::class, 'scan'])->name('inventory.scan');
+    Route::post('/inventory/{session}/items/{item}/count', [InventorySessionController::class, 'countItem'])->name('inventory.items.count');
+    Route::post('/inventory/{session}/submit', [InventorySessionController::class, 'submit'])->name('inventory.submit');
+    Route::post('/inventory/{session}/reopen', [InventorySessionController::class, 'reopen'])->name('inventory.reopen');
+    Route::post('/inventory/{session}/validate', [InventorySessionController::class, 'validateSession'])->name('inventory.validate');
+    Route::post('/inventory/{session}/apply', [InventorySessionController::class, 'apply'])->name('inventory.apply');
+    Route::post('/inventory/{session}/cancel', [InventorySessionController::class, 'cancel'])->name('inventory.cancel');
+    Route::post('/inventory/{session}/close', [InventorySessionController::class, 'close'])->name('inventory.close');
     
     // Catégories
     Route::resource('categories', CategoryController::class);

@@ -1,0 +1,197 @@
+/* MKD-Pro Gestion — Inventory module (theme-aware) */
+
+/* --------------------------------------------------------------------------
+   Product list — table header
+   -------------------------------------------------------------------------- */
+.inventory-product-list .inventory-product-list__table thead th {
+    --bs-table-bg: var(--color-surface-hover);
+    --bs-table-color: var(--color-text-primary);
+    background-color: var(--color-surface-hover) !important;
+    color: var(--color-text-primary) !important;
+    border-bottom-color: var(--color-border) !important;
+    font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Product list — row states
+   -------------------------------------------------------------------------- */
+.inventory-product-list .inventory-product-list__table tbody tr.inventory-product-list__row {
+    --bs-table-bg: var(--color-surface-elevated);
+    --bs-table-color: var(--color-text-primary);
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.inventory-product-list .inventory-product-list__table tbody tr.inventory-product-list__row > td,
+.inventory-product-list .inventory-product-list__table tbody tr.inventory-product-list__row > th {
+    --bs-table-bg: var(--bs-table-bg);
+    --bs-table-color: var(--color-text-primary);
+    background-color: var(--bs-table-bg);
+    color: var(--color-text-primary);
+    border-color: var(--color-border-subtle);
+}
+
+.inventory-product-list .inventory-product-list__table tbody tr.inventory-product-list__row--counted {
+    --bs-table-bg: var(--color-surface-hover);
+    background-color: var(--color-surface-hover);
+}
+
+.inventory-product-list .inventory-product-list__table tbody tr.inventory-product-list__row--highlight {
+    --bs-table-bg: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-elevated));
+    background-color: var(--bs-table-bg);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.inventory-product-list__meta {
+    color: var(--color-text-secondary);
+}
+
+.inventory-product-list__row .fw-semibold,
+.inventory-product-list__card .fw-semibold,
+.inventory-product-list__row strong,
+.inventory-product-list__card strong {
+    color: var(--color-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Product list — hover (override global .table-hover !important)
+   -------------------------------------------------------------------------- */
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr.inventory-product-list__row:hover,
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr.inventory-product-list__row:hover > td {
+    --bs-table-bg: color-mix(in srgb, var(--color-text-primary) 6%, var(--color-surface-elevated));
+    --bs-table-color: var(--color-text-primary);
+    background-color: var(--bs-table-bg) !important;
+    color: var(--color-text-primary) !important;
+}
+
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr.inventory-product-list__row--counted:hover,
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr.inventory-product-list__row--counted:hover > td {
+    --bs-table-bg: color-mix(in srgb, var(--color-text-primary) 8%, var(--color-surface-hover));
+    background-color: var(--bs-table-bg) !important;
+    color: var(--color-text-primary) !important;
+}
+
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr.inventory-product-list__row--highlight:hover,
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr.inventory-product-list__row--highlight:hover > td {
+    --bs-table-bg: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface-elevated));
+    background-color: var(--bs-table-bg) !important;
+    color: var(--color-text-primary) !important;
+}
+
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr:hover .inventory-product-list__meta {
+    color: var(--color-text-secondary) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Product list — variance badges & text
+   -------------------------------------------------------------------------- */
+.inventory-variance-badge {
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.inventory-variance-badge--conforme {
+    background-color: var(--color-success-soft);
+    color: var(--color-success);
+    border-color: color-mix(in srgb, var(--color-success) 24%, transparent);
+}
+
+.inventory-variance-badge--surplus {
+    background-color: var(--color-warning-soft);
+    color: var(--color-warning);
+    border-color: color-mix(in srgb, var(--color-warning) 24%, transparent);
+}
+
+.inventory-variance-badge--manque {
+    background-color: var(--color-danger-soft);
+    color: var(--color-danger);
+    border-color: color-mix(in srgb, var(--color-danger) 24%, transparent);
+}
+
+.inventory-variance-badge--pending {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-secondary);
+    border-color: var(--color-border-subtle);
+}
+
+.inventory-variance-text--conforme {
+    color: var(--color-success);
+}
+
+.inventory-variance-text--surplus {
+    color: var(--color-warning);
+}
+
+.inventory-variance-text--manque {
+    color: var(--color-danger);
+}
+
+.inventory-variance-text--pending {
+    color: var(--color-text-muted);
+}
+
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr:hover .inventory-variance-text--conforme {
+    color: var(--color-success) !important;
+}
+
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr:hover .inventory-variance-text--surplus {
+    color: var(--color-warning) !important;
+}
+
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr:hover .inventory-variance-text--manque {
+    color: var(--color-danger) !important;
+}
+
+.inventory-product-list .inventory-product-list__table.table-hover tbody tr:hover .inventory-variance-text--pending {
+    color: var(--color-text-muted) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Product list — mobile cards
+   -------------------------------------------------------------------------- */
+.inventory-product-list__card {
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    border-color: var(--color-border) !important;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.inventory-product-list__card--counted {
+    background-color: var(--color-surface-hover);
+}
+
+.inventory-product-list__card--highlight {
+    background-color: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-elevated));
+    border-color: var(--color-accent) !important;
+    box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+/* --------------------------------------------------------------------------
+   Last scan panel — « Produit compté »
+   -------------------------------------------------------------------------- */
+.inventory-last-scan {
+    background-color: var(--color-success-soft);
+    border-color: var(--color-border) !important;
+    color: var(--color-text-primary);
+}
+
+.inventory-last-scan__status {
+    color: var(--color-success);
+    font-weight: 600;
+}
+
+.inventory-last-scan__meta {
+    color: var(--color-text-secondary);
+}
+
+.inventory-last-scan__increment {
+    background-color: var(--color-surface-elevated);
+    color: var(--color-success);
+    border: 1px solid color-mix(in srgb, var(--color-success) 28%, transparent);
+    font-weight: 600;
+}
+
+.inventory-last-scan__placeholder {
+    background: var(--color-surface-hover);
+}

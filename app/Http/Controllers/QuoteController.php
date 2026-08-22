@@ -7,9 +7,13 @@ use App\Models\Sale;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Company;
+use App\Exceptions\InsufficientStockException;
+use App\Exceptions\ProductStockNotFoundException;
 use App\Services\AttachmentService;
+use App\Services\SaleStockService;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Traits\GeneratesPdf;
 use InvalidArgumentException;
@@ -20,6 +24,7 @@ class QuoteController extends Controller
 
     public function __construct(
         protected AttachmentService $attachmentService,
+        protected SaleStockService $saleStockService,
     ) {}
     /**
      * Display a listing of the resource.
@@ -420,56 +425,73 @@ class QuoteController extends Controller
         // Charger les items du devis
         $quote->load('quoteItems.product');
 
-        // Vérifier le stock disponible pour chaque produit
-        $stockErrors = [];
+        // Vérifier le stock disponible pour chaque produit (ProductStock MAIN)
+        $productQuantities = [];
         foreach ($quote->quoteItems as $item) {
-            if ($item->product) {
-                if ($item->product->stock_quantity < $item->quantity) {
-                    $stockErrors[] = "Stock insuffisant pour {$item->product->name}. Stock disponible: {$item->product->stock_quantity}, Quantité demandée: {$item->quantity}";
-                }
+            if (! $item->product_id) {
+                continue;
             }
+            $productQuantities[$item->product_id] = ($productQuantities[$item->product_id] ?? 0) + (int) $item->quantity;
         }
 
-        if (!empty($stockErrors)) {
+        $stockErrors = [];
+        foreach ($this->saleStockService->validateStockAvailability($productQuantities) as $productId => $message) {
+            $product = Product::find($productId);
+            $productName = $product?->name ?? 'Produit #'.$productId;
+            $available = 0;
+
+            try {
+                $available = $this->saleStockService->getAvailableStock((int) $productId);
+            } catch (ProductStockNotFoundException) {
+                $available = 0;
+            }
+
+            $requested = $productQuantities[$productId] ?? 0;
+            $stockErrors[] = "Stock insuffisant pour {$productName}. Stock disponible: {$available}, Quantité demandée: {$requested}";
+        }
+
+        if (! empty($stockErrors)) {
             return back()->withErrors(['stock' => implode(' | ', $stockErrors)]);
         }
 
-        // Créer la vente à partir du devis
-        $sale = Sale::create([
-            'sale_number' => Sale::generateSaleNumber(),
-            'customer_id' => $quote->customer_id,
-            'user_id' => auth()->id(),
-            'payment_method' => 'cash', // Par défaut, peut être modifié après
-            'notes' => $quote->notes ? "Converti depuis le devis {$quote->quote_number}. " . $quote->notes : "Converti depuis le devis {$quote->quote_number}.",
-            'subtotal' => $quote->subtotal,
-            'tax_amount' => $quote->tax_amount,
-            'discount_amount' => $quote->discount_amount,
-            'down_payment_amount' => 0,
-            'remaining_amount' => $quote->total_amount,
-            'total_amount' => $quote->total_amount,
-            'payment_status' => 'pending',
-            'status' => 'completed',
-        ]);
+        try {
+            $sale = DB::transaction(function () use ($quote, $productQuantities) {
+                $sale = Sale::create([
+                    'sale_number' => Sale::generateSaleNumber(),
+                    'customer_id' => $quote->customer_id,
+                    'user_id' => auth()->id(),
+                    'payment_method' => 'cash',
+                    'notes' => $quote->notes ? "Converti depuis le devis {$quote->quote_number}. ".$quote->notes : "Converti depuis le devis {$quote->quote_number}.",
+                    'subtotal' => $quote->subtotal,
+                    'tax_amount' => $quote->tax_amount,
+                    'discount_amount' => $quote->discount_amount,
+                    'down_payment_amount' => 0,
+                    'remaining_amount' => $quote->total_amount,
+                    'total_amount' => $quote->total_amount,
+                    'payment_status' => 'pending',
+                    'status' => 'completed',
+                ]);
 
-        // Créer les items de vente
-        foreach ($quote->quoteItems as $quoteItem) {
-            $sale->saleItems()->create([
-                'product_id' => $quoteItem->product_id,
-                'quantity' => $quoteItem->quantity,
-                'unit_price' => $quoteItem->unit_price,
-                'total_price' => $quoteItem->total_price,
-                'discount_amount' => $quoteItem->discount_amount ?? 0,
-            ]);
+                foreach ($quote->quoteItems as $quoteItem) {
+                    $sale->saleItems()->create([
+                        'product_id' => $quoteItem->product_id,
+                        'quantity' => $quoteItem->quantity,
+                        'unit_price' => $quoteItem->unit_price,
+                        'total_price' => $quoteItem->total_price,
+                        'discount_amount' => $quoteItem->discount_amount ?? 0,
+                    ]);
+                }
 
-            // Décrémenter le stock
-            if ($quoteItem->product) {
-                $quoteItem->product->decrement('stock_quantity', $quoteItem->quantity);
-            }
-        }
+                $this->saleStockService->applySaleCreation($sale, $productQuantities);
 
-        // Marquer le devis comme accepté s'il était seulement envoyé
-        if ($quote->status === 'sent') {
-            $quote->update(['status' => 'accepted']);
+                if ($quote->status === 'sent') {
+                    $quote->update(['status' => 'accepted']);
+                }
+
+                return $sale;
+            });
+        } catch (InsufficientStockException|ProductStockNotFoundException) {
+            return back()->withErrors(['stock' => 'Stock insuffisant pour convertir ce devis en vente.']);
         }
 
         return redirect()->route('sales.show', $sale)

@@ -335,6 +335,7 @@ class ActivityLogger
             'Fournisseur' => 'le fournisseur',
             'Bon de commande' => $context === 'cancel' ? 'la commande' : 'le bon de commande',
             'Bon de livraison' => 'le bon de livraison',
+            'Inventaire' => 'la session d\'inventaire',
             'Facture' => 'la facture',
             'Dépense' => 'la dépense',
             'Entreprise' => 'les informations de l\'entreprise',

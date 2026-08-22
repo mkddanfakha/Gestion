@@ -188,22 +188,17 @@
                   <div v-if="errors.unit" class="invalid-feedback">{{ errors.unit }}</div>
                 </div>
 
-              <div v-if="!isVendeur" class="col-12 col-md-6">
-                <label class="form-label">
-                  Stock actuel <span class="text-danger">*</span>
-                </label>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Stock actuel</label>
                   <input
-                    v-model.number="form.stock_quantity"
+                    :value="product.stock_quantity"
                     type="number"
-                    min="0"
-                    step="1"
-                    required
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.stock_quantity || clientErrors.stock_quantity }"
-                    @blur="validateField('stock_quantity', form.stock_quantity)"
+                    disabled
+                    class="form-control bg-light"
                   />
-                  <div v-if="errors.stock_quantity" class="invalid-feedback">{{ errors.stock_quantity }}</div>
-                  <div v-if="clientErrors.stock_quantity" class="invalid-feedback">{{ clientErrors.stock_quantity }}</div>
+                  <small class="form-text text-muted">
+                    Le stock est géré par les ventes, réceptions et futurs ajustements d'inventaire.
+                  </small>
                 </div>
 
               <div v-if="!isVendeur" class="col-12 col-md-6">
@@ -224,17 +219,6 @@
                   <div v-if="clientErrors.min_stock_level" class="invalid-feedback">{{ clientErrors.min_stock_level }}</div>
                 </div>
                 
-              <div v-if="isVendeur" class="col-12 col-md-6">
-                <label class="form-label">Stock actuel</label>
-                  <input
-                    :value="product.stock_quantity"
-                    type="number"
-                    disabled
-                    class="form-control bg-light"
-                  />
-                  <small class="form-text text-muted">Vous ne pouvez pas modifier le stock</small>
-                </div>
-
               <div v-if="isVendeur" class="col-12 col-md-6">
                 <label class="form-label">Stock minimum</label>
                   <input
@@ -574,10 +558,6 @@ const validateForm = () => {
     errors.cost_price = 'Le prix de revient ne peut pas être négatif'
   }
   
-  if (isInvalidNonNegativeInteger(form.stock_quantity)) {
-    errors.stock_quantity = STOCK_QUANTITY_INVALID_MESSAGE
-  }
-
   if (isInvalidNonNegativeInteger(form.min_stock_level)) {
     errors.min_stock_level = MIN_STOCK_LEVEL_INVALID_MESSAGE
   }
@@ -829,7 +809,6 @@ const submit = async () => {
   if (form.cost_price !== null && form.cost_price !== undefined) {
     formData.append('cost_price', String(form.cost_price))
   }
-  formData.append('stock_quantity', String(form.stock_quantity ?? 0))
   formData.append('min_stock_level', String(form.min_stock_level ?? 0))
   formData.append('unit', form.unit || '')
   if (form.location) {
@@ -875,7 +854,6 @@ const submit = async () => {
     !form.name
     || !form.sku
     || !form.price
-    || isInvalidNonNegativeInteger(form.stock_quantity)
     || isInvalidNonNegativeInteger(form.min_stock_level)
     || !form.unit
     || !form.category_id

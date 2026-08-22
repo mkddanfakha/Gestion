@@ -8,6 +8,7 @@
 @import './dashboard.css';
 @import './components.css';
 @import './sales.css';
+@import './inventory.css';
 
 /* Notification Center */
 @import './notifications.css';

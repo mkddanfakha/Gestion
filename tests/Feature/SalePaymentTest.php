@@ -2,7 +2,9 @@
 
 use App\Models\ActivityLog;
 use App\Models\Category;
+use App\Models\Company;
 use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,7 +18,7 @@ function createSaleTestProduct(float $price = 100000, int $stock = 100): Product
         'slug' => 'test-'.uniqid(),
     ]);
 
-    return Product::create([
+    $product = Product::create([
         'name' => 'Produit test',
         'sku' => 'SKU-'.uniqid(),
         'price' => $price,
@@ -26,6 +28,14 @@ function createSaleTestProduct(float $price = 100000, int $stock = 100): Product
         'category_id' => $category->id,
         'is_active' => true,
     ]);
+
+    $store = Company::getInstance()->defaultStore()->firstOrFail();
+    ProductStock::query()->firstOrCreate(
+        ['product_id' => $product->id, 'store_id' => $store->id],
+        ['quantity' => $stock],
+    );
+
+    return $product;
 }
 
 function saleStorePayload(Product $product, array $overrides = []): array

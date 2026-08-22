@@ -1,12 +1,18 @@
 <?php
 
+use App\Enums\StockMovementType;
+use App\Exceptions\ProductStockNotFoundException;
 use App\Models\ActivityLog;
 use App\Models\Category;
+use App\Models\Company;
 use App\Models\DeliveryNote;
 use App\Models\DeliveryNoteItem;
 use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\StockMovement;
+use App\Models\Store;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\PurchaseOrderDeliveryService;
@@ -14,6 +20,26 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
+
+function procurementMainStore(): Store
+{
+    return Company::getInstance()->defaultStore()->firstOrFail();
+}
+
+function ensureProductStockForMainStore(Product $product, int $quantity): ProductStock
+{
+    $store = procurementMainStore();
+
+    return ProductStock::query()->firstOrCreate(
+        [
+            'product_id' => $product->id,
+            'store_id' => $store->id,
+        ],
+        [
+            'quantity' => $quantity,
+        ],
+    );
+}
 
 function createProcurementFixture(int $orderedQuantity = 100, int $initialStock = 50): array
 {
@@ -40,6 +66,8 @@ function createProcurementFixture(int $orderedQuantity = 100, int $initialStock 
         'category_id' => $category->id,
         'is_active' => true,
     ]);
+
+    ensureProductStockForMainStore($product, $initialStock);
 
     $purchaseOrder = PurchaseOrder::create([
         'po_number' => PurchaseOrder::generatePONumber(),
@@ -596,4 +624,86 @@ test('concurrent pending delivery notes cannot exceed ordered quantity on store'
 
     expect(DeliveryNote::count())->toBe(1)
         ->and($product->fresh()->stock_quantity)->toBe(0);
+});
+
+test('delivery validation creates purchase stock movement and syncs product stock mirror', function () {
+    ['admin' => $admin, 'supplier' => $supplier, 'product' => $product, 'purchaseOrder' => $purchaseOrder] = createProcurementFixture(100, 10);
+    $store = procurementMainStore();
+    $service = app(PurchaseOrderDeliveryService::class);
+    $deliveryNote = createPendingDeliveryNote($purchaseOrder, $supplier, $product, 5, $admin);
+
+    $this->actingAs($admin);
+    $service->validateDeliveryNote($deliveryNote);
+
+    $productStock = ProductStock::query()
+        ->where('product_id', $product->id)
+        ->where('store_id', $store->id)
+        ->first();
+
+    $movement = StockMovement::query()
+        ->where('product_id', $product->id)
+        ->where('store_id', $store->id)
+        ->where('type', StockMovementType::Purchase->value)
+        ->first();
+
+    expect($product->fresh()->stock_quantity)->toBe(15)
+        ->and($productStock?->quantity)->toBe(15)
+        ->and($movement)->not->toBeNull()
+        ->and($movement->quantity)->toBe(5)
+        ->and($movement->quantity_before)->toBe(10)
+        ->and($movement->quantity_after)->toBe(15)
+        ->and($movement->reference_type)->toBe($deliveryNote->getMorphClass())
+        ->and($movement->reference_id)->toBe($deliveryNote->id)
+        ->and($movement->user_id)->toBe($admin->id);
+});
+
+test('delivery validation is idempotent for stock movements', function () {
+    ['admin' => $admin, 'supplier' => $supplier, 'product' => $product, 'purchaseOrder' => $purchaseOrder] = createProcurementFixture(100, 10);
+    $service = app(PurchaseOrderDeliveryService::class);
+    $deliveryNote = createPendingDeliveryNote($purchaseOrder, $supplier, $product, 5, $admin);
+
+    $this->actingAs($admin);
+    $service->validateDeliveryNote($deliveryNote);
+    $service->validateDeliveryNote($deliveryNote->fresh());
+
+    expect(StockMovement::query()->where('type', StockMovementType::Purchase->value)->count())->toBe(1)
+        ->and($product->fresh()->stock_quantity)->toBe(15);
+});
+
+test('delivery validation fails when product stock row is missing on main store', function () {
+    ['admin' => $admin, 'supplier' => $supplier, 'product' => $product, 'purchaseOrder' => $purchaseOrder] = createProcurementFixture(100, 10);
+    $store = procurementMainStore();
+    ProductStock::query()
+        ->where('product_id', $product->id)
+        ->where('store_id', $store->id)
+        ->delete();
+
+    $service = app(PurchaseOrderDeliveryService::class);
+    $deliveryNote = createPendingDeliveryNote($purchaseOrder, $supplier, $product, 5, $admin);
+
+    expect(fn () => $service->validateDeliveryNote($deliveryNote))
+        ->toThrow(ProductStockNotFoundException::class);
+
+    expect($product->fresh()->stock_quantity)->toBe(10)
+        ->and(StockMovement::query()->where('type', StockMovementType::Purchase->value)->count())->toBe(0);
+});
+
+test('cancelled validated delivery note creates delivery note cancel movement', function () {
+    ['admin' => $admin, 'supplier' => $supplier, 'product' => $product, 'purchaseOrder' => $purchaseOrder] = createProcurementFixture(100, 10);
+    $service = app(PurchaseOrderDeliveryService::class);
+    $deliveryNote = createPendingDeliveryNote($purchaseOrder, $supplier, $product, 5, $admin);
+
+    $this->actingAs($admin);
+    $service->validateDeliveryNote($deliveryNote);
+    $service->cancelDeliveryNote($deliveryNote->fresh());
+
+    $cancelMovement = StockMovement::query()
+        ->where('type', StockMovementType::DeliveryNoteCancel->value)
+        ->first();
+
+    expect($product->fresh()->stock_quantity)->toBe(10)
+        ->and(ProductStock::query()->where('product_id', $product->id)->value('quantity'))->toBe(10)
+        ->and($cancelMovement)->not->toBeNull()
+        ->and($cancelMovement->quantity)->toBe(-5)
+        ->and($cancelMovement->reference_id)->toBe($deliveryNote->id);
 });

@@ -57,6 +57,38 @@ class Product extends Model implements HasMedia
     }
 
     /**
+     * Stock par magasin (fondation multi-magasins).
+     */
+    public function productStocks(): HasMany
+    {
+        return $this->hasMany(ProductStock::class);
+    }
+
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    public function inventoryItems(): HasMany
+    {
+        return $this->hasMany(InventoryItem::class);
+    }
+
+    /**
+     * Retourne le stock matérialisé pour un magasin donné.
+     *
+     * Ne crée pas de ligne implicitement : la création doit rester explicite.
+     */
+    public function stockForStore(int $storeId): ?ProductStock
+    {
+        if ($this->relationLoaded('productStocks')) {
+            return $this->productStocks->firstWhere('store_id', $storeId);
+        }
+
+        return $this->productStocks()->where('store_id', $storeId)->first();
+    }
+
+    /**
      * Boot method to handle model events
      */
     protected static function boot()

@@ -6,8 +6,11 @@ use App\Models\Sale;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Company;
+use App\Exceptions\InsufficientStockException;
+use App\Exceptions\ProductStockNotFoundException;
 use App\Services\ActivityLogger;
 use App\Services\SalePaymentService;
+use App\Services\SaleStockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -16,6 +19,10 @@ use App\Traits\GeneratesPdf;
 class SaleController extends Controller
 {
     use GeneratesPdf;
+
+    public function __construct(
+        protected SaleStockService $saleStockService,
+    ) {}
 
     /**
      * Empêcher un vendeur d'accéder aux ventes des autres utilisateurs.
@@ -129,23 +136,11 @@ class SaleController extends Controller
             'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        // Vérifier le stock disponible pour chaque produit
-        $stockErrors = [];
         $expiredErrors = [];
-        $productQuantities = [];
         $expiredMessage = config('notifications.contextual_messages.product_expired');
         $stockMessage = config('notifications.contextual_messages.insufficient_stock');
-        
-        // Calculer les quantités totales par produit
-        foreach ($validated['items'] as $item) {
-            $productId = $item['product_id'];
-            if (!isset($productQuantities[$productId])) {
-                $productQuantities[$productId] = 0;
-            }
-            $productQuantities[$productId] += $item['quantity'];
-        }
-        
-        // Vérifier péremption et stock pour chaque produit
+        $productQuantities = SaleStockService::aggregateQuantitiesByProduct($validated['items']);
+
         foreach ($validated['items'] as $index => $item) {
             $product = Product::find($item['product_id']);
 
@@ -154,16 +149,11 @@ class SaleController extends Controller
             }
         }
 
-        foreach ($productQuantities as $productId => $totalQuantity) {
-            $product = Product::find($productId);
-            if ($product && $product->stock_quantity < $totalQuantity) {
-                foreach ($validated['items'] as $index => $item) {
-                    if ($item['product_id'] == $productId) {
-                        $stockErrors["items.{$index}.quantity"] = $stockMessage;
-                    }
-                }
-            }
-        }
+        $stockErrors = $this->mapStockErrorsToItems(
+            $validated['items'],
+            $this->saleStockService->validateStockAvailability($productQuantities),
+            $stockMessage,
+        );
 
         // Vérifier les doublons de produits
         $productIds = array_column($validated['items'], 'product_id');
@@ -209,48 +199,56 @@ class SaleController extends Controller
             $paymentState['down_payment_amount'],
         );
 
-        $sale = DB::transaction(function () use (
-            $validated,
-            $subtotal,
-            $taxAmount,
-            $discountAmount,
-            $totalAmount,
-            $paymentState,
-            $paymentMethod,
-        ) {
-            $sale = Sale::create([
-                'sale_number' => Sale::generateSaleNumber(),
-                'customer_id' => $validated['customer_id'] ?? null,
-                'user_id' => auth()->id(),
-                'payment_method' => $paymentMethod,
-                'notes' => $validated['notes'] ?? null,
-                'due_date' => $validated['due_date'] ?? null,
-                'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
-                'discount_amount' => $discountAmount,
-                'down_payment_amount' => $paymentState['down_payment_amount'],
-                'remaining_amount' => $paymentState['remaining_amount'],
-                'payment_status' => $paymentState['payment_status'],
-                'total_amount' => $totalAmount,
-                'status' => 'completed',
-            ]);
-
-            foreach ($validated['items'] as $item) {
-                $sale->saleItems()->create([
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'total_price' => $item['quantity'] * $item['unit_price'],
+        try {
+            $sale = DB::transaction(function () use (
+                $validated,
+                $subtotal,
+                $taxAmount,
+                $discountAmount,
+                $totalAmount,
+                $paymentState,
+                $paymentMethod,
+                $productQuantities,
+            ) {
+                $sale = Sale::create([
+                    'sale_number' => Sale::generateSaleNumber(),
+                    'customer_id' => $validated['customer_id'] ?? null,
+                    'user_id' => auth()->id(),
+                    'payment_method' => $paymentMethod,
+                    'notes' => $validated['notes'] ?? null,
+                    'due_date' => $validated['due_date'] ?? null,
+                    'subtotal' => $subtotal,
+                    'tax_amount' => $taxAmount,
+                    'discount_amount' => $discountAmount,
+                    'down_payment_amount' => $paymentState['down_payment_amount'],
+                    'remaining_amount' => $paymentState['remaining_amount'],
+                    'payment_status' => $paymentState['payment_status'],
+                    'total_amount' => $totalAmount,
+                    'status' => 'completed',
                 ]);
 
-                $product = Product::find($item['product_id']);
-                if ($product) {
-                    $product->decrement('stock_quantity', $item['quantity']);
+                foreach ($validated['items'] as $item) {
+                    $sale->saleItems()->create([
+                        'product_id' => $item['product_id'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
+                        'total_price' => $item['quantity'] * $item['unit_price'],
+                    ]);
                 }
-            }
 
-            return $sale;
-        });
+                $this->saleStockService->applySaleCreation($sale, $productQuantities);
+
+                return $sale;
+            });
+        } catch (InsufficientStockException|ProductStockNotFoundException) {
+            return back()->withErrors(
+                $this->mapStockErrorsToItems(
+                    $validated['items'],
+                    $this->saleStockService->validateStockAvailability($productQuantities),
+                    $stockMessage,
+                ),
+            )->withInput();
+        }
 
         ActivityLogger::logCreate('Facture', $sale);
 
@@ -387,13 +385,12 @@ class SaleController extends Controller
             return back()->withErrors($duplicateErrors)->withInput();
         }
 
-        // Vérifier le stock disponible en tenant compte de l'ancienne quantité qui sera restaurée
-        $stockErrors = [];
         $expiredErrors = [];
-        $productQuantities = [];
         $expiredMessage = config('notifications.contextual_messages.product_expired');
         $stockMessage = config('notifications.contextual_messages.insufficient_stock');
-        
+        $oldQuantities = SaleStockService::aggregateFromSaleItems($oldItems);
+        $newQuantities = SaleStockService::aggregateQuantitiesByProduct($validated['items']);
+
         foreach ($validated['items'] as $index => $item) {
             $product = Product::find($item['product_id']);
 
@@ -402,52 +399,15 @@ class SaleController extends Controller
             }
         }
 
-        // Calculer les quantités totales par produit pour les nouveaux items
-        foreach ($validated['items'] as $item) {
-            $productId = $item['product_id'];
-            if (!isset($productQuantities[$productId])) {
-                $productQuantities[$productId] = 0;
-            }
-            $productQuantities[$productId] += $item['quantity'];
-        }
-        
-        // Vérifier le stock pour chaque produit en tenant compte de l'ancienne quantité
-        foreach ($productQuantities as $productId => $totalQuantity) {
-            $product = Product::find($productId);
-            if ($product) {
-                $oldQuantity = 0;
-                foreach ($oldItems as $oldItem) {
-                    if ($oldItem->product_id == $productId) {
-                        $oldQuantity += $oldItem->quantity;
-                    }
-                }
-                
-                $availableStock = $product->stock_quantity + $oldQuantity;
-                
-                if ($availableStock < $totalQuantity) {
-                    foreach ($validated['items'] as $index => $item) {
-                        if ($item['product_id'] == $productId) {
-                            $stockErrors["items.{$index}.quantity"] = $stockMessage;
-                        }
-                    }
-                }
-            }
-        }
+        $stockErrors = $this->mapStockErrorsToItems(
+            $validated['items'],
+            $this->saleStockService->validateStockAvailability($newQuantities, $oldQuantities),
+            $stockMessage,
+        );
 
         if (! empty($expiredErrors) || ! empty($stockErrors)) {
             return back()->withErrors([...$expiredErrors, ...$stockErrors])->withInput();
         }
-
-        // Restaurer le stock des anciens items (ils avaient été déduits lors de la création)
-        foreach ($oldItems as $item) {
-            $product = Product::find($item->product_id);
-            if ($product) {
-                $product->increment('stock_quantity', $item->quantity);
-            }
-        }
-
-        // Supprimer les anciens items
-        $sale->saleItems()->delete();
 
         $subtotal = collect($validated['items'])->sum(function($item) {
             return $item['quantity'] * $item['unit_price'];
@@ -477,44 +437,55 @@ class SaleController extends Controller
             $paymentState['down_payment_amount'],
         );
 
-        DB::transaction(function () use (
-            $sale,
-            $validated,
-            $subtotal,
-            $taxAmount,
-            $discountAmount,
-            $totalAmount,
-            $paymentState,
-            $paymentMethod,
-        ) {
-            $sale->update([
-                'customer_id' => $validated['customer_id'] ?? null,
-                'payment_method' => $paymentMethod,
-                'notes' => $validated['notes'] ?? null,
-                'due_date' => $validated['due_date'] ?? null,
-                'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
-                'discount_amount' => $discountAmount,
-                'down_payment_amount' => $paymentState['down_payment_amount'],
-                'remaining_amount' => $paymentState['remaining_amount'],
-                'payment_status' => $paymentState['payment_status'],
-                'total_amount' => $totalAmount,
-            ]);
+        try {
+            DB::transaction(function () use (
+                $sale,
+                $validated,
+                $subtotal,
+                $taxAmount,
+                $discountAmount,
+                $totalAmount,
+                $paymentState,
+                $paymentMethod,
+                $oldQuantities,
+                $newQuantities,
+            ) {
+                $this->saleStockService->applySaleUpdateDeltas($sale, $oldQuantities, $newQuantities);
 
-            foreach ($validated['items'] as $item) {
-                $sale->saleItems()->create([
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'total_price' => $item['quantity'] * $item['unit_price'],
+                $sale->update([
+                    'customer_id' => $validated['customer_id'] ?? null,
+                    'payment_method' => $paymentMethod,
+                    'notes' => $validated['notes'] ?? null,
+                    'due_date' => $validated['due_date'] ?? null,
+                    'subtotal' => $subtotal,
+                    'tax_amount' => $taxAmount,
+                    'discount_amount' => $discountAmount,
+                    'down_payment_amount' => $paymentState['down_payment_amount'],
+                    'remaining_amount' => $paymentState['remaining_amount'],
+                    'payment_status' => $paymentState['payment_status'],
+                    'total_amount' => $totalAmount,
                 ]);
 
-                $product = Product::find($item['product_id']);
-                if ($product) {
-                    $product->decrement('stock_quantity', $item['quantity']);
+                $sale->saleItems()->delete();
+
+                foreach ($validated['items'] as $item) {
+                    $sale->saleItems()->create([
+                        'product_id' => $item['product_id'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
+                        'total_price' => $item['quantity'] * $item['unit_price'],
+                    ]);
                 }
-            }
-        });
+            });
+        } catch (InsufficientStockException|ProductStockNotFoundException) {
+            return back()->withErrors(
+                $this->mapStockErrorsToItems(
+                    $validated['items'],
+                    $this->saleStockService->validateStockAvailability($newQuantities, $oldQuantities),
+                    $stockMessage,
+                ),
+            )->withInput();
+        }
 
         $sale->refresh();
 
@@ -536,17 +507,15 @@ class SaleController extends Controller
         $this->checkPermission($request, 'sales', 'delete');
         $this->authorizeSaleAccess($request, $sale);
         
-        // Restaurer le stock
-        foreach ($sale->saleItems as $item) {
-            $product = Product::find($item->product_id);
-            if ($product) {
-                $product->increment('stock_quantity', $item->quantity);
-            }
-        }
+        $sale->load('saleItems');
+        $productQuantities = SaleStockService::aggregateFromSaleItems($sale->saleItems);
+
+        DB::transaction(function () use ($sale, $productQuantities) {
+            $this->saleStockService->applySaleCancellation($sale, $productQuantities);
+            $sale->delete();
+        });
 
         ActivityLogger::logCancel('Facture', $sale);
-
-        $sale->delete();
 
         return redirect()->route('sales.index')
             ->with('success', 'Vente supprimée avec succès.');
@@ -613,5 +582,29 @@ class SaleController extends Controller
     private function generateInvoicePdf(Sale $sale)
     {
         return $this->generatePdfFromView('invoices.sale', ['sale' => $sale]);
+    }
+
+    /**
+     * @param  list<array{product_id: int|string, quantity: int|string}>  $items
+     * @param  array<int, string>  $productErrors
+     * @return array<string, string>
+     */
+    protected function mapStockErrorsToItems(array $items, array $productErrors, string $fallbackMessage): array
+    {
+        if ($productErrors === []) {
+            return [];
+        }
+
+        $errors = [];
+
+        foreach ($items as $index => $item) {
+            $productId = (int) $item['product_id'];
+
+            if (isset($productErrors[$productId])) {
+                $errors["items.{$index}.quantity"] = $productErrors[$productId] ?? $fallbackMessage;
+            }
+        }
+
+        return $errors;
     }
 }

@@ -2,15 +2,23 @@
 
 namespace App\Services;
 
+use App\Enums\StockMovementType;
+use App\Models\Company;
 use App\Models\DeliveryNote;
 use App\Models\DeliveryNoteItem;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
+use App\Models\Store;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class PurchaseOrderDeliveryService
 {
+    public function __construct(
+        protected StockService $stockService,
+    ) {}
     /** @var list<string> */
     public const DELIVERED_STATUSES = ['validated'];
 
@@ -258,7 +266,12 @@ class PurchaseOrderDeliveryService
             }
 
             foreach ($lockedNote->items as $item) {
-                $this->applyStockDelta($item->product_id, (int) $item->quantity, (float) $item->unit_price);
+                $this->applyStockDelta(
+                    $item->product_id,
+                    (int) $item->quantity,
+                    (float) $item->unit_price,
+                    $lockedNote,
+                );
             }
 
             $lockedNote->status = 'validated';
@@ -296,7 +309,12 @@ class PurchaseOrderDeliveryService
 
             if ($lockedNote->status === 'validated') {
                 foreach ($lockedNote->items as $item) {
-                    $this->applyStockDelta($item->product_id, -(int) $item->quantity, null);
+                    $this->applyStockDelta(
+                        $item->product_id,
+                        -(int) $item->quantity,
+                        null,
+                        $lockedNote,
+                    );
                 }
             }
 
@@ -367,7 +385,12 @@ class PurchaseOrderDeliveryService
 
                 if ($delta !== 0) {
                     $unitPrice = collect($items)->firstWhere('product_id', $productId)['unit_price'] ?? null;
-                    $this->applyStockDelta($productId, $delta, $unitPrice !== null ? (float) $unitPrice : null);
+                    $this->applyStockDelta(
+                        $productId,
+                        $delta,
+                        $unitPrice !== null ? (float) $unitPrice : null,
+                        $lockedNote,
+                    );
                 }
             }
 
@@ -523,12 +546,17 @@ class PurchaseOrderDeliveryService
             ->all();
     }
 
-    protected function applyStockDelta(int $productId, int $delta, ?float $unitPrice): void
-    {
+    protected function applyStockDelta(
+        int $productId,
+        int $delta,
+        ?float $unitPrice,
+        DeliveryNote $deliveryNote,
+    ): void {
         if ($delta === 0) {
             return;
         }
 
+        $store = $this->resolveMainStore();
         $product = Product::query()->whereKey($productId)->lockForUpdate()->first();
 
         if (! $product) {
@@ -536,16 +564,52 @@ class PurchaseOrderDeliveryService
         }
 
         $oldStock = (int) $product->stock_quantity;
+        $movementType = $delta > 0
+            ? StockMovementType::Purchase
+            : StockMovementType::DeliveryNoteCancel;
 
-        if ($delta > 0) {
-            $product->increment('stock_quantity', $delta);
-        } else {
-            $product->decrement('stock_quantity', abs($delta));
-        }
+        $reason = sprintf(
+            'Bon de livraison %s (%s%d)',
+            $deliveryNote->delivery_number,
+            $delta > 0 ? '+' : '',
+            $delta,
+        );
+
+        $metadata = [];
 
         if ($unitPrice !== null && $unitPrice > 0 && $delta > 0) {
-            $product->cost_price = $unitPrice;
-            $product->save();
+            $metadata['unit_price'] = $unitPrice;
+        }
+
+        if ($delta > 0) {
+            $this->stockService->increase(
+                $product,
+                $store,
+                $delta,
+                $movementType,
+                user: Auth::user(),
+                reason: $reason,
+                reference: $deliveryNote,
+                metadata: $metadata,
+            );
+        } else {
+            $this->stockService->decrease(
+                $product,
+                $store,
+                abs($delta),
+                $movementType,
+                user: Auth::user(),
+                reason: $reason,
+                reference: $deliveryNote,
+                metadata: $metadata,
+            );
+        }
+
+        $mirroredQuantity = $this->stockService->getStock($product, $store);
+        $product->update(['stock_quantity' => $mirroredQuantity]);
+
+        if ($unitPrice !== null && $unitPrice > 0 && $delta > 0) {
+            $product->update(['cost_price' => $unitPrice]);
         }
 
         $product->refresh();
@@ -565,6 +629,24 @@ class PurchaseOrderDeliveryService
             oldValues: ['stock_quantity' => $oldStock],
             newValues: ['stock_quantity' => (int) $product->stock_quantity],
         );
+    }
+
+    protected function resolveMainStore(): Store
+    {
+        $company = Company::getInstance();
+        $store = $company->defaultStore;
+
+        if (! $store) {
+            throw new InvalidArgumentException(
+                'Aucun magasin principal configuré pour l\'entreprise. Impossible d\'appliquer la réception.',
+            );
+        }
+
+        if (! $store->is_active) {
+            throw new InvalidArgumentException('Le magasin principal est inactif.');
+        }
+
+        return $store;
     }
 
     protected function purchaseOrderStatusLabel(string $status): string

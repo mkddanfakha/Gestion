@@ -35,11 +35,11 @@
               <span class="nav-label">Produits</span>
             </Link>
           </li>
-          <li v-if="canView('products') && canUpdate('products')" class="nav-item">
+          <li v-if="canView('inventory')" class="nav-item">
             <Link
-              :href="route('stock-inventory.index')"
+              :href="route('inventory.index')"
               class="nav-link nav-link-pill"
-              :class="{ active: $page.url.startsWith('/stock-inventory') }"
+              :class="{ active: $page.url.startsWith('/inventory') }"
             >
               <span class="nav-icon-wrap nav-icon-wrap--catalog"><i class="bi bi-clipboard-check"></i></span>
               <span class="nav-label">Inventaire</span>
