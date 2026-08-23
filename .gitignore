@@ -36,3 +36,4 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/.cert

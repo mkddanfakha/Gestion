@@ -79,7 +79,7 @@ class CategoryController extends Controller
      */
     public function edit(Request $request, Category $category)
     {
-        $this->checkPermission($request, 'categories', 'edit');
+        $this->checkPermission($request, 'categories', 'update');
         
         return Inertia::render('Categories/Edit', [
             'category' => $category,

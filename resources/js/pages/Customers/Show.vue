@@ -4,7 +4,7 @@
       <CustomerCrmHeader
         :customer="customer"
         :can-create-sale="canCreate('sales')"
-        :can-edit-customer="canAny('customers', ['edit', 'update'])"
+        :can-edit-customer="canUpdate('customers')"
         :can-delete-customer="canDelete('customers')"
         @delete="deleteCustomer"
       />
@@ -85,7 +85,7 @@ interface CustomerShowProps {
 
 const props = defineProps<CustomerShowProps>()
 
-const { canCreate, canAny, canDelete } = usePermissions()
+const { canCreate, canUpdate, canDelete } = usePermissions()
 const { success, error, confirm } = useSweetAlert()
 const summaryRef = ref<InstanceType<typeof CustomerCrmSummary> | null>(null)
 

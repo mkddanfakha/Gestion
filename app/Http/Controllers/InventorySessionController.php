@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\InventoryScopeType;
 use App\Enums\InventorySessionStatus;
+use App\Exports\Inventory\InventorySessionWorkbookExport;
 use App\Http\Requests\CountInventoryItemRequest;
 use App\Http\Requests\ScanInventoryItemRequest;
 use App\Http\Requests\StoreInventorySessionRequest;
@@ -11,32 +12,41 @@ use App\Models\Category;
 use App\Models\Company;
 use App\Models\InventoryItem;
 use App\Models\InventorySession;
+use App\Models\Store;
 use App\Services\InventoryApplicationService;
+use App\Services\InventoryExportService;
 use App\Services\InventorySessionService;
+use App\Traits\GeneratesPdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
- * Workflow inventaire (Phases 4B–4E).
+ * Workflow inventaire (Phases 4B–4E) + historique/exports (Phase 4G-3).
  */
 class InventorySessionController extends Controller
 {
+    use GeneratesPdf;
+
     private const LIST_FILTER_KEYS = [
         'search',
         'status',
         'scope_type',
         'category_id',
+        'store_id',
         'date_from',
         'date_to',
+        'list_view',
     ];
 
     public function __construct(
         private readonly InventorySessionService $inventorySessionService,
         private readonly InventoryApplicationService $inventoryApplicationService,
+        private readonly InventoryExportService $inventoryExportService,
     ) {}
 
     public function index(Request $request): Response
@@ -55,7 +65,7 @@ class InventorySessionController extends Controller
             ])
             ->where('company_id', $company->id);
 
-        $this->applyIndexFilters($query, $request);
+        $this->applyIndexFilters($query, $request, $company->id);
 
         $sessions = $query
             ->latest('created_at')
@@ -67,10 +77,15 @@ class InventorySessionController extends Controller
             'listStats' => $this->inventorySessionService->buildListStats($company->id),
             'hasSessions' => InventorySession::query()->where('company_id', $company->id)->exists(),
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+            'stores' => Store::query()
+                ->where('company_id', $company->id)
+                ->orderBy('name')
+                ->get(['id', 'name']),
             'filters' => $request->only(self::LIST_FILTER_KEYS),
             'permissions' => [
                 'create' => $user->hasPermission('inventory', 'create'),
                 'count' => $user->hasPermission('inventory', 'count'),
+                'export' => $user->hasPermission('inventory', 'export'),
             ],
         ]);
     }
@@ -87,6 +102,33 @@ class InventorySessionController extends Controller
             ),
             'listFilters' => $request->only(self::LIST_FILTER_KEYS),
         ]);
+    }
+
+    public function exportPdf(Request $request, InventorySession $session)
+    {
+        $this->checkPermission($request, 'inventory', 'export');
+        $this->assertSessionAccessible($session);
+        $this->inventoryExportService->assertSessionExportable($session);
+
+        $data = $this->inventoryExportService->buildPdfData($session);
+        $dompdf = $this->generatePdfFromView('exports.inventory-session-pdf', $data);
+        $filename = sprintf('inventaire_%s_%s.pdf', $session->reference, date('Y-m-d_His'));
+
+        return $this->pdfDownloadResponse($dompdf, $filename);
+    }
+
+    public function exportExcel(Request $request, InventorySession $session)
+    {
+        $this->checkPermission($request, 'inventory', 'export');
+        $this->assertSessionAccessible($session);
+        $this->inventoryExportService->assertSessionExportable($session);
+
+        $filename = sprintf('inventaire_%s_%s.xlsx', $session->reference, date('Y-m-d_His'));
+
+        return Excel::download(
+            new InventorySessionWorkbookExport($session, $this->inventoryExportService),
+            $filename,
+        );
     }
 
     public function store(StoreInventorySessionRequest $request): RedirectResponse
@@ -185,7 +227,7 @@ class InventorySessionController extends Controller
 
     public function reopen(Request $request, InventorySession $session): JsonResponse|RedirectResponse
     {
-        $this->checkPermission($request, 'inventory', 'review');
+        $this->checkPermission($request, 'inventory', 'reopen');
         $this->assertSessionAccessible($session);
 
         $session = $this->inventorySessionService->reopen($session, $request->user());
@@ -292,7 +334,7 @@ class InventorySessionController extends Controller
             ->with('success', 'Inventaire clôturé.');
     }
 
-    private function applyIndexFilters(Builder $query, Request $request): void
+    private function applyIndexFilters(Builder $query, Request $request, int $companyId): void
     {
         if ($request->filled('search')) {
             $term = trim((string) $request->input('search'));
@@ -306,6 +348,14 @@ class InventorySessionController extends Controller
                         ->orWhereHas('store', fn (Builder $storeQuery) => $storeQuery->where('name', 'like', "%{$term}%"));
                 });
             }
+        }
+
+        $listView = (string) $request->input('list_view', '');
+
+        if ($listView === 'active') {
+            $query->active();
+        } elseif ($listView === 'history') {
+            $query->history();
         }
 
         if ($request->filled('status')) {
@@ -331,6 +381,14 @@ class InventorySessionController extends Controller
                 $query
                     ->where('scope_type', InventoryScopeType::Category)
                     ->where('scope_value->category_id', $categoryId);
+            }
+        }
+
+        if ($request->filled('store_id')) {
+            $storeId = (int) $request->input('store_id');
+
+            if ($storeId > 0 && Store::query()->where('company_id', $companyId)->whereKey($storeId)->exists()) {
+                $query->where('store_id', $storeId);
             }
         }
 

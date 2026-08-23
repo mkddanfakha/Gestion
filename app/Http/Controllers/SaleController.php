@@ -300,7 +300,7 @@ class SaleController extends Controller
      */
     public function edit(Request $request, Sale $sale)
     {
-        $this->checkPermission($request, 'sales', 'edit');
+        $this->checkPermission($request, 'sales', 'update');
         $this->authorizeSaleAccess($request, $sale);
         
         // Charger les articles séparément

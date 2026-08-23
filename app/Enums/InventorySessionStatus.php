@@ -69,6 +69,25 @@ enum InventorySessionStatus: string
     }
 
     /**
+     * Sessions terminées (historique consultable).
+     *
+     * @return list<self>
+     */
+    public static function historyStatuses(): array
+    {
+        return [
+            self::Applied,
+            self::Closed,
+            self::Cancelled,
+        ];
+    }
+
+    public function isHistory(): bool
+    {
+        return in_array($this, self::historyStatuses(), true);
+    }
+
+    /**
      * @return list<string>
      */
     public static function values(): array

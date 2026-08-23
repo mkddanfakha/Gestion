@@ -6,10 +6,15 @@ import {
   formatInventoryListProgress,
   formatInventorySessionHeaderSubtitle,
   formatInventorySessionTitle,
+  formatInventoryShortDate,
   getInventoryListActionLabel,
   getInventoryScopeLabel,
+  getInventoryListVarianceDisplay,
+  getInventoryScopeBadgeClass,
   getInventoryStatusBadgeClass,
   getInventoryStatusLabel,
+  getInventoryStatusListLabel,
+  resolveInventoryListScopeDisplay,
   mapInventoryNetworkScanError,
   mapInventoryScanError,
   normalizeInventoryDescription,
@@ -34,8 +39,36 @@ const sampleItem = (overrides: Partial<InventoryCountingItem> = {}): InventoryCo
 describe('inventoryUi', () => {
   it('translates inventory statuses for users', () => {
     expect(getInventoryStatusLabel('counting')).toBe('Comptage en cours')
-    expect(getInventoryStatusLabel('review')).toBe('À vérifier')
-    expect(getInventoryStatusBadgeClass('validated')).toBe('bg-success')
+    expect(getInventoryStatusListLabel('counting')).toBe('Comptage')
+    expect(getInventoryStatusListLabel('review')).toBe('Révision')
+    expect(getInventoryStatusListLabel('cancelled')).toBe('Annulé')
+    expect(getInventoryStatusBadgeClass('validated')).toBe('inventory-list-badge--status-validated')
+    expect(getInventoryStatusBadgeClass('cancelled')).toBe('inventory-list-badge--status-cancelled')
+  })
+
+  it('maps scope and variance presentation for the list table', () => {
+    expect(getInventoryScopeBadgeClass('complete')).toBe('inventory-list-badge--scope-complete')
+    expect(getInventoryScopeBadgeClass('category')).toBe('inventory-list-badge--scope-category')
+
+    expect(resolveInventoryListScopeDisplay('category', { category_id: 7 }, [{ id: 7, name: 'Riz' }])).toEqual({
+      label: 'Catégorie',
+      badgeClass: 'inventory-list-badge--scope-category',
+      categoryName: 'Riz',
+    })
+
+    expect(getInventoryListVarianceDisplay({ status: 'counting', application_summary: { net_adjustment: 3 } })).toBeNull()
+    expect(getInventoryListVarianceDisplay({ status: 'closed', application_summary: { net_adjustment: 0 } })).toEqual({
+      label: 'Conforme',
+      badgeClass: 'inventory-variance-badge inventory-variance-badge--conforme',
+    })
+    expect(getInventoryListVarianceDisplay({ status: 'applied', application_summary: { net_adjustment: 4 } })).toEqual({
+      label: 'Écart net +4',
+      badgeClass: 'inventory-variance-badge inventory-variance-badge--surplus',
+    })
+    expect(getInventoryListVarianceDisplay({ status: 'applied', application_summary: { net_adjustment: -2 } })).toEqual({
+      label: 'Écart net -2',
+      badgeClass: 'inventory-variance-badge inventory-variance-badge--manque',
+    })
   })
 
   it('formats list progress and scope labels', () => {
@@ -81,6 +114,14 @@ describe('inventoryUi', () => {
     expect(normalizeInventoryDescription('  Contrôle mensuel  ')).toBe('Contrôle mensuel')
     expect(normalizeInventoryDescription('')).toBeNull()
     expect(normalizeInventoryDescription(null)).toBeNull()
+  })
+
+  it('formats inventory short dates for display', () => {
+    expect(formatInventoryShortDate('2026-08-22T14:30:00+02:00')).toBe('22/08/2026')
+    expect(formatInventoryShortDate('2026-08-22T14:30:00')).toMatch(/22\/08\/2026/)
+    expect(formatInventoryShortDate(null)).toBe('—')
+    expect(formatInventoryShortDate(undefined)).toBe('—')
+    expect(formatInventoryShortDate('not-a-date')).toBe('—')
   })
 
   it('formats inventory session header title and subtitle without undefined fallbacks', () => {

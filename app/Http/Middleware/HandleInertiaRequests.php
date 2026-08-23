@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Repositories\NotificationRepository;
+use App\Auth\AuthorizationService;
 use App\Modules\NotificationCenter\Services\NotificationSettingsService;
 use App\Services\Notifications\NotificationAudienceResolver;
 use Illuminate\Foundation\Inspiring;
@@ -197,9 +198,7 @@ class HandleInertiaRequests extends Middleware
                         'email_verified_at' => $user->email_verified_at?->toIso8601String(), // Inclure la date de vérification
                         'role' => $user->role ?? 'user', // Toujours définir un rôle par défaut
                         'is_active' => $user->is_active ?? true, // Statut actif/inactif
-                        'permissions' => $user->isAdmin() 
-                            ? [] // Les admins ont toutes les permissions, pas besoin de les lister
-                            : $user->getPermissionsArray(), // Liste des permissions pour les autres utilisateurs
+                        'permissions' => app(AuthorizationService::class)->forUser($user),
                     ];
                 })() : null,
             ],

@@ -219,7 +219,7 @@
                       <i class="bi bi-eye"></i>
                     </Link>
                     <Link
-                      v-if="canEdit('products')"
+                      v-if="canUpdate('products')"
                       :href="route('products.edit', { id: product.id })"
                       class="btn btn-sm btn-outline-secondary"
                       title="Modifier"
@@ -266,7 +266,7 @@ import { useSweetAlert } from '@/composables/useSweetAlert'
 import { usePermissions } from '@/composables/usePermissions'
 import BarcodeInput from '@/components/BarcodeInput.vue'
 
-const { canCreate, canEdit, canDelete } = usePermissions()
+const { canCreate, canUpdate, canDelete } = usePermissions()
 
 interface Product {
   id: number

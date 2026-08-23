@@ -17,6 +17,7 @@ use App\Http\Controllers\FormDraftController;
 use App\Http\Controllers\DocumentPreviewController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\RolesPermissionsController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
@@ -48,6 +49,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/inventory', [InventorySessionController::class, 'index'])->name('inventory.index');
     Route::get('/inventory/{session}', [InventorySessionController::class, 'show'])->name('inventory.show');
+    Route::get('/inventory/{session}/export/pdf', [InventorySessionController::class, 'exportPdf'])->name('inventory.export.pdf');
+    Route::get('/inventory/{session}/export/excel', [InventorySessionController::class, 'exportExcel'])->name('inventory.export.excel');
     Route::post('/inventory', [InventorySessionController::class, 'store'])->name('inventory.store');
     Route::post('/inventory/{session}/start', [InventorySessionController::class, 'start'])->name('inventory.start');
     Route::post('/inventory/{session}/scan', [InventorySessionController::class, 'scan'])->name('inventory.scan');
@@ -118,7 +121,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/delivery-notes/create/from-purchase-order', [DeliveryNoteController::class, 'selectPurchaseOrder'])
         ->name('delivery-notes.create-from-purchase-order');
     Route::post('/delivery-notes/{deliveryNote}/validate', [DeliveryNoteController::class, 'validate'])
-        ->middleware(EnsureUserIsAdmin::class)
         ->name('delivery-notes.validate');
     Route::post('/delivery-notes/{deliveryNote}/cancel', [DeliveryNoteController::class, 'cancel'])
         ->name('delivery-notes.cancel');
@@ -142,6 +144,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Administration - Routes protégées par le middleware admin
     Route::middleware([EnsureUserIsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
         Route::resource('users', UserController::class);
+        Route::get('/roles-permissions', [RolesPermissionsController::class, 'index'])
+            ->name('roles-permissions.index');
         Route::resource('backups', \App\Http\Controllers\Admin\BackupController::class)->only(['index', 'store', 'destroy']);
         Route::get('/backups/{backup}/download', [\App\Http\Controllers\Admin\BackupController::class, 'download'])->name('backups.download');
         Route::post('/backups/{backup}/restore', [\App\Http\Controllers\Admin\BackupController::class, 'restore'])->name('backups.restore');
@@ -153,7 +157,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 if (app()->environment('local')) {
-    Route::middleware(['auth', 'verified'])->group(function () {
+    Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])->group(function () {
         Route::get('/dev/barcode-reader-test', function () {
             return Inertia::render('dev/BarcodeReaderTest');
         })->name('dev.barcode-reader-test');

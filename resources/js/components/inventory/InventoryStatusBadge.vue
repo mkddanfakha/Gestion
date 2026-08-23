@@ -1,22 +1,26 @@
 <template>
-  <span class="badge inventory-status-badge" :class="badgeClass">{{ label }}</span>
+  <span class="badge inventory-list-badge inventory-status-badge" :class="badgeClass">{{ label }}</span>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getInventoryStatusBadgeClass, getInventoryStatusLabel } from '@/utils/inventoryUi'
+import {
+  getInventoryStatusBadgeClass,
+  getInventoryStatusLabel,
+  getInventoryStatusListLabel,
+} from '@/utils/inventoryUi'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   status: string
-}>()
+  compact?: boolean
+}>(), {
+  compact: false,
+})
 
-const label = computed(() => getInventoryStatusLabel(props.status))
+const label = computed(() => (
+  props.compact
+    ? getInventoryStatusListLabel(props.status)
+    : getInventoryStatusLabel(props.status)
+))
 const badgeClass = computed(() => getInventoryStatusBadgeClass(props.status))
 </script>
-
-<style scoped>
-.inventory-status-badge {
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-</style>

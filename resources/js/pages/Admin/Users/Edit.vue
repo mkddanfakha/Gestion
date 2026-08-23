@@ -92,6 +92,7 @@
                     required
                     class="form-select"
                     :class="{ 'is-invalid': errors.role || clientErrors.role }"
+                    :disabled="isLastActiveAdmin"
                     @change="onRoleChange"
                   >
                     <option value="user">Utilisateur</option>
@@ -101,7 +102,10 @@
                   </select>
                   <div v-if="errors.role" class="invalid-feedback">{{ errors.role }}</div>
                   <div v-if="clientErrors.role" class="invalid-feedback">{{ clientErrors.role }}</div>
-                  <small class="form-text text-muted">
+                  <small v-if="isLastActiveAdmin" class="form-text text-warning">
+                    MKD-Pro doit conserver au moins un administrateur. Le rôle ne peut pas être modifié.
+                  </small>
+                  <small v-else class="form-text text-muted">
                     Les administrateurs ont automatiquement toutes les permissions.
                   </small>
                 </div>
@@ -114,6 +118,7 @@
                       class="form-check-input"
                       type="checkbox"
                       id="is_active"
+                      :disabled="isLastActiveAdmin"
                       :class="{ 'is-invalid': errors.is_active || clientErrors.is_active }"
                     />
                     <label class="form-check-label" for="is_active">
@@ -122,7 +127,10 @@
                   </div>
                   <div v-if="errors.is_active" class="invalid-feedback">{{ errors.is_active }}</div>
                   <div v-if="clientErrors.is_active" class="invalid-feedback">{{ clientErrors.is_active }}</div>
-                  <small class="form-text text-muted">
+                  <small v-if="isLastActiveAdmin" class="form-text text-warning">
+                    Le dernier administrateur ne peut pas être désactivé.
+                  </small>
+                  <small v-else class="form-text text-muted">
                     Les utilisateurs inactifs ne peuvent pas se connecter.
                   </small>
                 </div>
@@ -133,49 +141,21 @@
           <!-- Permissions (seulement pour les utilisateurs non-admin) -->
           <div v-if="form.role !== 'admin'" class="card mb-4">
             <div class="card-header">
-              <h5 class="card-title mb-0">Permissions</h5>
-              <small class="text-muted">Sélectionnez les permissions pour cet utilisateur</small>
+              <h5 class="card-title mb-0">
+                {{ form.role === 'user' ? 'Permissions personnalisées' : 'Permissions' }}
+              </h5>
+              <small class="text-muted">
+                <template v-if="form.role === 'user'">Sélectionnez les permissions personnalisées</template>
+                <template v-else>Aperçu du preset « {{ form.role }} » (appliqué à l’enregistrement côté serveur)</template>
+              </small>
             </div>
             <div class="card-body">
-              <div v-for="(permissions, resource) in permissionsByResource" :key="resource" class="mb-4">
-                <h6 class="mb-3 text-capitalize">{{ getResourceLabel(resource) }}</h6>
-                <div class="row g-2">
-                  <div v-for="permission in permissions" :key="permission.id" class="col-md-6 col-lg-4">
-                    <div class="form-check">
-                      <input
-                        :id="`permission-${permission.id}`"
-                        v-model="form.permissions"
-                        type="checkbox"
-                        :value="permission.id"
-                        class="form-check-input"
-                      />
-                      <label :for="`permission-${permission.id}`" class="form-check-label">
-                        <strong>{{ getActionLabel(permission.action) }}</strong>
-                        <br />
-                        <small class="text-muted">{{ permission.description }}</small>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                <hr v-if="Object.keys(permissionsByResource).indexOf(resource) < Object.keys(permissionsByResource).length - 1" class="my-3" />
-              </div>
-              
-              <div class="mt-3">
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-primary me-2"
-                  @click="selectAll"
-                >
-                  Tout sélectionner
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-secondary"
-                  @click="deselectAll"
-                >
-                  Tout désélectionner
-                </button>
-              </div>
+              <RbacPermissionPicker
+                v-model="form.permissions"
+                :permissions="flatCanonicalPermissions"
+                :module-labels="moduleLabels"
+                :disabled="form.role === 'vendeur' || form.role === 'gestionnaire' || isLastActiveAdmin"
+              />
             </div>
           </div>
 
@@ -204,13 +184,90 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import AppLayout from '@/layouts/BootstrapLayout.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
+import RbacPermissionPicker from '@/components/rbac/RbacPermissionPicker.vue'
+import {
+  filterCanonicalPermissionGrid,
+  permissionActionLabel,
+} from '@/utils/rbacPermissions'
+import { DEFAULT_MODULE_LABELS, type RbacPermission } from '@/utils/rbacUi'
 
 const { success, error } = useSweetAlert()
+
+/** Aligné RolePresets PHP (vendeur) — aperçu UI uniquement. */
+const VENDEUR_PRESET_NAMES = [
+  'dashboard.view',
+  'sales.view',
+  'sales.create',
+  'sales.update',
+  'sales.delete',
+  'sales.invoice',
+  'quotes.view',
+  'quotes.create',
+  'quotes.update',
+  'quotes.delete',
+  'quotes.download',
+  'quotes.print',
+  'products.view',
+  'customers.view',
+  'customers.create',
+  'customers.update',
+]
+
+/** Aligné RolePresets PHP (gestionnaire) — pas de sales.*. */
+const GESTIONNAIRE_PRESET_NAMES = [
+  'dashboard.view',
+  'products.view',
+  'products.create',
+  'products.update',
+  'products.delete',
+  'categories.view',
+  'categories.create',
+  'categories.update',
+  'categories.delete',
+  'quotes.view',
+  'quotes.create',
+  'quotes.update',
+  'quotes.delete',
+  'quotes.download',
+  'quotes.print',
+  'expenses.view',
+  'expenses.create',
+  'expenses.update',
+  'expenses.delete',
+  'suppliers.view',
+  'suppliers.create',
+  'suppliers.update',
+  'suppliers.delete',
+  'suppliers.export',
+  'purchase-orders.view',
+  'purchase-orders.create',
+  'purchase-orders.update',
+  'purchase-orders.delete',
+  'purchase-orders.download',
+  'purchase-orders.print',
+  'delivery-notes.view',
+  'delivery-notes.create',
+  'delivery-notes.update',
+  'delivery-notes.delete',
+  'delivery-notes.validate',
+  'delivery-notes.download',
+  'delivery-notes.print',
+  'inventory.view',
+  'inventory.create',
+  'inventory.count',
+  'inventory.submit',
+  'inventory.reopen',
+  'inventory.validate',
+  'inventory.apply',
+  'inventory.cancel',
+  'inventory.close',
+  'inventory.export',
+]
 
 interface Permission {
   id: number
@@ -229,9 +286,37 @@ interface Props {
   }
   permissionsByResource: Record<string, Permission[]>
   userPermissionIds: number[]
+  isLastActiveAdmin?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  isLastActiveAdmin: false,
+})
+
+const isLastActiveAdmin = computed(() => props.isLastActiveAdmin)
+
+const canonicalPermissionsByResource = computed(() =>
+  filterCanonicalPermissionGrid(props.permissionsByResource),
+)
+
+const moduleLabels = DEFAULT_MODULE_LABELS
+
+const flatCanonicalPermissions = computed<RbacPermission[]>(() => {
+  const items: RbacPermission[] = []
+  for (const [module, permissions] of Object.entries(canonicalPermissionsByResource.value)) {
+    for (const permission of permissions) {
+      items.push({
+        id: permission.id,
+        name: permission.name,
+        module,
+        action: permission.action,
+        label: permissionActionLabel(permission.action),
+        description: permission.description ?? undefined,
+      })
+    }
+  }
+  return items
+})
 
 const clientErrors = ref<Record<string, string>>({})
 
@@ -271,160 +356,26 @@ const form = useForm({
   permissions: [...props.userPermissionIds],
 })
 
-const getResourceLabel = (resource: string): string => {
-  const labels: Record<string, string> = {
-    'products': 'Produits',
-    'categories': 'Catégories',
-    'customers': 'Clients',
-    'sales': 'Ventes',
-    'quotes': 'Devis',
-    'expenses': 'Dépenses',
-    'suppliers': 'Fournisseurs',
-    'purchase-orders': 'Bons de commande',
-    'delivery-notes': 'Bons de livraison',
-    'company': 'Entreprise',
-    'dashboard': 'Tableau de bord',
-  }
-  return labels[resource] || resource
-}
-
-const getActionLabel = (action: string): string => {
-  const labels: Record<string, string> = {
-    'view': 'Voir',
-    'create': 'Créer',
-    'edit': 'Modifier',
-    'update': 'Mettre à jour',
-    'delete': 'Supprimer',
-    'export': 'Exporter',
-    'invoice': 'Factures',
-    'download': 'Télécharger',
-    'print': 'Imprimer',
-    'validate': 'Valider',
-  }
-  return labels[action] || action
+const idsForNames = (names: string[]): number[] => {
+  const ids: number[] = []
+  Object.values(props.permissionsByResource).forEach((permissions) => {
+    permissions.forEach((permission) => {
+      if (names.includes(permission.name)) {
+        ids.push(permission.id)
+      }
+    })
+  })
+  return ids
 }
 
 const onRoleChange = () => {
   if (form.role === 'admin') {
-    // Si l'utilisateur devient admin, vider les permissions
     form.permissions = []
   } else if (form.role === 'vendeur') {
-    // Assigner automatiquement les permissions du vendeur
-    const vendeurPermissionNames = [
-      // Permissions pour les ventes
-      'sales.create',
-      'sales.edit',
-      'sales.update',
-      'sales.delete',
-      'sales.view',
-      'sales.invoice', // Télécharger/Imprimer les factures
-      // Permissions pour les devis (toutes les permissions)
-      'quotes.create',
-      'quotes.edit',
-      'quotes.update',
-      'quotes.delete',
-      'quotes.view',
-      'quotes.download',
-      'quotes.print',
-      // Permissions pour les produits (lecture seule)
-      'products.view',
-      // Permissions pour les clients
-      'customers.view',
-      'customers.create',
-      'customers.edit',
-      'customers.update',
-    ]
-    
-    const vendeurPermissionIds: number[] = []
-    Object.values(props.permissionsByResource).forEach(permissions => {
-      permissions.forEach(permission => {
-        if (vendeurPermissionNames.includes(permission.name)) {
-          vendeurPermissionIds.push(permission.id)
-        }
-      })
-    })
-    form.permissions = vendeurPermissionIds
+    form.permissions = idsForNames(VENDEUR_PRESET_NAMES)
   } else if (form.role === 'gestionnaire') {
-    // Assigner automatiquement les permissions du gestionnaire
-    const gestionnairePermissionNames = [
-      // Permissions pour le dashboard
-      'dashboard.view',
-      // Permissions pour les produits (toutes les permissions)
-      'products.view',
-      'products.create',
-      'products.edit',
-      'products.update',
-      'products.delete',
-      // Permissions pour les catégories (toutes les permissions)
-      'categories.view',
-      'categories.create',
-      'categories.edit',
-      'categories.update',
-      'categories.delete',
-      // Permissions pour les devis (toutes les permissions)
-      'quotes.view',
-      'quotes.create',
-      'quotes.edit',
-      'quotes.update',
-      'quotes.delete',
-      'quotes.download',
-      'quotes.print',
-      // Permissions pour les dépenses (toutes les permissions)
-      'expenses.view',
-      'expenses.create',
-      'expenses.edit',
-      'expenses.update',
-      'expenses.delete',
-      // Permissions pour les fournisseurs (toutes les permissions)
-      'suppliers.view',
-      'suppliers.create',
-      'suppliers.edit',
-      'suppliers.update',
-      'suppliers.delete',
-      'suppliers.export',
-      // Permissions pour les bons de commande (toutes les permissions)
-      'purchase-orders.view',
-      'purchase-orders.create',
-      'purchase-orders.edit',
-      'purchase-orders.update',
-      'purchase-orders.delete',
-      'purchase-orders.download',
-      'purchase-orders.print',
-      // Permissions pour les bons de livraison (toutes les permissions)
-      'delivery-notes.view',
-      'delivery-notes.create',
-      'delivery-notes.edit',
-      'delivery-notes.update',
-      'delivery-notes.delete',
-      'delivery-notes.validate',
-      'delivery-notes.download',
-      'delivery-notes.print',
-    ]
-    
-    const gestionnairePermissionIds: number[] = []
-    Object.values(props.permissionsByResource).forEach(permissions => {
-      permissions.forEach(permission => {
-        if (gestionnairePermissionNames.includes(permission.name)) {
-          gestionnairePermissionIds.push(permission.id)
-        }
-      })
-    })
-    form.permissions = gestionnairePermissionIds
+    form.permissions = idsForNames(GESTIONNAIRE_PRESET_NAMES)
   }
-}
-
-const selectAll = () => {
-  const allPermissionIds: number[] = []
-  Object.values(props.permissionsByResource).forEach(permissions => {
-    permissions.forEach(permission => {
-      allPermissionIds.push(permission.id)
-    })
-  })
-  form.permissions = allPermissionIds
-}
-
-const deselectAll = () => {
-  form.permissions = []
 }
 
 const submit = () => {

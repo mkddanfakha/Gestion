@@ -2,128 +2,62 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Auth\AdminProtectionService;
+use App\Auth\AssignablePermissionResolver;
+use App\Auth\AuthorizationService;
+use App\Auth\LastAdminProtectionException;
+use App\Auth\RbacAuditService;
+use App\Auth\RolePresets;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Permission;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 
 class UserController extends Controller
 {
-    /**
-     * Obtenir les IDs des permissions pour le rôle vendeur
-     */
-    private function getVendeurPermissionIds(): array
-    {
-        $permissionNames = [
-            // Permissions pour les ventes
-            'sales.create',
-            'sales.edit',
-            'sales.update',
-            'sales.delete',
-            'sales.view',
-            'sales.invoice', // Télécharger/Imprimer les factures
-            // Permissions pour les devis (toutes les permissions)
-            'quotes.create',
-            'quotes.edit',
-            'quotes.update',
-            'quotes.delete',
-            'quotes.view',
-            'quotes.download',
-            'quotes.print',
-            // Permissions pour les produits (lecture seule)
-            'products.view',
-            // Permissions pour les clients
-            'customers.view',
-            'customers.create',
-            'customers.edit',
-            'customers.update',
-        ];
-
-        return Permission::whereIn('name', $permissionNames)
-            ->pluck('id')
-            ->toArray();
-    }
-
-    /**
-     * Obtenir les IDs des permissions pour le rôle gestionnaire
-     */
-    private function getGestionnairePermissionIds(): array
-    {
-        $permissionNames = [
-            // Permissions pour le dashboard
-            'dashboard.view',
-            // Permissions pour les produits (toutes les permissions)
-            'products.view',
-            'products.create',
-            'products.edit',
-            'products.update',
-            'products.delete',
-            // Permissions pour les catégories (toutes les permissions)
-            'categories.view',
-            'categories.create',
-            'categories.edit',
-            'categories.update',
-            'categories.delete',
-            // Permissions pour les devis (toutes les permissions)
-            'quotes.view',
-            'quotes.create',
-            'quotes.edit',
-            'quotes.update',
-            'quotes.delete',
-            'quotes.download',
-            'quotes.print',
-            // Permissions pour les dépenses (toutes les permissions)
-            'expenses.view',
-            'expenses.create',
-            'expenses.edit',
-            'expenses.update',
-            'expenses.delete',
-            // Permissions pour les fournisseurs (toutes les permissions)
-            'suppliers.view',
-            'suppliers.create',
-            'suppliers.edit',
-            'suppliers.update',
-            'suppliers.delete',
-            'suppliers.export',
-            // Permissions pour les bons de commande (toutes les permissions)
-            'purchase-orders.view',
-            'purchase-orders.create',
-            'purchase-orders.edit',
-            'purchase-orders.update',
-            'purchase-orders.delete',
-            'purchase-orders.download',
-            'purchase-orders.print',
-            // Permissions pour les bons de livraison (toutes les permissions)
-            'delivery-notes.view',
-            'delivery-notes.create',
-            'delivery-notes.edit',
-            'delivery-notes.update',
-            'delivery-notes.delete',
-            'delivery-notes.validate',
-            'delivery-notes.download',
-            'delivery-notes.print',
-        ];
-
-        return Permission::whereIn('name', $permissionNames)
-            ->pluck('id')
-            ->toArray();
-    }
+    public function __construct(
+        private readonly AdminProtectionService $adminProtection,
+        private readonly AuthorizationService $authorization,
+        private readonly RbacAuditService $rbacAudit,
+    ) {}
 
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('permissions')
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        $usersQuery = User::with('permissions')
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('role') && in_array($request->string('role')->toString(), [
+            User::ROLE_ADMIN,
+            User::ROLE_VENDEUR,
+            User::ROLE_GESTIONNAIRE,
+            User::ROLE_USER,
+        ], true)) {
+            $usersQuery->where('role', $request->string('role')->toString());
+        }
+
+        $users = $usersQuery->paginate(15)->withQueryString();
+
+        $lastAdminId = null;
+        if ($this->adminProtection->countActiveAdmins() === 1) {
+            $lastAdminId = User::query()
+                ->where('role', User::ROLE_ADMIN)
+                ->where('is_active', true)
+                ->value('id');
+        }
 
         return Inertia::render('Admin/Users/Index', [
             'users' => $users,
+            'lastActiveAdminId' => $lastAdminId,
+            'filters' => [
+                'role' => $request->string('role')->toString() ?: null,
+            ],
         ]);
     }
 
@@ -132,21 +66,8 @@ class UserController extends Controller
      */
     public function create()
     {
-        // Récupérer toutes les permissions disponibles, groupées par ressource
-        $allPermissions = Permission::orderBy('resource')->orderBy('action')->get();
-        $permissionsByResource = $allPermissions->groupBy('resource');
-        
         return Inertia::render('Admin/Users/Create', [
-            'permissionsByResource' => $permissionsByResource->map(function ($permissions) {
-                return $permissions->map(function ($permission) {
-                    return [
-                        'id' => $permission->id,
-                        'name' => $permission->name,
-                        'action' => $permission->action,
-                        'description' => $permission->description,
-                    ];
-                });
-            }),
+            'permissionsByResource' => AssignablePermissionResolver::adminGridByResource(),
         ]);
     }
 
@@ -165,32 +86,54 @@ class UserController extends Controller
             'permissions.*' => 'exists:permissions,id',
         ]);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role' => $validated['role'],
-            'is_active' => $validated['is_active'] ?? true,
-        ]);
+        $actor = $request->user();
 
-        // Attacher les permissions selon le rôle
-        if ($user->role === 'admin') {
-            // Les admins ont toutes les permissions par défaut, pas besoin d'en assigner
-            $user->permissions()->sync([]);
-        } elseif ($user->role === 'vendeur') {
-            // Assigner automatiquement les permissions du vendeur
-            $vendeurPermissionIds = $this->getVendeurPermissionIds();
-            $user->permissions()->sync($vendeurPermissionIds);
-        } elseif ($user->role === 'gestionnaire') {
-            // Assigner automatiquement les permissions du gestionnaire
-            $gestionnairePermissionIds = $this->getGestionnairePermissionIds();
-            $user->permissions()->sync($gestionnairePermissionIds);
-        } elseif (isset($validated['permissions'])) {
-            // Pour les autres rôles, utiliser les permissions fournies
-            $user->permissions()->attach($validated['permissions']);
-        }
+        DB::transaction(function () use ($validated, $actor) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'role' => $validated['role'],
+                'is_active' => $validated['is_active'] ?? true,
+            ]);
 
-        ActivityLogger::logCreate('Utilisateur', $user);
+            $permissionsBefore = [];
+
+            if ($user->role === 'admin') {
+                $user->permissions()->sync([]);
+            } elseif ($user->role === User::ROLE_VENDEUR) {
+                $user->permissions()->sync(RolePresets::permissionIds(User::ROLE_VENDEUR));
+            } elseif ($user->role === User::ROLE_GESTIONNAIRE) {
+                $user->permissions()->sync(RolePresets::permissionIds(User::ROLE_GESTIONNAIRE));
+            } elseif (isset($validated['permissions'])) {
+                $user->permissions()->attach(
+                    AssignablePermissionResolver::canonicalizeIds($validated['permissions'])
+                );
+            }
+
+            $this->authorization->forgetCachedPermissions($user);
+
+            $permissionsAfter = $this->rbacAudit->currentPermissionNames($user);
+
+            ActivityLogger::logCreate('Utilisateur', $user);
+
+            $this->rbacAudit->recordUserMutation(
+                target: $user,
+                oldRole: $user->role,
+                newRole: $user->role,
+                oldActive: (bool) $user->is_active,
+                newActive: (bool) $user->is_active,
+                permissionsBefore: $permissionsBefore,
+                permissionsAfter: $permissionsAfter,
+                roleChanged: false,
+                presetSynced: in_array($user->role, [
+                    User::ROLE_ADMIN,
+                    User::ROLE_VENDEUR,
+                    User::ROLE_GESTIONNAIRE,
+                ], true),
+                actor: $actor,
+            );
+        });
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Utilisateur créé avec succès.');
@@ -212,27 +155,16 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $user->load('permissions');
-        
-        // Récupérer toutes les permissions disponibles, groupées par ressource
-        $allPermissions = Permission::orderBy('resource')->orderBy('action')->get();
-        $permissionsByResource = $allPermissions->groupBy('resource');
-        
-        // Récupérer les IDs des permissions de l'utilisateur
-        $userPermissionIds = $user->permissions->pluck('id')->toArray();
-        
+
+        $userPermissionIds = AssignablePermissionResolver::canonicalizeIds(
+            $user->permissions->pluck('id')->all()
+        );
+
         return Inertia::render('Admin/Users/Edit', [
             'user' => $user,
-            'permissionsByResource' => $permissionsByResource->map(function ($permissions) {
-                return $permissions->map(function ($permission) {
-                    return [
-                        'id' => $permission->id,
-                        'name' => $permission->name,
-                        'action' => $permission->action,
-                        'description' => $permission->description,
-                    ];
-                });
-            }),
+            'permissionsByResource' => AssignablePermissionResolver::adminGridByResource(),
             'userPermissionIds' => $userPermissionIds,
+            'isLastActiveAdmin' => $this->adminProtection->isLastAdmin($user),
         ]);
     }
 
@@ -243,7 +175,7 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
             'role' => 'required|string|in:admin,user,vendeur,gestionnaire',
             'is_active' => 'boolean',
@@ -251,38 +183,76 @@ class UserController extends Controller
             'permissions.*' => 'exists:permissions,id',
         ]);
 
-        $user->name = $validated['name'];
-        $user->email = $validated['email'];
-        $user->role = $validated['role'];
-        $user->is_active = $validated['is_active'] ?? true;
+        $actor = $request->user();
 
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
+        try {
+            $this->adminProtection->withAdminLock($user, function (User $lockedUser) use ($validated, $actor): void {
+                $newRole = $validated['role'];
+                $willBeActive = (bool) ($validated['is_active'] ?? true);
+
+                $this->adminProtection->guardChangeRole($lockedUser, $newRole);
+                $this->adminProtection->guardDeactivate($lockedUser, $willBeActive);
+
+                $oldRole = $lockedUser->role;
+                $oldActive = (bool) $lockedUser->is_active;
+                $permissionsBefore = $this->rbacAudit->currentPermissionNames($lockedUser);
+                $roleChanged = $oldRole !== $newRole;
+                $presetSynced = in_array($newRole, [
+                    User::ROLE_ADMIN,
+                    User::ROLE_VENDEUR,
+                    User::ROLE_GESTIONNAIRE,
+                ], true);
+
+                $lockedUser->name = $validated['name'];
+                $lockedUser->email = $validated['email'];
+                $lockedUser->role = $newRole;
+                $lockedUser->is_active = $willBeActive;
+
+                if (! empty($validated['password'])) {
+                    $lockedUser->password = Hash::make($validated['password']);
+                }
+
+                $lockedUser->save();
+
+                if ($lockedUser->role === 'admin') {
+                    $lockedUser->permissions()->sync([]);
+                } elseif ($lockedUser->role === User::ROLE_VENDEUR) {
+                    $lockedUser->permissions()->sync(RolePresets::permissionIds(User::ROLE_VENDEUR));
+                } elseif ($lockedUser->role === User::ROLE_GESTIONNAIRE) {
+                    $lockedUser->permissions()->sync(RolePresets::permissionIds(User::ROLE_GESTIONNAIRE));
+                } elseif (isset($validated['permissions'])) {
+                    $lockedUser->permissions()->sync(
+                        AssignablePermissionResolver::canonicalizeIds($validated['permissions'])
+                    );
+                    $presetSynced = false;
+                } else {
+                    $lockedUser->permissions()->sync([]);
+                    $presetSynced = false;
+                }
+
+                $this->authorization->forgetCachedPermissions($lockedUser);
+
+                $permissionsAfter = $this->rbacAudit->currentPermissionNames($lockedUser);
+
+                ActivityLogger::logUpdate('Utilisateur', $lockedUser);
+
+                $this->rbacAudit->recordUserMutation(
+                    target: $lockedUser,
+                    oldRole: $oldRole,
+                    newRole: $newRole,
+                    oldActive: $oldActive,
+                    newActive: $willBeActive,
+                    permissionsBefore: $permissionsBefore,
+                    permissionsAfter: $permissionsAfter,
+                    roleChanged: $roleChanged,
+                    presetSynced: $presetSynced && ! $roleChanged,
+                    actor: $actor,
+                );
+            });
+        } catch (LastAdminProtectionException $e) {
+            $this->rbacAudit->recordLastAdminChangeDenied($e->target, $e->operation, $actor);
+            abort(403, $e->getMessage());
         }
-
-        $user->save();
-
-        // Synchroniser les permissions selon le rôle
-        if ($user->role === 'admin') {
-            // Les admins ont toutes les permissions par défaut, pas besoin d'en assigner
-            $user->permissions()->sync([]);
-        } elseif ($user->role === 'vendeur') {
-            // Assigner automatiquement les permissions du vendeur
-            $vendeurPermissionIds = $this->getVendeurPermissionIds();
-            $user->permissions()->sync($vendeurPermissionIds);
-        } elseif ($user->role === 'gestionnaire') {
-            // Assigner automatiquement les permissions du gestionnaire
-            $gestionnairePermissionIds = $this->getGestionnairePermissionIds();
-            $user->permissions()->sync($gestionnairePermissionIds);
-        } elseif (isset($validated['permissions'])) {
-            // Pour les autres rôles, utiliser les permissions fournies
-            $user->permissions()->sync($validated['permissions']);
-        } else {
-            // Si aucun rôle spécial et pas de permissions fournies, supprimer toutes les permissions
-            $user->permissions()->sync([]);
-        }
-
-        ActivityLogger::logUpdate('Utilisateur', $user);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Utilisateur mis à jour avec succès.');
@@ -294,34 +264,50 @@ class UserController extends Controller
     public function destroy(Request $request, User $user)
     {
         $currentUser = $request->user();
-        
-        // Vérifier que l'utilisateur actuel est administrateur
-        if (!$currentUser || !$currentUser->isAdmin()) {
+
+        if (! $currentUser || ! $currentUser->isAdmin()) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Accès refusé. Seuls les administrateurs peuvent supprimer des utilisateurs.'], 403);
             }
+
             return redirect()->route('admin.users.index')
                 ->with('error', 'Accès refusé. Seuls les administrateurs peuvent supprimer des utilisateurs.');
         }
-        
-        // Empêcher la suppression de l'utilisateur actuel (même pour les admins)
-        if ($user->id === $currentUser->id) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Vous ne pouvez pas supprimer votre propre compte.'], 403);
-            }
-            return redirect()->route('admin.users.index')
-                ->with('error', 'Vous ne pouvez pas supprimer votre propre compte. Un autre administrateur doit le faire.');
+
+        try {
+            return $this->adminProtection->withAdminLock($user, function (User $lockedUser) use ($request, $currentUser) {
+                $this->adminProtection->guardRemoveAdmin($lockedUser);
+
+                if ($lockedUser->id === $currentUser->id) {
+                    if ($request->expectsJson()) {
+                        return response()->json(['message' => 'Vous ne pouvez pas supprimer votre propre compte.'], 403);
+                    }
+
+                    return redirect()->route('admin.users.index')
+                        ->with('error', 'Vous ne pouvez pas supprimer votre propre compte. Un autre administrateur doit le faire.');
+                }
+
+                $wasAdmin = $lockedUser->role === User::ROLE_ADMIN;
+                $role = $lockedUser->role;
+
+                ActivityLogger::logDelete('Utilisateur', $lockedUser);
+
+                if ($wasAdmin) {
+                    $this->rbacAudit->recordAdminRemoved($lockedUser, $role, $currentUser);
+                }
+
+                $lockedUser->delete();
+
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'Utilisateur supprimé avec succès.'], 200);
+                }
+
+                return redirect()->route('admin.users.index')
+                    ->with('success', 'Utilisateur supprimé avec succès.');
+            });
+        } catch (LastAdminProtectionException $e) {
+            $this->rbacAudit->recordLastAdminChangeDenied($e->target, $e->operation, $currentUser);
+            abort(403, $e->getMessage());
         }
-
-        ActivityLogger::logDelete('Utilisateur', $user);
-
-        $user->delete();
-
-        if ($request->expectsJson()) {
-            return response()->json(['message' => 'Utilisateur supprimé avec succès.'], 200);
-        }
-
-        return redirect()->route('admin.users.index')
-            ->with('success', 'Utilisateur supprimé avec succès.');
     }
 }

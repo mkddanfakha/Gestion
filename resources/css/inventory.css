@@ -195,3 +195,166 @@
 .inventory-last-scan__placeholder {
     background: var(--color-surface-hover);
 }
+
+/* --------------------------------------------------------------------------
+   Session list — table (Index)
+   -------------------------------------------------------------------------- */
+.inventory-list-table thead th {
+    --bs-table-bg: var(--color-surface-hover);
+    --bs-table-color: var(--color-text-primary);
+    background-color: var(--color-surface-hover) !important;
+    color: var(--color-text-primary) !important;
+    border-bottom-color: var(--color-border) !important;
+    font-weight: 600;
+}
+
+.inventory-list-table tbody tr.inventory-list-table__row {
+    --bs-table-bg: var(--color-surface-elevated);
+    --bs-table-color: var(--color-text-primary);
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.inventory-list-table tbody tr.inventory-list-table__row > td {
+    --bs-table-bg: var(--bs-table-bg);
+    --bs-table-color: var(--color-text-primary);
+    background-color: var(--bs-table-bg);
+    color: var(--color-text-primary);
+    border-color: var(--color-border-subtle);
+    vertical-align: middle;
+}
+
+.inventory-list-table.table-hover tbody tr.inventory-list-table__row:hover,
+.inventory-list-table.table-hover tbody tr.inventory-list-table__row:hover > td {
+    --bs-table-bg: color-mix(in srgb, var(--color-text-primary) 6%, var(--color-surface-elevated));
+    --bs-table-color: var(--color-text-primary);
+    background-color: var(--bs-table-bg) !important;
+    color: var(--color-text-primary) !important;
+}
+
+.inventory-list-table.table-hover tbody tr:hover .inventory-list-table__meta {
+    color: var(--color-text-secondary) !important;
+}
+
+.inventory-list-table.table-hover tbody tr:hover .inventory-list-table__date {
+    color: var(--color-text-muted) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Session list — badges
+   -------------------------------------------------------------------------- */
+.inventory-list-badge,
+.inventory-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    max-width: 100%;
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--radius-full);
+    border: 1px solid transparent;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: normal;
+    text-align: center;
+    word-break: break-word;
+}
+
+.inventory-list-badge--reference {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-primary);
+    border-color: var(--color-border-subtle);
+}
+
+.inventory-list-badge--store {
+    background-color: color-mix(in srgb, var(--color-info) 10%, var(--color-surface-elevated));
+    color: var(--color-info);
+    border-color: color-mix(in srgb, var(--color-info) 22%, transparent);
+}
+
+.inventory-list-badge--status-draft {
+    background-color: var(--color-warning-soft);
+    color: var(--color-warning);
+    border-color: color-mix(in srgb, var(--color-warning) 24%, transparent);
+}
+
+.inventory-list-badge--status-counting,
+.inventory-list-badge--status-validated {
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent);
+    border-color: color-mix(in srgb, var(--color-accent) 24%, transparent);
+}
+
+.inventory-list-badge--status-review {
+    background-color: var(--color-info-soft);
+    color: var(--color-info);
+    border-color: color-mix(in srgb, var(--color-info) 24%, transparent);
+}
+
+.inventory-list-badge--status-applied {
+    background-color: var(--color-success-soft);
+    color: var(--color-success);
+    border-color: color-mix(in srgb, var(--color-success) 24%, transparent);
+}
+
+.inventory-list-badge--status-closed {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-secondary);
+    border-color: var(--color-border-subtle);
+}
+
+.inventory-list-badge--status-cancelled {
+    background-color: var(--color-danger-soft);
+    color: var(--color-danger);
+    border-color: color-mix(in srgb, var(--color-danger) 24%, transparent);
+}
+
+.inventory-list-badge--scope-complete {
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent);
+    border-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.inventory-list-badge--scope-category {
+    background-color: color-mix(in srgb, var(--color-info) 12%, var(--color-surface-elevated));
+    color: var(--color-info);
+    border-color: color-mix(in srgb, var(--color-info) 22%, transparent);
+}
+
+.inventory-list-badge--scope-stock-positive {
+    background-color: var(--color-success-soft);
+    color: var(--color-success);
+    border-color: color-mix(in srgb, var(--color-success) 20%, transparent);
+}
+
+.inventory-list-table.table-hover tbody tr:hover .inventory-list-badge,
+.inventory-list-table.table-hover tbody tr:hover .inventory-variance-badge {
+    filter: none;
+}
+
+/* --------------------------------------------------------------------------
+   Session list — mobile cards
+   -------------------------------------------------------------------------- */
+.inventory-list-card {
+    background-color: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    border-color: var(--color-border) !important;
+}
+
+.inventory-list-card__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.inventory-list-card__meta {
+    color: var(--color-text-secondary);
+}
+
+.inventory-list-card__date {
+    color: var(--color-text-muted);
+}

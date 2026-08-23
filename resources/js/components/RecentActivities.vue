@@ -54,8 +54,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Link, usePage } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
+import { usePermissions } from '@/composables/usePermissions'
 
 interface ActivityItem {
   id: number
@@ -76,10 +77,11 @@ interface Props {
   stats: ActivityStats
 }
 
+import { usePermissions } from '@/composables/usePermissions'
+
 defineProps<Props>()
 
-const page = usePage()
-const isAdmin = computed(() => page.props.auth?.user?.role === 'admin')
+const { isAdmin } = usePermissions()
 
 const getActionIcon = (action: string): string => {
   const icons: Record<string, string> = {

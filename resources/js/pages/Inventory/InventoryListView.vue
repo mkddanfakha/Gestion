@@ -127,6 +127,21 @@
           </div>
 
           <div class="col-12 col-md-6 col-lg">
+            <label class="form-label" for="inventory-list-store">Magasin</label>
+            <select
+              id="inventory-list-store"
+              v-model="filters.store_id"
+              class="form-select"
+              @change="applyFilters"
+            >
+              <option value="">Tous</option>
+              <option v-for="store in stores" :key="store.id" :value="String(store.id)">
+                {{ store.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-12 col-md-6 col-lg">
             <label class="form-label" for="inventory-list-date-from">Date de début</label>
             <input
               id="inventory-list-date-from"
@@ -163,6 +178,39 @@
       </div>
     </section>
 
+    <ul class="nav nav-pills inventory-list__tabs mb-3 flex-nowrap overflow-auto">
+      <li class="nav-item">
+        <button
+          type="button"
+          class="nav-link"
+          :class="{ active: currentListView === '' }"
+          @click="setListView('')"
+        >
+          Tous
+        </button>
+      </li>
+      <li class="nav-item">
+        <button
+          type="button"
+          class="nav-link"
+          :class="{ active: currentListView === 'active' }"
+          @click="setListView('active')"
+        >
+          {{ activeTabLabel }}
+        </button>
+      </li>
+      <li class="nav-item">
+        <button
+          type="button"
+          class="nav-link"
+          :class="{ active: currentListView === 'history' }"
+          @click="setListView('history')"
+        >
+          {{ historyTabLabel }}
+        </button>
+      </li>
+    </ul>
+
     <div v-if="filtersActive && activeFilterChips.length > 0" class="inventory-list__chips d-flex flex-wrap gap-2 mb-3">
       <button
         v-for="chip in activeFilterChips"
@@ -180,7 +228,7 @@
       {{ resultsLabel }}
     </div>
 
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0 shadow-sm page-table">
       <div class="card-body p-0">
         <div v-if="!hasSessions" class="text-center text-muted py-5 px-3">
           <i class="bi bi-clipboard2-data fs-1 d-block mb-2"></i>
@@ -199,41 +247,86 @@
 
         <template v-else>
           <div class="d-none d-lg-block table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
+            <table class="table table-hover align-middle mb-0 inventory-list-table">
+              <thead>
                 <tr>
                   <th>Référence</th>
                   <th>Nom</th>
                   <th>Magasin</th>
                   <th>Périmètre</th>
                   <th>Progression</th>
+                  <th>Écarts</th>
                   <th>Statut</th>
+                  <th>Créateur</th>
                   <th>Date</th>
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="listSession in sessions.data" :key="listSession.id">
-                  <td class="font-monospace">{{ listSession.reference ?? '—' }}</td>
+                <tr
+                  v-for="listSession in sessions.data"
+                  :key="listSession.id"
+                  class="inventory-list-table__row"
+                >
                   <td>
-                    <div>{{ listSession.name ?? '—' }}</div>
+                    <span class="inventory-list-badge inventory-list-badge--reference">
+                      {{ listSession.reference ?? '—' }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="fw-medium">{{ listSession.name ?? '—' }}</div>
                     <div
                       v-if="listSessionDescription(listSession)"
-                      class="small text-secondary inventory-list__description"
+                      class="small inventory-list-table__meta inventory-list__description"
                     >
                       {{ listSessionDescription(listSession) }}
                     </div>
                   </td>
-                  <td>{{ listSession.store?.name ?? '—' }}</td>
-                  <td>{{ getInventoryScopeLabel(listSession.scope_type) }}</td>
                   <td>
-                    <div class="small">{{ listSession.items_counted ?? 0 }} / {{ listSession.items_total ?? 0 }}</div>
-                    <div class="text-muted small">
+                    <span
+                      v-if="listSession.store?.name"
+                      class="inventory-list-badge inventory-list-badge--store"
+                    >
+                      {{ listSession.store.name }}
+                    </span>
+                    <span v-else class="inventory-list-table__meta">—</span>
+                  </td>
+                  <td>
+                    <div class="d-flex flex-column align-items-start gap-1">
+                      <span
+                        class="inventory-list-badge"
+                        :class="listSessionScopeDisplay(listSession).badgeClass"
+                      >
+                        {{ listSessionScopeDisplay(listSession).label }}
+                      </span>
+                      <span
+                        v-if="listSessionScopeDisplay(listSession).categoryName"
+                        class="small inventory-list-table__meta"
+                      >
+                        {{ listSessionScopeDisplay(listSession).categoryName }}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="small fw-medium">{{ listSession.items_counted ?? 0 }} / {{ listSession.items_total ?? 0 }}</div>
+                    <div class="inventory-list-table__meta small">
                       {{ formatInventoryListProgress(listSession.items_counted ?? 0, listSession.items_total ?? 0) }}
                     </div>
                   </td>
-                  <td><InventoryStatusBadge :status="listSession.status" /></td>
-                  <td>{{ formatInventoryShortDate(listSession.created_at) }}</td>
+                  <td>
+                    <span
+                      v-if="listSessionVarianceDisplay(listSession)"
+                      :class="listSessionVarianceDisplay(listSession)!.badgeClass"
+                    >
+                      {{ listSessionVarianceDisplay(listSession)!.label }}
+                    </span>
+                    <span v-else class="inventory-list-table__meta">—</span>
+                  </td>
+                  <td>
+                    <InventoryStatusBadge :status="listSession.status" compact />
+                  </td>
+                  <td class="small inventory-list-table__meta">{{ listSession.created_by?.name ?? '—' }}</td>
+                  <td class="inventory-list-table__date small">{{ formatInventoryShortDate(listSession.created_at) }}</td>
                   <td class="text-end">
                     <Link
                       :href="sessionShowUrl(listSession.id)"
@@ -252,27 +345,58 @@
             <div
               v-for="listSession in sessions.data"
               :key="`mobile-${listSession.id}`"
-              class="border rounded p-3 mb-3"
+              class="inventory-list-card border rounded p-3 mb-3"
             >
               <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                <div>
+                <div class="flex-grow-1">
                   <div class="fw-semibold">{{ listSession.name ?? listSession.reference }}</div>
                   <div
                     v-if="listSessionDescription(listSession)"
-                    class="small text-secondary inventory-list__description"
+                    class="small inventory-list-card__meta inventory-list__description"
                   >
                     {{ listSessionDescription(listSession) }}
                   </div>
-                  <div class="small text-muted font-monospace">{{ listSession.reference }}</div>
                 </div>
-                <InventoryStatusBadge :status="listSession.status" />
+                <InventoryStatusBadge :status="listSession.status" compact />
               </div>
-              <div class="small mb-2">
-                {{ listSession.store?.name ?? '—' }} · {{ getInventoryScopeLabel(listSession.scope_type) }}
+
+              <div class="inventory-list-card__badges mb-2">
+                <span class="inventory-list-badge inventory-list-badge--reference">
+                  {{ listSession.reference ?? '—' }}
+                </span>
+                <span
+                  v-if="listSession.store?.name"
+                  class="inventory-list-badge inventory-list-badge--store"
+                >
+                  {{ listSession.store.name }}
+                </span>
+                <span
+                  class="inventory-list-badge"
+                  :class="listSessionScopeDisplay(listSession).badgeClass"
+                >
+                  {{ listSessionScopeDisplay(listSession).label }}
+                </span>
+                <span
+                  v-if="listSessionScopeDisplay(listSession).categoryName"
+                  class="inventory-list-badge inventory-list-badge--scope-category"
+                >
+                  {{ listSessionScopeDisplay(listSession).categoryName }}
+                </span>
+                <span
+                  v-if="listSessionVarianceDisplay(listSession)"
+                  :class="listSessionVarianceDisplay(listSession)!.badgeClass"
+                >
+                  {{ listSessionVarianceDisplay(listSession)!.label }}
+                </span>
               </div>
-              <div class="small text-muted mb-3">
-                {{ listSession.items_counted ?? 0 }} / {{ listSession.items_total ?? 0 }} produits ·
-                {{ formatInventoryListProgress(listSession.items_counted ?? 0, listSession.items_total ?? 0) }}
+
+              <div class="small inventory-list-card__meta mb-2">
+                {{ listSession.created_by?.name ?? '—' }}
+                · {{ listSession.items_counted ?? 0 }} / {{ listSession.items_total ?? 0 }} produits
+                · {{ formatInventoryListProgress(listSession.items_counted ?? 0, listSession.items_total ?? 0) }}
+              </div>
+              <div class="small inventory-list-card__date mb-3">
+                {{ formatInventoryShortDate(listSession.created_at) }}
               </div>
               <Link
                 :href="sessionShowUrl(listSession.id)"
@@ -309,6 +433,10 @@ import PageHeader from '@/components/page/PageHeader.vue'
 import PagePagination from '@/components/page/PagePagination.vue'
 import { route } from '@/lib/routes'
 import {
+  inventoryActiveTabLabel,
+  inventoryHistoryTabLabel,
+} from '@/utils/inventoryHistory'
+import {
   buildInventoryListQueryParams,
   formatInventoryListResultsLabel,
   getInventoryListFilterChips,
@@ -324,9 +452,12 @@ import {
   formatInventoryListProgress,
   formatInventoryShortDate,
   getInventoryListActionLabel,
-  getInventoryScopeLabel,
+  getInventoryListVarianceDisplay,
   normalizeInventoryDescription,
+  resolveInventoryListScopeDisplay,
   type InventoryListStats,
+  type InventoryListVarianceDisplay,
+  type InventoryListScopeDisplay,
 } from '@/utils/inventoryUi'
 import { Link, router } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
@@ -338,10 +469,16 @@ type ListSession = {
   description?: string | null
   status: string
   scope_type?: string | null
+  scope_value?: { category_id?: number } | null
   created_at: string
   items_total?: number
   items_counted?: number
+  application_summary?: {
+    adjusted_items?: number
+    net_adjustment?: number
+  } | null
   store?: { name: string } | null
+  created_by?: { name: string } | null
 }
 
 const props = defineProps<{
@@ -355,8 +492,9 @@ const props = defineProps<{
   listStats: InventoryListStats
   hasSessions: boolean
   categories: Array<{ id: number; name: string }>
+  stores: Array<{ id: number; name: string }>
   filters: InventoryListFilters
-  permissions: { create: boolean; count: boolean }
+  permissions: { create: boolean; count: boolean; export?: boolean }
 }>()
 
 const showCreateModal = ref(false)
@@ -365,8 +503,10 @@ const filters = ref<InventoryListFilters>({
   status: '',
   scope_type: '',
   category_id: '',
+  store_id: '',
   date_from: '',
   date_to: '',
+  list_view: '',
 })
 
 watch(
@@ -377,15 +517,20 @@ watch(
       status: nextFilters.status ?? '',
       scope_type: nextFilters.scope_type ?? '',
       category_id: nextFilters.category_id ?? '',
+      store_id: nextFilters.store_id ?? '',
       date_from: nextFilters.date_from ?? '',
       date_to: nextFilters.date_to ?? '',
+      list_view: nextFilters.list_view ?? '',
     }
   },
   { immediate: true, deep: true },
 )
 
 const filtersActive = computed(() => hasActiveInventoryListFilters(filters.value))
-const activeFilterChips = computed(() => getInventoryListFilterChips(filters.value, props.categories))
+const currentListView = computed(() => filters.value.list_view ?? '')
+const activeTabLabel = computed(() => inventoryActiveTabLabel(props.listStats.active_count))
+const historyTabLabel = computed(() => inventoryHistoryTabLabel(props.listStats.history_count ?? 0))
+const activeFilterChips = computed(() => getInventoryListFilterChips(filters.value, props.categories, props.stores))
 const resultsLabel = computed(() => formatInventoryListResultsLabel(
   props.sessions.total ?? props.sessions.data.length,
   filtersActive.value,
@@ -416,8 +561,18 @@ function resetFilters(): void {
     status: '',
     scope_type: '',
     category_id: '',
+    store_id: '',
     date_from: '',
     date_to: '',
+    list_view: currentListView.value,
+  }
+  applyFilters()
+}
+
+function setListView(listView: '' | 'active' | 'history'): void {
+  filters.value = {
+    ...filters.value,
+    list_view: listView,
   }
   applyFilters()
 }
@@ -428,8 +583,10 @@ function removeFilter(key: keyof InventoryListFilters): void {
     status: filters.value.status ?? '',
     scope_type: filters.value.scope_type ?? '',
     category_id: filters.value.category_id ?? '',
+    store_id: filters.value.store_id ?? '',
     date_from: filters.value.date_from ?? '',
     date_to: filters.value.date_to ?? '',
+    list_view: filters.value.list_view ?? '',
     ...removeInventoryListFilter(filters.value, key),
   }
   applyFilters()
@@ -451,6 +608,18 @@ function primaryActionClass(status: string): string {
 function listSessionDescription(listSession: ListSession): string | null {
   return normalizeInventoryDescription(listSession.description)
 }
+
+function listSessionScopeDisplay(listSession: ListSession): InventoryListScopeDisplay {
+  return resolveInventoryListScopeDisplay(
+    listSession.scope_type,
+    listSession.scope_value,
+    props.categories,
+  )
+}
+
+function listSessionVarianceDisplay(listSession: ListSession): InventoryListVarianceDisplay | null {
+  return getInventoryListVarianceDisplay(listSession)
+}
 </script>
 
 <style scoped>
@@ -470,6 +639,16 @@ function listSessionDescription(listSession: ListSession): string | null {
   border: 1px solid var(--color-border-subtle);
   font-weight: 500;
   padding: 0.5rem 0.75rem;
+}
+
+.inventory-list__tabs .nav-link {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.inventory-list__tabs .nav-link.active {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-primary);
 }
 
 @media (min-width: 992px) {

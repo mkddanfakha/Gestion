@@ -99,9 +99,9 @@ class SupplierController extends Controller
         $user->refresh();
 
         $canSearch = $user->hasPermission('purchase-orders', 'create')
-            || $user->hasPermission('purchase-orders', 'edit')
+            || $user->hasPermission('purchase-orders', 'update')
             || $user->hasPermission('delivery-notes', 'create')
-            || $user->hasPermission('delivery-notes', 'edit')
+            || $user->hasPermission('delivery-notes', 'update')
             || $user->hasPermission('suppliers', 'view');
 
         if (!$canSearch) {
@@ -157,7 +157,7 @@ class SupplierController extends Controller
      */
     public function edit(Request $request, Supplier $supplier)
     {
-        $this->checkPermission($request, 'suppliers', 'edit');
+        $this->checkPermission($request, 'suppliers', 'update');
         
         return Inertia::render('Suppliers/Edit', [
             'supplier' => $supplier,

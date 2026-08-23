@@ -122,6 +122,21 @@ class InventorySession extends Model
     }
 
     /**
+     * @param  \Illuminate\Database\Eloquent\Builder<self>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<self>
+     */
+    public function scopeHistory($query)
+    {
+        return $query->whereIn(
+            'status',
+            array_map(
+                fn (InventorySessionStatus $status) => $status->value,
+                InventorySessionStatus::historyStatuses(),
+            ),
+        );
+    }
+
+    /**
      * Génère une référence unique par entreprise (format INVyymmXXX).
      */
     public static function generateReference(int $companyId): string

@@ -416,6 +416,8 @@ class InventorySessionService
             ? $this->inventoryApplicationService->previewApplication($session)
             : null;
 
+        $exportService = app(InventoryExportService::class);
+
         return [
             'id' => $session->id,
             'reference' => $session->reference,
@@ -424,6 +426,10 @@ class InventorySessionService
             'status' => $session->status->value,
             'scope_type' => $session->scope_type->value,
             'scope_value' => $session->scope_value,
+            'scope_label' => $exportService->scopeLabel($session),
+            'category_name' => $exportService->resolveCategoryName($session),
+            'is_history' => $session->status->isHistory(),
+            'session_date' => $exportService->resolveSessionDate($session)?->toIso8601String(),
             'store' => [
                 'id' => $session->store->id,
                 'name' => $session->store->name,
@@ -431,8 +437,12 @@ class InventorySessionService
             'items' => $items,
             'progress' => $progress,
             'summary' => $summary,
+            'kpi' => $exportService->buildKpi($session, $summary, $progress),
             'application_preview' => $applicationPreview,
             'application_summary' => $session->application_summary,
+            'movements' => $session->status->isHistory()
+                ? $exportService->getSessionMovementsPayload($session)
+                : [],
             'can_submit' => $this->canSubmit($session),
             'can_validate' => $this->canValidate($session),
             'can_apply' => $this->inventoryApplicationService->canApply($session),
@@ -445,6 +455,8 @@ class InventorySessionService
                 'applied_at' => $session->applied_at?->toIso8601String(),
                 'closed_by' => $session->closedBy?->name,
                 'closed_at' => $session->closed_at?->toIso8601String(),
+                'cancelled_by' => $session->cancelledBy?->name,
+                'cancelled_at' => $session->cancelled_at?->toIso8601String(),
             ],
             'permissions' => $this->resolveSessionPermissions($user),
         ];
@@ -840,6 +852,7 @@ class InventorySessionService
 
         return [
             'active_count' => (clone $baseQuery)->active()->count(),
+            'history_count' => (clone $baseQuery)->history()->count(),
             'counting_count' => (clone $baseQuery)->where('status', InventorySessionStatus::Counting)->count(),
             'to_validate_count' => (clone $baseQuery)->whereIn('status', [
                 InventorySessionStatus::Review,
@@ -902,23 +915,27 @@ class InventorySessionService
                 'count' => false,
                 'submit' => false,
                 'review' => false,
+                'reopen' => false,
                 'validate' => false,
                 'apply' => false,
                 'close' => false,
                 'cancel' => false,
                 'create' => false,
+                'export' => false,
             ];
         }
 
         return [
             'count' => $user->hasPermission('inventory', 'count'),
             'submit' => $user->hasPermission('inventory', 'submit'),
-            'review' => $user->hasPermission('inventory', 'review'),
+            'review' => $user->hasPermission('inventory', 'reopen'),
+            'reopen' => $user->hasPermission('inventory', 'reopen'),
             'validate' => $user->hasPermission('inventory', 'validate'),
             'apply' => $user->hasPermission('inventory', 'apply'),
             'close' => $user->hasPermission('inventory', 'close'),
             'cancel' => $user->hasPermission('inventory', 'cancel'),
             'create' => $user->hasPermission('inventory', 'create'),
+            'export' => $user->hasPermission('inventory', 'export'),
         ];
     }
 

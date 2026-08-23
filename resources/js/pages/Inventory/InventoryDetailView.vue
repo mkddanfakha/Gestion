@@ -15,10 +15,28 @@
         <InventoryStatusBadge :status="session.status" />
       </template>
       <template #actions-secondary>
-        <Link :href="inventoryIndexUrl" class="btn btn-outline-secondary">
-          <i class="bi bi-arrow-left me-1"></i>
-          Retour
-        </Link>
+        <div class="d-flex flex-wrap gap-2">
+          <a
+            v-if="canExportSession"
+            :href="exportPdfUrl"
+            class="btn btn-danger"
+          >
+            <i class="bi bi-file-pdf me-1" aria-hidden="true"></i>
+            Exporter PDF
+          </a>
+          <a
+            v-if="canExportSession"
+            :href="exportExcelUrl"
+            class="btn btn-success"
+          >
+            <i class="bi bi-file-excel me-1" aria-hidden="true"></i>
+            Exporter Excel
+          </a>
+          <Link :href="inventoryIndexUrl" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>
+            Retour
+          </Link>
+        </div>
       </template>
     </PageHeader>
 
@@ -37,7 +55,10 @@
             <div class="inventory-detail__meta-value">{{ session.store?.name ?? '—' }}</div>
 
             <div class="mt-3 small inventory-detail__meta-label">Périmètre</div>
-            <div class="inventory-detail__meta-value">{{ scopeLabel }}</div>
+            <div class="inventory-detail__meta-value">{{ displayScopeLabel }}</div>
+
+            <div v-if="session.category_name" class="mt-3 small inventory-detail__meta-label">Catégorie</div>
+            <div v-if="session.category_name" class="inventory-detail__meta-value">{{ session.category_name }}</div>
 
             <div v-if="sessionDescription" class="mt-3">
               <div class="small inventory-detail__meta-label">Description</div>
@@ -45,9 +66,15 @@
             </div>
           </div>
           <div v-if="session.history" class="col-md-4 small">
-            <div><span class="text-muted">Créateur :</span> {{ session.history.created_by ?? '—' }}</div>
-            <div v-if="session.history.validated_by"><span class="text-muted">Validateur :</span> {{ session.history.validated_by }}</div>
-            <div v-if="session.history.applied_by"><span class="text-muted">Applicateur :</span> {{ session.history.applied_by }}</div>
+            <div><span class="inventory-detail__meta-label">Créateur :</span> {{ session.history.created_by ?? '—' }}</div>
+            <div v-if="session.history.validated_by"><span class="inventory-detail__meta-label">Validateur :</span> {{ session.history.validated_by }}</div>
+            <div v-if="session.history.applied_by"><span class="inventory-detail__meta-label">Applicateur :</span> {{ session.history.applied_by }}</div>
+            <div v-if="session.history.closed_by"><span class="inventory-detail__meta-label">Clôturé par :</span> {{ session.history.closed_by }}</div>
+            <div v-if="session.history.cancelled_by"><span class="inventory-detail__meta-label">Annulé par :</span> {{ session.history.cancelled_by }}</div>
+            <div v-if="historyDateLabel" class="mt-2">
+              <span class="inventory-detail__meta-label">{{ historyDateLabel }} :</span>
+              {{ formatInventoryShortDate(historyDateValue) }}
+            </div>
           </div>
         </div>
       </div>
@@ -70,6 +97,20 @@
     <div v-if="statusBanner" class="alert mb-4" :class="statusBanner.className">
       <strong>{{ statusBanner.title }}</strong>
       <div class="small mt-1">{{ statusBanner.text }}</div>
+    </div>
+
+    <div v-if="showHistorySummary" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Synthèse</h2>
+        <div class="row g-3">
+          <div v-for="card in historyKpiCards" :key="card.label" class="col-6 col-md-4 col-xl">
+            <div class="border rounded p-3 h-100 inventory-detail__kpi-card">
+              <div class="small inventory-detail__meta-label">{{ card.label }}</div>
+              <div class="fs-4 fw-semibold" :class="card.className">{{ card.value }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div v-if="showReviewSummary" class="card border-0 shadow-sm mb-4">
@@ -152,7 +193,7 @@
       <button v-if="session.status === 'review' && session.permissions?.validate && session.can_validate" type="button" class="btn btn-success" :disabled="workflowLoading" @click="handleValidate">
         Valider l'inventaire
       </button>
-      <button v-if="session.status === 'review' && session.permissions?.review" type="button" class="btn btn-outline-secondary" :disabled="workflowLoading" @click="handleReopen">
+      <button v-if="session.status === 'review' && session.permissions?.reopen" type="button" class="btn btn-outline-secondary" :disabled="workflowLoading" @click="handleReopen">
         Rouvrir le comptage
       </button>
       <button v-if="showApplyButton" type="button" class="btn btn-warning" :disabled="workflowLoading" @click="handleApply">
@@ -196,6 +237,20 @@
       </div>
     </div>
 
+    <div v-if="showHistoryVariances" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Détail des écarts</h2>
+        <InventoryVarianceTable :rows="varianceRows" />
+      </div>
+    </div>
+
+    <div v-if="showHistoryMovements" class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Mouvements de stock</h2>
+        <InventoryMovementList :movements="session.movements ?? []" />
+      </div>
+    </div>
+
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <InventoryProductList
@@ -229,10 +284,12 @@
 <script setup lang="ts">
 import BarcodeInput from '@/components/BarcodeInput.vue'
 import InventoryLastScan from '@/components/inventory/InventoryLastScan.vue'
+import InventoryMovementList from '@/components/inventory/InventoryMovementList.vue'
 import InventoryProductList from '@/components/inventory/InventoryProductList.vue'
 import InventoryProgress from '@/components/inventory/InventoryProgress.vue'
 import InventoryQuantityModal from '@/components/inventory/InventoryQuantityModal.vue'
 import InventoryStatusBadge from '@/components/inventory/InventoryStatusBadge.vue'
+import InventoryVarianceTable from '@/components/inventory/InventoryVarianceTable.vue'
 import PageHeader from '@/components/page/PageHeader.vue'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { route } from '@/lib/routes'
@@ -262,6 +319,7 @@ import {
   mapInventoryScanError,
   formatInventorySessionHeaderSubtitle,
   formatInventorySessionTitle,
+  formatInventoryShortDate,
   normalizeInventoryDescription,
   resolveInventoryInertiaFlashMessage,
   scrollInventoryViewToTop,
@@ -269,6 +327,19 @@ import {
 } from '@/utils/inventoryUi'
 import { waitForInventoryModalHidden } from '@/utils/inventoryModalFocus'
 import { buildInventoryListQueryParams, type InventoryListFilters } from '@/utils/inventoryListFilters'
+import {
+  buildInventoryExportExcelUrl,
+  buildInventoryExportPdfUrl,
+  canExportInventorySession,
+  formatInventoryHistoryKpiFromSummary,
+  formatInventorySignedQuantity,
+  formatInventoryVarianceType,
+  inventoryHistoryDateLabel,
+  inventoryHistoryStatusBanner,
+  isInventoryHistoryStatus,
+  type InventoryMovementRow,
+  type InventoryVarianceRow,
+} from '@/utils/inventoryHistory'
 import type { InventoryApplicationSummary } from '@/utils/inventoryApplication'
 import type { InventorySessionSummary } from '@/utils/inventoryCounting'
 import { Link, usePage } from '@inertiajs/vue3'
@@ -277,12 +348,24 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 type SessionPermissions = {
   count: boolean
   submit: boolean
-  review: boolean
+  review?: boolean
+  reopen: boolean
   validate: boolean
   apply: boolean
   close: boolean
   cancel: boolean
   create: boolean
+  export?: boolean
+}
+
+type InventoryHistoryKpiPayload = {
+  products: number
+  counted: number
+  conforme: number
+  surplus: number
+  manquants: number
+  net_variance: number
+  net_variance_label?: string
 }
 
 type InventorySessionDetail = {
@@ -292,12 +375,18 @@ type InventorySessionDetail = {
   description?: string | null
   status: string
   scope_type: string
+  scope_label?: string | null
+  category_name?: string | null
+  is_history?: boolean
+  session_date?: string | null
   store: { id: number; name: string }
   items: InventoryCountingItem[]
   progress: { total: number; counted: number; uncounted: number; percentage: number }
   summary: InventorySessionSummary
+  kpi?: InventoryHistoryKpiPayload
   application_preview?: InventoryApplicationSummary | null
   application_summary?: InventoryApplicationSummary | null
+  movements?: InventoryMovementRow[]
   can_submit: boolean
   can_validate: boolean
   can_apply: boolean
@@ -360,13 +449,61 @@ onMounted(async () => {
 const sessionTitle = computed(() => formatInventorySessionTitle(session.value.name, session.value.reference))
 const sessionDescription = computed(() => normalizeInventoryDescription(session.value.description))
 const scopeLabel = computed(() => getInventoryScopeLabel(session.value.scope_type))
+const displayScopeLabel = computed(() => session.value.scope_label ?? scopeLabel.value)
 const sessionSubtitle = computed(() => formatInventorySessionHeaderSubtitle(
   session.value.reference,
   session.value.store?.name,
-  scopeLabel.value,
+  displayScopeLabel.value,
 ))
 const progress = computed(() => inventoryCountProgress(items.value))
 const summary = computed(() => inventorySessionSummary(items.value))
+const historyKpi = computed(() => formatInventoryHistoryKpiFromSummary(progress.value, summary.value))
+const canExportSession = computed(() => canExportInventorySession(
+  session.value.status,
+  session.value.permissions?.export ?? false,
+))
+const exportPdfUrl = computed(() => buildInventoryExportPdfUrl(session.value.id))
+const exportExcelUrl = computed(() => buildInventoryExportExcelUrl(session.value.id))
+const showHistorySummary = computed(() => session.value.is_history ?? isInventoryHistoryStatus(session.value.status))
+const showHistoryVariances = computed(() => showHistorySummary.value)
+const showHistoryMovements = computed(() => showHistorySummary.value && (session.value.movements?.length ?? 0) > 0)
+const historyDateLabel = computed(() => inventoryHistoryDateLabel(session.value.status))
+const historyDateValue = computed(() => {
+  switch (session.value.status) {
+    case 'closed':
+      return session.value.history?.closed_at ?? session.value.session_date
+    case 'applied':
+      return session.value.history?.applied_at ?? session.value.session_date
+    case 'cancelled':
+      return session.value.history?.cancelled_at ?? session.value.session_date
+    default:
+      return session.value.session_date
+  }
+})
+const historyKpiCards = computed(() => {
+  const kpi = session.value.kpi ?? historyKpi.value
+
+  return [
+    { label: 'Produits concernés', value: kpi.products, className: '' },
+    { label: 'Produits comptés', value: kpi.counted, className: '' },
+    { label: 'Produits conformes', value: kpi.conforme, className: 'text-success' },
+    { label: 'Surplus', value: kpi.surplus, className: 'inventory-detail__kpi-warning' },
+    { label: 'Manquants', value: kpi.manquants, className: 'inventory-detail__kpi-danger' },
+    { label: 'Écart net', value: kpi.net_variance_label ?? String(kpi.net_variance), className: '' },
+  ]
+})
+const varianceRows = computed<InventoryVarianceRow[]>(() => items.value
+  .filter((item) => item.variance_status === 'surplus' || item.variance_status === 'manque')
+  .map((item) => ({
+    product_name: item.product.name,
+    barcode: item.product.barcode,
+    stock_snapshot: item.stock_snapshot,
+    quantity_counted: item.quantity_counted,
+    difference: item.difference_from_snapshot ?? item.difference,
+    difference_label: formatInventorySignedQuantity(item.difference_from_snapshot ?? item.difference),
+    variance_type: item.variance_status,
+    variance_label: formatInventoryVarianceType(item.variance_status),
+  })))
 const scannerReadyMessage = computed(() => getScannerReadyMessage(scanning.value, workflowLoading.value))
 const canSubmitNow = computed(() => progress.value.uncounted === 0 && session.value.status === 'counting')
 const canManualEdit = computed(() => canShowManualQuantityEdit(session.value.status, session.value.permissions?.count ?? false))
@@ -402,13 +539,15 @@ const displayItems = computed(() => isReviewLike.value
   : filterInventoryItems(items.value, searchQuery.value, countingFilter.value))
 
 const statusBanner = computed(() => {
+  const historyBanner = inventoryHistoryStatusBanner(session.value.status)
+
+  if (historyBanner) {
+    return historyBanner
+  }
+
   switch (session.value.status) {
     case 'validated':
       return { className: 'alert-info', title: 'Inventaire prêt à être appliqué', text: 'Le stock réel n\'a pas encore été modifié.' }
-    case 'applied':
-      return { className: 'alert-success', title: 'Inventaire appliqué', text: 'Le stock réel a été mis à jour.' }
-    case 'closed':
-      return { className: 'alert-secondary', title: 'Inventaire clôturé', text: 'Consultation en lecture seule.' }
     default:
       return null
   }
@@ -650,6 +789,19 @@ async function saveManualQuantity(quantity: number): Promise<void> {
   position: sticky;
   top: 0.75rem;
   z-index: 20;
+}
+
+.inventory-detail__kpi-card {
+  background: var(--color-surface);
+  border-color: var(--color-border-subtle) !important;
+}
+
+.inventory-detail__kpi-warning {
+  color: var(--color-warning);
+}
+
+.inventory-detail__kpi-danger {
+  color: var(--color-danger);
 }
 
 @media (max-width: 991.98px) {

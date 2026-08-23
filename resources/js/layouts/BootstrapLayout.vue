@@ -117,6 +117,12 @@
               <span class="nav-label">Utilisateurs</span>
             </Link>
           </li>
+          <li v-if="isAdmin" class="nav-item">
+            <Link :href="route('admin.roles-permissions.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/admin/roles-permissions') }">
+              <span class="nav-icon-wrap nav-icon-wrap--admin"><i class="bi bi-shield-check"></i></span>
+              <span class="nav-label">Rôles & permissions</span>
+            </Link>
+          </li>
           <li v-if="isAdmin && canView('backups')" class="nav-item">
             <Link :href="route('admin.backups.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/admin/backups') }">
               <span class="nav-icon-wrap nav-icon-wrap--admin"><i class="bi bi-database"></i></span>

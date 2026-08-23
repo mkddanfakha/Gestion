@@ -20,6 +20,15 @@ class ActivityLog extends Model
     public const ACTION_ATTACHMENT_ADDED = 'attachment_added';
     public const ACTION_ATTACHMENT_DELETED = 'attachment_deleted';
 
+    public const ACTION_RBAC_ROLE_CHANGED = 'rbac.role_changed';
+    public const ACTION_RBAC_PERMISSIONS_CHANGED = 'rbac.permissions_changed';
+    public const ACTION_RBAC_PERMISSIONS_SYNCED = 'rbac.permissions_synced';
+    public const ACTION_RBAC_USER_ACTIVATED = 'rbac.user_activated';
+    public const ACTION_RBAC_USER_DEACTIVATED = 'rbac.user_deactivated';
+    public const ACTION_RBAC_ADMIN_REMOVED = 'rbac.admin_removed';
+    public const ACTION_RBAC_LAST_ADMIN_CHANGE_DENIED = 'rbac.last_admin_change_denied';
+    public const ACTION_RBAC_LEGACY_PERMISSIONS_MIGRATED = 'rbac.legacy_permissions_migrated';
+
     protected $fillable = [
         'user_id',
         'action',
@@ -76,6 +85,14 @@ class ActivityLog extends Model
             self::ACTION_RESTORE => 'Restauration',
             self::ACTION_ATTACHMENT_ADDED => 'Pièce jointe ajoutée',
             self::ACTION_ATTACHMENT_DELETED => 'Pièce jointe supprimée',
+            self::ACTION_RBAC_ROLE_CHANGED => 'RBAC — changement de rôle',
+            self::ACTION_RBAC_PERMISSIONS_CHANGED => 'RBAC — permissions modifiées',
+            self::ACTION_RBAC_PERMISSIONS_SYNCED => 'RBAC — permissions synchronisées',
+            self::ACTION_RBAC_USER_ACTIVATED => 'RBAC — compte activé',
+            self::ACTION_RBAC_USER_DEACTIVATED => 'RBAC — compte désactivé',
+            self::ACTION_RBAC_ADMIN_REMOVED => 'RBAC — administrateur supprimé',
+            self::ACTION_RBAC_LAST_ADMIN_CHANGE_DENIED => 'RBAC — refus dernier admin',
+            self::ACTION_RBAC_LEGACY_PERMISSIONS_MIGRATED => 'RBAC — migration permissions legacy',
             default => ucfirst($this->action),
         };
     }
@@ -147,6 +164,7 @@ class ActivityLog extends Model
             'Paiement',
             'Entreprise',
             'Utilisateur',
+            'RBAC',
             'Authentification',
         ];
     }

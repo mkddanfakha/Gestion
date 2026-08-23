@@ -333,7 +333,7 @@
                 Modifier le BL
               </Link>
               <button
-                v-if="deliveryNote.status === 'pending' && isAdmin"
+                v-if="deliveryNote.status === 'pending' && canValidateDeliveryNote"
                 @click="validateDeliveryNote"
                 class="btn btn-success"
                 :disabled="isValidating"
@@ -370,7 +370,7 @@
 import { formatCurrency } from '@/utils/currencyFormatter'
 import AppLayout from '@/layouts/AppLayout.vue'
 import AttachmentList from '@/components/attachments/AttachmentList.vue'
-import { Link, router, usePage } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
@@ -428,18 +428,13 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const page = usePage()
-const isAdmin = computed(() => {
-  const user = (page.props.auth as any)?.user
-  return user?.role === 'admin'
-})
-
 const { success, error, confirm } = useSweetAlert()
 const { openFromUrl } = useDocumentPdfPreview()
 const { openAttachment } = useDocumentPreview()
-const { canAny } = usePermissions()
+const { canUpdate, canAny, can } = usePermissions()
 const canPreviewDeliveryNote = canAny('delivery-notes', ['print', 'create', 'update'])
-const canUpdateDeliveryNote = canAny('delivery-notes', ['update'])
+const canUpdateDeliveryNote = canUpdate('delivery-notes')
+const canValidateDeliveryNote = can('delivery-notes.validate')
 
 const isDownloading = ref(false)
 const isPrinting = ref(false)

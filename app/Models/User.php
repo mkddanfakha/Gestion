@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Auth\AuthorizationService;
 use App\Notifications\ResetPasswordNotification;
 use App\Notifications\VerifyEmailNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -135,16 +136,7 @@ class User extends Authenticatable
      */
     public function hasPermission(string $resource, string $action): bool
     {
-        // Les administrateurs ont toutes les permissions
-        if ($this->isAdmin()) {
-            return true;
-        }
-
-        $permissionName = Permission::generateName($resource, $action);
-        
-        return $this->permissions()
-            ->where('name', $permissionName)
-            ->exists();
+        return app(AuthorizationService::class)->allowsResourceAction($this, $resource, $action);
     }
 
     /**
@@ -152,14 +144,7 @@ class User extends Authenticatable
      */
     public function hasPermissionByName(string $permissionName): bool
     {
-        // Les administrateurs ont toutes les permissions
-        if ($this->isAdmin()) {
-            return true;
-        }
-
-        return $this->permissions()
-            ->where('name', $permissionName)
-            ->exists();
+        return app(AuthorizationService::class)->allows($this, $permissionName);
     }
 
     /**
@@ -167,8 +152,6 @@ class User extends Authenticatable
      */
     public function getPermissionsArray(): array
     {
-        return $this->permissions()
-            ->pluck('name')
-            ->toArray();
+        return app(AuthorizationService::class)->forUser($this);
     }
 }

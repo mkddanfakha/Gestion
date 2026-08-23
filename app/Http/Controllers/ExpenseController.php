@@ -174,7 +174,7 @@ class ExpenseController extends Controller
      */
     public function edit(Request $request, Expense $expense)
     {
-        $this->checkPermission($request, 'expenses', 'edit');
+        $this->checkPermission($request, 'expenses', 'update');
         $this->authorizeExpenseAccess($request, $expense);
 
         $expense->load(['attachments.uploadedBy', 'supplier:id,name,email,phone,mobile']);

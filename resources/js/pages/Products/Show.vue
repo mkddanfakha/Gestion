@@ -285,7 +285,7 @@
           <div class="card-body">
             <div class="d-grid gap-2">
               <Link
-                v-if="canEdit('products')"
+                v-if="canUpdate('products')"
                 :href="route('products.edit', { id: product.id })"
                 class="btn btn-outline-primary"
               >
@@ -317,7 +317,7 @@ import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { usePermissions } from '@/composables/usePermissions'
 
-const { canEdit, canDelete } = usePermissions()
+const { canUpdate, canDelete } = usePermissions()
 
 interface Category {
   id: number

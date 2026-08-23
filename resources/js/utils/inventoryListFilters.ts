@@ -1,12 +1,15 @@
 import { getInventoryScopeLabel, getInventoryStatusLabel } from './inventoryUi'
+import { inventoryListViewLabel, type InventoryListView } from './inventoryHistory'
 
 export type InventoryListFilters = {
   search?: string | null
   status?: string | null
   scope_type?: string | null
   category_id?: string | null
+  store_id?: string | null
   date_from?: string | null
   date_to?: string | null
+  list_view?: string | null
 }
 
 export const INVENTORY_LIST_FILTER_KEYS = [
@@ -14,8 +17,10 @@ export const INVENTORY_LIST_FILTER_KEYS = [
   'status',
   'scope_type',
   'category_id',
+  'store_id',
   'date_from',
   'date_to',
+  'list_view',
 ] as const satisfies ReadonlyArray<keyof InventoryListFilters>
 
 export const INVENTORY_LIST_STATUS_FILTER_OPTIONS = [
@@ -26,6 +31,7 @@ export const INVENTORY_LIST_STATUS_FILTER_OPTIONS = [
   { value: 'validated', label: 'Validé' },
   { value: 'applied', label: 'Appliqué' },
   { value: 'closed', label: 'Clôturé' },
+  { value: 'cancelled', label: 'Annulé' },
 ] as const
 
 export const INVENTORY_LIST_SCOPE_FILTER_OPTIONS = [
@@ -82,6 +88,7 @@ export type InventoryListFilterChip = {
 export function getInventoryListFilterChips(
   filters: Partial<InventoryListFilters> | null | undefined,
   categories: Array<{ id: number; name: string }> = [],
+  stores: Array<{ id: number; name: string }> = [],
 ): InventoryListFilterChip[] {
   const normalized = normalizeInventoryListFilters(filters)
   const chips: InventoryListFilterChip[] = []
@@ -112,6 +119,23 @@ export function getInventoryListFilterChips(
       key: 'category_id',
       label: 'Catégorie',
       value: category?.name ?? normalized.category_id,
+    })
+  }
+
+  if (normalized.store_id) {
+    const store = stores.find((item) => String(item.id) === normalized.store_id)
+    chips.push({
+      key: 'store_id',
+      label: 'Magasin',
+      value: store?.name ?? normalized.store_id,
+    })
+  }
+
+  if (normalized.list_view) {
+    chips.push({
+      key: 'list_view',
+      label: 'Vue',
+      value: inventoryListViewLabel(normalized.list_view as InventoryListView),
     })
   }
 

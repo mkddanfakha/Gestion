@@ -17,6 +17,16 @@
         </template>
       </PageHeader>
 
+      <div v-if="filters?.role" class="alert alert-info d-flex justify-content-between align-items-center mb-3 py-2">
+        <span>
+          Filtre rôle :
+          <strong>{{ getRoleLabel(filters.role) }}</strong>
+        </span>
+        <Link :href="route('admin.users.index')" class="btn btn-sm btn-outline-secondary">
+          Effacer
+        </Link>
+      </div>
+
       <section class="page-table card">
         <div class="table-responsive">
           <table class="table table-hover mb-0">
@@ -87,10 +97,19 @@
                       <i class="bi bi-pencil"></i>
                     </Link>
                     <button
-                      v-if="isAdmin && user.id !== $page.props.auth.user?.id"
+                      v-if="isAdmin && user.id !== $page.props.auth.user?.id && user.id !== lastActiveAdminId"
                       @click="confirmDelete(user)"
                       class="btn btn-sm btn-outline-danger"
                       title="Seuls les administrateurs peuvent supprimer des utilisateurs"
+                    >
+                      <i class="bi bi-trash"></i>
+                    </button>
+                    <button
+                      v-else-if="isAdmin && user.id === lastActiveAdminId && user.id !== $page.props.auth.user?.id"
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      disabled
+                      title="Impossible de supprimer le dernier administrateur"
                     >
                       <i class="bi bi-trash"></i>
                     </button>
@@ -146,9 +165,19 @@ interface Props {
       active: boolean
     }>
   }
+  lastActiveAdminId?: number | null
+  filters?: {
+    role?: string | null
+  }
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  lastActiveAdminId: null,
+  filters: () => ({}),
+})
+
+const lastActiveAdminId = props.lastActiveAdminId
+const filters = props.filters
 
 const { isAdmin } = usePermissions()
 

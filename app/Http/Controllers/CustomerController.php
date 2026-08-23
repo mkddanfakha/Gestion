@@ -154,7 +154,7 @@ class CustomerController extends Controller
      */
     public function edit(Request $request, Customer $customer)
     {
-        $this->checkPermission($request, 'customers', 'edit');
+        $this->checkPermission($request, 'customers', 'update');
         
         return Inertia::render('Customers/Edit', [
             'customer' => [
@@ -285,7 +285,7 @@ class CustomerController extends Controller
         $user->refresh();
 
         $canSearch = $user->hasPermission('sales', 'create')
-            || $user->hasPermission('sales', 'edit')
+            || $user->hasPermission('sales', 'update')
             || $user->hasPermission('customers', 'view');
 
         if (!$canSearch) {

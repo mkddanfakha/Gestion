@@ -232,7 +232,7 @@ class QuoteController extends Controller
      */
     public function edit(Request $request, Quote $quote)
     {
-        $this->checkPermission($request, 'quotes', 'edit');
+        $this->checkPermission($request, 'quotes', 'update');
         
         $quote->load(['attachments.uploadedBy']);
 

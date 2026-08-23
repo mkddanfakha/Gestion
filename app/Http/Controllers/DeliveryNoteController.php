@@ -264,7 +264,7 @@ class DeliveryNoteController extends Controller
      */
     public function edit(Request $request, DeliveryNote $deliveryNote)
     {
-        $this->checkPermission($request, 'delivery-notes', 'edit');
+        $this->checkPermission($request, 'delivery-notes', 'update');
         
         // Empêcher l'édition si le BL est validé
         if ($deliveryNote->status === 'validated') {

@@ -29,9 +29,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Link, usePage } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
+import { usePermissions } from '@/composables/usePermissions'
 import DashboardPanel from '@/components/dashboard/DashboardPanel.vue'
 import type { DashboardActivityItem } from '@/types/dashboard'
 import { getActionIcon } from '@/utils/dashboardFormatters'
@@ -40,6 +40,5 @@ defineProps<{
   activities: DashboardActivityItem[]
 }>()
 
-const page = usePage()
-const isAdmin = computed(() => page.props.auth?.user?.role === 'admin')
+const { isAdmin } = usePermissions()
 </script>

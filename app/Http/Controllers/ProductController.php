@@ -256,7 +256,7 @@ class ProductController extends Controller
 
     public function edit(Request $request, Product $product)
     {
-        $this->checkPermission($request, 'products', 'edit');
+        $this->checkPermission($request, 'products', 'update');
         
         $categories = Category::orderBy('name')->get();
         
@@ -419,6 +419,8 @@ class ProductController extends Controller
      */
     public function uploadImage(Request $request)
     {
+        $this->checkAnyPermission($request, 'products', ['create', 'update']);
+
         $file = $request->file('image') ?? $request->file('images');
 
         $request->validate([
@@ -443,6 +445,8 @@ class ProductController extends Controller
      */
     public function generateSku(Request $request)
     {
+        $this->checkAnyPermission($request, 'products', ['create', 'update']);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'nullable|exists:categories,id',
@@ -553,13 +557,13 @@ class ProductController extends Controller
         $user->refresh();
 
         $canSearch = $user->hasPermission('sales', 'create')
-            || $user->hasPermission('sales', 'edit')
+            || $user->hasPermission('sales', 'update')
             || $user->hasPermission('quotes', 'create')
-            || $user->hasPermission('quotes', 'edit')
+            || $user->hasPermission('quotes', 'update')
             || $user->hasPermission('purchase-orders', 'create')
-            || $user->hasPermission('purchase-orders', 'edit')
+            || $user->hasPermission('purchase-orders', 'update')
             || $user->hasPermission('delivery-notes', 'create')
-            || $user->hasPermission('delivery-notes', 'edit')
+            || $user->hasPermission('delivery-notes', 'update')
             || $user->hasPermission('products', 'view');
 
         if (!$canSearch) {

@@ -19,7 +19,9 @@ Route::middleware(['web', 'auth'])->prefix('api/notifications')->name('notificat
     Route::post('/archive/{id}', [NotificationApiController::class, 'archive'])->name('archive');
     Route::delete('/read', [NotificationApiController::class, 'destroyRead'])->name('delete-read');
     Route::delete('/{id}', [NotificationApiController::class, 'destroy'])->name('destroy');
-    Route::post('/test', [NotificationApiController::class, 'test'])->name('test');
+    Route::post('/test', [NotificationApiController::class, 'test'])
+        ->middleware(EnsureUserIsAdmin::class)
+        ->name('test');
     Route::post('/client-log', [NotificationClientLogController::class, 'store'])->name('client-log');
 });
 
@@ -43,5 +45,7 @@ Route::middleware(['web', 'auth'])->prefix('api/user')->name('notification-cente
 Route::middleware(['web', 'auth'])->prefix('notifications')->name('notifications.')->group(function () {
     Route::post('/mark-as-read', [NotificationApiController::class, 'markAsRead'])->name('mark-as-read');
     Route::post('/mark-all-as-read', [NotificationApiController::class, 'markAllAsRead'])->name('mark-all-as-read');
-    Route::post('/test', [NotificationApiController::class, 'test'])->name('test');
+    Route::post('/test', [NotificationApiController::class, 'test'])
+        ->middleware(EnsureUserIsAdmin::class)
+        ->name('test');
 });

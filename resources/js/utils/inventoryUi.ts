@@ -4,6 +4,7 @@ export type InventoryReviewFilter = 'all' | 'conforme' | 'manque' | 'surplus'
 
 export type InventoryListStats = {
   active_count: number
+  history_count?: number
   counting_count: number
   to_validate_count: number
   last_reference?: string | null
@@ -20,14 +21,30 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Annulé',
 }
 
+const STATUS_LIST_LABELS: Record<string, string> = {
+  draft: 'Brouillon',
+  counting: 'Comptage',
+  review: 'Révision',
+  validated: 'Validé',
+  applied: 'Appliqué',
+  closed: 'Clôturé',
+  cancelled: 'Annulé',
+}
+
 const STATUS_BADGE_CLASSES: Record<string, string> = {
-  draft: 'bg-secondary',
-  counting: 'bg-primary',
-  review: 'bg-warning text-dark',
-  validated: 'bg-success',
-  applied: 'bg-info text-dark',
-  closed: 'bg-dark',
-  cancelled: 'bg-secondary',
+  draft: 'inventory-list-badge--status-draft',
+  counting: 'inventory-list-badge--status-counting',
+  review: 'inventory-list-badge--status-review',
+  validated: 'inventory-list-badge--status-validated',
+  applied: 'inventory-list-badge--status-applied',
+  closed: 'inventory-list-badge--status-closed',
+  cancelled: 'inventory-list-badge--status-cancelled',
+}
+
+const SCOPE_BADGE_CLASSES: Record<string, string> = {
+  complete: 'inventory-list-badge--scope-complete',
+  category: 'inventory-list-badge--scope-category',
+  stock_positive: 'inventory-list-badge--scope-stock-positive',
 }
 
 const SCOPE_LABELS: Record<string, string> = {
@@ -40,8 +57,87 @@ export function getInventoryStatusLabel(status: string): string {
   return STATUS_LABELS[status] ?? status
 }
 
+export function getInventoryStatusListLabel(status: string): string {
+  return STATUS_LIST_LABELS[status] ?? getInventoryStatusLabel(status)
+}
+
 export function getInventoryStatusBadgeClass(status: string): string {
-  return STATUS_BADGE_CLASSES[status] ?? 'bg-secondary'
+  return STATUS_BADGE_CLASSES[status] ?? 'inventory-list-badge--status-closed'
+}
+
+export function getInventoryScopeBadgeClass(scopeType?: string | null): string {
+  if (!scopeType) {
+    return SCOPE_BADGE_CLASSES.complete
+  }
+
+  return SCOPE_BADGE_CLASSES[scopeType] ?? SCOPE_BADGE_CLASSES.complete
+}
+
+export type InventoryListScopeDisplay = {
+  label: string
+  badgeClass: string
+  categoryName?: string | null
+}
+
+export function resolveInventoryListScopeDisplay(
+  scopeType?: string | null,
+  scopeValue?: { category_id?: number } | null,
+  categories: Array<{ id: number; name: string }> = [],
+): InventoryListScopeDisplay {
+  const badgeClass = getInventoryScopeBadgeClass(scopeType)
+  const label = getInventoryScopeLabel(scopeType)
+
+  if (scopeType === 'category' && scopeValue?.category_id) {
+    const category = categories.find((item) => item.id === scopeValue.category_id)
+
+    return {
+      label,
+      badgeClass,
+      categoryName: category?.name ?? null,
+    }
+  }
+
+  return { label, badgeClass, categoryName: null }
+}
+
+export type InventoryListVarianceDisplay = {
+  label: string
+  badgeClass: string
+}
+
+const HISTORY_STATUSES = new Set(['applied', 'closed', 'cancelled'])
+
+export function getInventoryListVarianceDisplay(session: {
+  status?: string
+  application_summary?: {
+    net_adjustment?: number
+  } | null
+}): InventoryListVarianceDisplay | null {
+  if (!session.status || !HISTORY_STATUSES.has(session.status)) {
+    return null
+  }
+
+  const net = session.application_summary?.net_adjustment
+
+  if (net === undefined || net === null) {
+    return null
+  }
+
+  if (net === 0) {
+    return {
+      label: 'Conforme',
+      badgeClass: 'inventory-variance-badge inventory-variance-badge--conforme',
+    }
+  }
+
+  const signed = net > 0 ? `+${net}` : String(net)
+
+  return {
+    label: `Écart net ${signed}`,
+    badgeClass: net > 0
+      ? 'inventory-variance-badge inventory-variance-badge--surplus'
+      : 'inventory-variance-badge inventory-variance-badge--manque',
+  }
 }
 
 export function getInventoryScopeLabel(scopeType?: string | null): string {
@@ -152,7 +248,13 @@ export function formatInventoryShortDate(value?: string | null): string {
     return '—'
   }
 
-  return new Date(value).toLocaleDateString('fr-FR')
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return '—'
+  }
+
+  return date.toLocaleDateString('fr-FR')
 }
 
 export function getScannerReadyMessage(scanning: boolean, loading: boolean): string {

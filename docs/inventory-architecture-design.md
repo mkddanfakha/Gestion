@@ -3742,3 +3742,80 @@ Helper `shouldRefocusInventoryScanner()` dans `inventoryCounting.ts`.
 - Payload JSON O(N) sur show/start/apply : hors périmètre 4G-1 (Phase 4G-2).
 
 *Document mis à jour le 2026-08-22 — Phase 4G audit READ-ONLY.*
+
+---
+
+# Phase 4G-3 — Historique & Exports
+
+*Document mis à jour le 2026-08-22 — Phase 4G-3 implémentée.*
+
+## Recherche
+
+- Recherche serveur sur `reference`, `name`, `description` et nom du magasin.
+- Debounce frontend 400 ms ; exécution Laravel avec `paginate(20)->withQueryString()`.
+
+## Filtres
+
+| Paramètre | Description |
+|-----------|-------------|
+| `search` | Texte libre |
+| `status` | Enum `InventorySessionStatus` |
+| `scope_type` | Enum `InventoryScopeType` |
+| `category_id` | Périmètre catégorie (`scope_value->category_id`) |
+| `store_id` | Magasin (company-scoped) |
+| `date_from` / `date_to` | Plage sur `created_at` |
+| `list_view` | `active` / `history` / vide (tous) |
+
+Les filtres sont persistés dans l’URL et restaurés au retour depuis le détail.
+
+## Historique
+
+- **Actifs** : `draft`, `counting`, `review`, `validated` (`InventorySessionStatus::activeStatuses()`).
+- **Historique** : `applied`, `closed`, `cancelled` (`InventorySessionStatus::historyStatuses()`).
+- Onglets Inertia sur `/inventory` via `list_view`.
+
+## Détail historique
+
+`formatSessionDetailPayload()` enrichi :
+
+- `is_history`, `scope_label`, `category_name`, `session_date`, `kpi`, `movements`.
+- Sections UI : synthèse KPI, tableau écarts, mouvements `StockMovement` (`inventory_adjustment`, référence morph session).
+
+## PDF
+
+- Route : `GET /inventory/{session}/export/pdf` (`inventory.export.pdf`).
+- Service : `InventoryExportService::buildPdfData()` (read-only).
+- Vue : `resources/views/exports/inventory-session-pdf.blade.php` (DomPDF via `GeneratesPdf`).
+
+## Excel
+
+- Route : `GET /inventory/{session}/export/excel` (`inventory.export.excel`).
+- Workbook Maatwebsite : 4 feuilles (Résumé, Détail, Écarts, Mouvements) dans `app/Exports/Inventory/`.
+
+## Permissions
+
+- Permission `inventory.export` (PermissionSeeder).
+- Contrôle backend sur les deux routes export ; masquage UI insuffisant seul.
+
+## Isolation company
+
+- `assertSessionAccessible()` sur index/show/export.
+- Tests IDOR : `InventoryExportTest`, `InventoryHistoryTest`, `InventorySearchTest`.
+
+## Tests
+
+| Fichier | Couverture |
+|---------|------------|
+| `InventoryHistoryTest` | list_view, store_id, détail historique, stats |
+| `InventorySearchTest` | recherche, pagination, query params |
+| `InventoryExportTest` | PDF/Excel autorisés, 403, 422 actif, IDOR, 404 |
+| `inventoryHistory.test.ts` | helpers KPI, export, statuts |
+| `inventoryListFilters.test.ts` | store_id, list_view chips |
+
+## Limites
+
+- Pas de pagination des items inventaire (Phase 4G-2).
+- Pas de valorisation monétaire des écarts (données absentes).
+- Mouvements affichés/exportés uniquement pour `applied` / `closed` (pas pour `cancelled`).
+- Multi-magasin : filtre `store_id` préparé ; création reste sur magasin par défaut.
+

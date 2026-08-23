@@ -209,7 +209,7 @@ class PurchaseOrderController extends Controller
      */
     public function edit(Request $request, PurchaseOrder $purchaseOrder)
     {
-        $this->checkPermission($request, 'purchase-orders', 'edit');
+        $this->checkPermission($request, 'purchase-orders', 'update');
         
         $purchaseOrder->load(['supplier', 'items.product', 'attachments.uploadedBy']);
         $suppliers = Supplier::where('status', 'active')->orderBy('name')->get();

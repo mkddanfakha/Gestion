@@ -56,12 +56,16 @@ describe('inventoryListFilters', () => {
       status: 'counting',
       scope_type: 'category',
       category_id: '7',
+      store_id: '2',
+      list_view: 'history',
       date_from: '2026-08-01',
-    }, [{ id: 7, name: 'Riz' }])).toEqual([
+    }, [{ id: 7, name: 'Riz' }], [{ id: 2, name: 'Magasin principal' }])).toEqual([
       { key: 'search', label: 'Recherche', value: 'riz' },
       { key: 'status', label: 'Statut', value: 'Comptage en cours' },
       { key: 'scope_type', label: 'Périmètre', value: 'Catégorie' },
       { key: 'category_id', label: 'Catégorie', value: 'Riz' },
+      { key: 'store_id', label: 'Magasin', value: 'Magasin principal' },
+      { key: 'list_view', label: 'Vue', value: 'Historique' },
       { key: 'date_from', label: 'Du', value: '2026-08-01' },
     ])
   })

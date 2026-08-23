@@ -13,8 +13,9 @@
         :list-stats="listStats ?? defaultListStats"
         :has-sessions="hasSessions ?? false"
         :categories="categories ?? []"
+        :stores="stores ?? []"
         :filters="filters ?? {}"
-        :permissions="permissions ?? { create: false, count: false }"
+        :permissions="permissions ?? { create: false, count: false, export: false }"
       />
     </IndexPageLayout>
   </AppLayout>
@@ -53,7 +54,8 @@ type InventorySessionDetail = {
   permissions: {
     count: boolean
     submit: boolean
-    review: boolean
+    review?: boolean
+    reopen: boolean
     validate: boolean
     apply: boolean
     close: boolean
@@ -67,14 +69,16 @@ const props = defineProps<{
   listStats?: InventoryListStats
   hasSessions?: boolean
   categories?: Array<{ id: number; name: string }>
+  stores?: Array<{ id: number; name: string }>
   filters?: InventoryListFilters
   listFilters?: InventoryListFilters
-  permissions?: { create: boolean; count: boolean }
+  permissions?: { create: boolean; count: boolean; export?: boolean }
   countingSession?: InventorySessionDetail
 }>()
 
 const defaultListStats: InventoryListStats = {
   active_count: 0,
+  history_count: 0,
   counting_count: 0,
   to_validate_count: 0,
 }

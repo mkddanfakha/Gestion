@@ -32,6 +32,9 @@ export interface User {
     email: string;
     avatar?: string;
     role?: string;
+    is_active?: boolean;
+    /** Noms de permissions (AuthorizationService::forUser). Vide pour admin (bypass). */
+    permissions?: string[];
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
