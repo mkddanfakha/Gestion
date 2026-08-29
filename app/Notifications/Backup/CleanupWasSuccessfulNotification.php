@@ -13,12 +13,11 @@ class CleanupWasSuccessfulNotification extends BaseNotification
     }
 
     /**
-     * Get the notification's delivery channels.
-     * Retourner un tableau vide pour désactiver complètement les notifications
+     * @return list<string>
      */
     public function via(): array
     {
-        return []; // Ne pas envoyer de notifications
+        // Success cleanup: mail only if explicitly enabled (same gate).
+        return BackupAlertChannels::mailWhenConfigured();
     }
 }
-

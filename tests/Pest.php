@@ -47,6 +47,9 @@ pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->in('Unit/Rbac/RbacArchitectureIntegrityTest.php');
 
+pest()->extend(Tests\TestCase::class)
+    ->in('Unit/Infrastructure');
+
 /*
 |--------------------------------------------------------------------------
 | Expectations

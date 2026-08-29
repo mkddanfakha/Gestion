@@ -332,7 +332,8 @@ final class PermissionCatalog
                 'create' => ['Créer une sauvegarde', 'Permet de lancer une nouvelle sauvegarde.', 20],
                 'download' => ['Télécharger une sauvegarde', 'Permet de télécharger une archive de sauvegarde.', 30],
                 'delete' => ['Supprimer une sauvegarde', 'Permet de supprimer une sauvegarde existante.', 40],
-                'restore' => ['Restaurer une sauvegarde', 'Permet de restaurer les données depuis une sauvegarde.', 50],
+                'restore' => ['Restaurer une base depuis une sauvegarde (DB-only)', 'Permet de restaurer uniquement le dump SQL vers une base allow-listée (jamais gestion).', 50],
+                'restore_files' => ['Restaurer les fichiers applicatifs', 'Opération séparée, confirmation FILES_RESTORE, jamais couplée au restore DB.', 55],
             ],
             'categories' => [
                 'view' => ['Voir les catégories', 'Permet de consulter les catégories de produits.', 10],

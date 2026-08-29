@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Database\BackupConcurrencyGuard;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -42,16 +43,21 @@ class CreateBackupJob implements ShouldQueue
         $progressKey = "backup_progress_{$this->userId}";
         
         try {
-            // Mettre à jour la progression
-            $this->updateProgress(10, $this->onlyDb ? 'Sauvegarde de la base de données en cours...' : 'Sauvegarde complète en cours...');
-            
-            if ($this->onlyDb) {
-                Artisan::call('backup:run', ['--only-db' => true]);
-            } else {
-                Artisan::call('backup:run');
-            }
-            
-            // Mettre à jour la progression à 95%
+            Cache::put($progressKey, [
+                'percentage' => 10,
+                'message' => $this->onlyDb ? 'Sauvegarde de la base de données en cours...' : 'Sauvegarde complète en cours...',
+                'status' => 'running',
+                'timestamp' => now()->timestamp,
+            ], 600);
+
+            BackupConcurrencyGuard::runBackup(function () {
+                if ($this->onlyDb) {
+                    Artisan::call('backup:production', ['--only-db' => true]);
+                } else {
+                    Artisan::call('backup:production');
+                }
+            });
+
             $this->updateProgress(95, 'Sauvegarde réussie, finalisation...');
             
         } catch (\Exception $e) {

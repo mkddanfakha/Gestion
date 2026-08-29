@@ -33,7 +33,7 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
@@ -56,6 +56,11 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Offsite backup archives (S3-compatible / OVH Object Storage).
+         * Credentials: .env only. Not publicly served by this app.
+         * Add "s3" to BACKUP_DISKS only when AWS_BUCKET (+ AWS_ENDPOINT if needed) are set.
+         */
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -65,6 +70,7 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
             'throw' => false,
             'report' => false,
         ],

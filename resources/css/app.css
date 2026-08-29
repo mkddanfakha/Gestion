@@ -9,6 +9,7 @@
 @import './components.css';
 @import './sales.css';
 @import './inventory.css';
+@import './marketing.css';
 
 /* Notification Center */
 @import './notifications.css';
@@ -16,6 +17,23 @@
 /* Custom styles */
 body {
     font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Form field errors — Bootstrap/theme tokens (do not rely on Tailwind text-red-*) */
+.input-error-wrap {
+    margin-top: 0.35rem;
+}
+
+.input-error {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--color-danger, #dc2626);
+}
+
+.dark .input-error {
+    color: #fca5a5;
 }
 
 /* Custom Bootstrap overrides */

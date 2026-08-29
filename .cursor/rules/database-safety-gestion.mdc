@@ -1,0 +1,58 @@
+---
+description: Protection absolue de la base MySQL gestion et opérations destructives
+alwaysApply: true
+---
+
+# Database Safety — MKD-Pro (`gestion`)
+
+## Contexte incident
+
+- 2026-08-23 : `scripts/measure-rbac-queries.php` → `Artisan::call('migrate:fresh')` → destruction données métier
+- 2026-08-25 : `GRANT DROP ON gestion.*` → MySQL autorise `DROP DATABASE gestion` (PRE-PROD 9.3.3)
+- PRE-PROD 9.3.5 : recovery août 2026 abandonnée (décision humaine 9.4) — preuves conservées
+
+## Interdictions absolues (sans approbation humaine EXPLICITE)
+
+1. Ne jamais exécuter `migrate:fresh` / `migrate:refresh` / `migrate:reset` / `db:wipe` sur `gestion`.
+2. Ne jamais exécuter `DROP DATABASE gestion`.
+3. Ne jamais exécuter `DROP TABLE` sur `gestion` sans phrase d'approbation exacte.
+4. Ne jamais créer de script PHP/Python/Node qui bootstrap Laravel puis lance une commande destructive.
+5. Ne jamais utiliser `root` comme runtime Laravel (`DB_USERNAME`).
+6. Ne jamais mettre un mot de passe dans une commande terminal (pas de `-pPASSWORD`).
+7. Ne jamais afficher de secret / mot de passe dans les logs ou la sortie chat.
+8. Ne jamais importer automatiquement des dumps historiques / `gestion_recovery` / exports août vers `gestion`.
+9. Ne jamais renommer `gestion_recovery` en `gestion`.
+10. `--force` ne contourne jamais les protections.
+11. Les protections doivent s'appliquer aussi via `Artisan::call`, indépendamment de `APP_ENV`.
+12. Matching de nom de base : exact et case-insensitive.
+13. Restore / recovery : allow-list uniquement (`gestion_recovery`, `gestion_test`, …) — **jamais** cible `gestion`.
+
+## Runtime
+
+- Laravel runtime attendu : `gestion_app` (CRUD only).
+- Tests : SQLite `:memory:` ou base explicitement isolée (`gestion_test`).
+- `gestion_migration` / `gestion_backup` / `gestion_restore` / `root` : hors runtime.
+
+## Avant toute opération à risque — afficher puis ARRÊTER
+
+```text
+BASE CIBLE:
+UTILISATEUR:
+COMMANDE:
+IMPACT:
+ÉTAT AVANT:
+APPROBATION REQUISE:
+```
+
+Exemples de phrases d'approbation (ne jamais déduire) :
+
+- `OUI — REVOKE DROP FROM gestion_migration`
+- `OUI — PREPARE CLEAN gestion`
+- `OUI — CREATE DATABASE gestion`
+- `OUI — RUN MIGRATE ON gestion`
+- `OUI — SEED TEST DATA ON gestion`
+
+## Preuves historiques
+
+Conserver intact : `gestion_recovery`, ZIP Spatie, dumps SQL, exports août 2026, rapports `docs/preprod-*`.
+Ne pas les supprimer, ne pas les restaurer silencieusement dans `gestion`.

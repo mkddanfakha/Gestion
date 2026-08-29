@@ -2,6 +2,17 @@
 
 return [
 
+    /*
+    |--------------------------------------------------------------------------
+    | Backup / restore concurrency lock store
+    |--------------------------------------------------------------------------
+    |
+    | MUST be independent of the métier MySQL connection used by gestion_backup
+    | (no INSERT into cache table). Default: file. Use redis for multi-node.
+    |
+    */
+    'lock_cache_store' => env('BACKUP_LOCK_CACHE_STORE', 'file'),
+
     'backup' => [
         /*
          * The name of this application. You can use this name to monitor
@@ -27,6 +38,9 @@ return [
                     base_path('vendor'),
                     base_path('node_modules'),
                     base_path('.git'),
+                    base_path('.env'),
+                    base_path('.env.backup'),
+                    base_path('.env.testing'),
                     base_path('storage/app/backup-temp'),
                     storage_path('app/backup-temp'),
                     storage_path('app/restore-temp'),
@@ -158,11 +172,14 @@ return [
             'filename_prefix' => '',
 
             /*
-             * The disk names on which the backups will be stored.
+             * Disk names for backup archives (comma-separated via BACKUP_DISKS).
+             * Default: local only. Add "s3" only after AWS_BUCKET + AWS_ENDPOINT are set.
+             * Never put credentials here — use .env / secret store.
              */
-            'disks' => [
-                'local',
-            ],
+            'disks' => array_values(array_filter(array_map(
+                static fn (string $disk): string => trim($disk),
+                explode(',', (string) env('BACKUP_DISKS', 'local')),
+            ))),
         ],
 
         /*
@@ -223,7 +240,18 @@ return [
         'notifiable' => \Spatie\Backup\Notifications\Notifiable::class,
 
         'mail' => [
-            'to' => 'your@example.com',
+            /*
+             * Spatie requires a syntactically valid "to" at config load time.
+             * Delivery is gated by BackupAlertChannels (BACKUP_ALERT_MAIL_ENABLED + BACKUP_ALERT_EMAIL).
+             * Placeholder is never a real ops mailbox.
+             */
+            'to' => (static function (): string {
+                $email = trim((string) env('BACKUP_ALERT_EMAIL', ''));
+
+                return ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL))
+                    ? $email
+                    : 'backup-alerts-disabled@example.com';
+            })(),
 
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
@@ -267,7 +295,10 @@ return [
     'monitor_backups' => [
         [
             'name' => env('APP_NAME', 'laravel-backup'),
-            'disks' => ['local'],
+            'disks' => array_values(array_filter(array_map(
+                static fn (string $disk): string => trim($disk),
+                explode(',', (string) env('BACKUP_DISKS', 'local')),
+            ))),
             'health_checks' => [
                 \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays::class => 1,
                 \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes::class => 5000,
@@ -302,27 +333,27 @@ return [
             /*
              * The number of days for which backups must be kept.
              */
-            'keep_all_backups_for_days' => 7,
+            'keep_all_backups_for_days' => 30,
 
             /*
              * After the "keep_all_backups_for_days" period is over, the most recent backup
              * of that day will be kept. Older backups within the same day will be removed.
              * If you create backups only once a day, no backups will be removed yet.
              */
-            'keep_daily_backups_for_days' => 16,
+            'keep_daily_backups_for_days' => 30,
 
             /*
              * After the "keep_daily_backups_for_days" period is over, the most recent backup
              * of that week will be kept. Older backups within the same week will be removed.
              * If you create backups only once a week, no backups will be removed yet.
              */
-            'keep_weekly_backups_for_weeks' => 8,
+            'keep_weekly_backups_for_weeks' => 12,
 
             /*
              * After the "keep_weekly_backups_for_weeks" period is over, the most recent backup
              * of that month will be kept. Older backups within the same month will be removed.
              */
-            'keep_monthly_backups_for_months' => 4,
+            'keep_monthly_backups_for_months' => 12,
 
             /*
              * After the "keep_monthly_backups_for_months" period is over, the most recent backup

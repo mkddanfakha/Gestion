@@ -8,14 +8,19 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Sauvegardes automatiques quotidiennes à 2h du matin
-Schedule::command('backup:run')->daily()->at('02:00');
+// PRE-PROD 10.2 — daily backup chain (Africa/Dakar via config/app.php timezone).
+// withoutOverlapping: skip if previous run still held (mutex, minutes).
+Schedule::command('backup:production')
+    ->dailyAt('02:00')
+    ->withoutOverlapping(180);
 
-// Nettoyage automatique des anciennes sauvegardes quotidiennement à 3h du matin
-Schedule::command('backup:clean')->daily()->at('03:00');
+Schedule::command('backup:clean')
+    ->dailyAt('03:00')
+    ->withoutOverlapping(120);
 
-// Vérification de la santé des sauvegardes quotidiennement à 4h du matin
-Schedule::command('backup:monitor')->daily()->at('04:00');
+Schedule::command('backup:monitor')
+    ->dailyAt('04:00')
+    ->withoutOverlapping(60);
 
 // Nettoyage automatique des anciennes notifications
 if (config('notification-center.scheduler.enabled', true)) {

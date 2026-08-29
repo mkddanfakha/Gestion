@@ -169,6 +169,8 @@ interface Backup {
 interface Props {
   backups: Backup[]
   disk: string
+  restore_allowed_databases?: string[]
+  protected_database?: string
 }
 
 const props = defineProps<Props>()
@@ -353,32 +355,51 @@ const confirmDelete = (backupName: string) => {
 }
 
 const confirmRestore = (backupName: string) => {
+  const targets = props.restore_allowed_databases?.length
+    ? props.restore_allowed_databases
+    : ['gestion_recovery', 'gestion_test']
+  const optionsHtml = targets.map((t) => `<option value="${t}">${t}</option>`).join('')
+
   Swal.fire({
-    title: 'Attention !',
+    title: 'Restauration DB-only',
     html: `
-      <p class="text-start">Vous êtes sur le point de restaurer la sauvegarde <strong>${backupName}</strong>.</p>
-      <p class="text-start text-danger"><strong>Cette action est irréversible et remplacera toutes les données actuelles.</strong></p>
-      <p class="text-start">Assurez-vous d'avoir créé une sauvegarde récente avant de continuer.</p>
+      <p class="text-start">Sauvegarde : <strong>${backupName}</strong></p>
+      <p class="text-start text-danger"><strong>Aucun fichier applicatif ne sera modifié.</strong> La base métier <code>${props.protected_database || 'gestion'}</code> est interdite.</p>
+      <label class="form-label text-start d-block">Base cible explicite</label>
+      <select id="restore-target-select" class="form-select mb-2">${optionsHtml}</select>
+      <p class="text-start">Saisissez exactement <strong>RESTORE</strong>.</p>
     `,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#d33',
     cancelButtonColor: '#3085d6',
-    confirmButtonText: 'Oui, restaurer',
+    confirmButtonText: 'Restaurer la base uniquement',
     cancelButtonText: 'Annuler',
-    input: 'checkbox',
-    inputPlaceholder: 'Je confirme vouloir restaurer cette sauvegarde',
+    input: 'text',
+    inputPlaceholder: 'RESTORE',
     inputValidator: (value) => {
-      if (!value) {
-        return 'Vous devez confirmer la restauration'
+      if (value !== 'RESTORE') {
+        return 'Saisissez exactement RESTORE pour confirmer'
       }
+    },
+    preConfirm: () => {
+      const select = document.getElementById('restore-target-select') as HTMLSelectElement | null
+      const target = select?.value || ''
+      if (!target || target === (props.protected_database || 'gestion')) {
+        Swal.showValidationMessage('Cible invalide')
+        return false
+      }
+      return target
     }
   }).then((result) => {
     if (result.isConfirmed && result.value) {
-      // Afficher un message de progression
+      const targetDatabase = (document.getElementById('restore-target-select') as HTMLSelectElement | null)?.value
+        || (typeof result.value === 'string' && targets.includes(result.value) ? result.value : targets[0])
+      const phrase = 'RESTORE'
+
       Swal.fire({
-        title: 'Restauration en cours',
-        html: `Restauration de la sauvegarde <strong>${backupName}</strong>...<br><br>Cette opération peut prendre plusieurs minutes. Veuillez patienter...`,
+        title: 'Restauration DB-only',
+        html: `Cible : <strong>${targetDatabase}</strong><br>Fichiers applicatifs : non touchés`,
         icon: 'info',
         allowOutsideClick: false,
         allowEscapeKey: false,
@@ -391,14 +412,17 @@ const confirmRestore = (backupName: string) => {
       processing.value = true
       
       router.post(route('admin.backups.restore', backupName), {
-        confirm: true
+        confirm: true,
+        confirmation_phrase: phrase,
+        target_database: targetDatabase,
+        restore_mode: 'database',
       }, {
         onSuccess: () => {
           processing.value = false
           Swal.close()
           Swal.fire({
             title: 'Succès !',
-            text: 'La sauvegarde a été restaurée avec succès. L\'application a été restaurée à l\'état de la sauvegarde.',
+            text: 'Restauration DB-only terminée. Aucun fichier applicatif n\'a été modifié.',
             icon: 'success',
             confirmButtonText: 'OK'
           }).then(() => {
@@ -408,31 +432,19 @@ const confirmRestore = (backupName: string) => {
         onError: (errors) => {
           processing.value = false
           Swal.close()
-          
-          // Gérer différents types d'erreurs
-          let errorMessage = 'Une erreur est survenue lors de la restauration.'
-          
-          try {
-            if (typeof errors === 'string') {
-              errorMessage = errors
-            } else if (errors && typeof errors === 'object') {
-              if (errors.message) {
-                errorMessage = errors.message
-              } else if (errors.error) {
-                errorMessage = errors.error
-              }
-            }
-          } catch (e) {
-            console.error('Erreur lors de la gestion des erreurs:', e)
-          }
-          
+          const message = typeof errors === 'object' && errors !== null
+            ? (Object.values(errors).flat().join(' ') || 'Erreur lors de la restauration')
+            : 'Erreur lors de la restauration'
           Swal.fire({
-            title: 'Erreur !',
-            text: errorMessage,
+            title: 'Erreur',
+            text: message,
             icon: 'error',
             confirmButtonText: 'OK'
           })
-        }
+        },
+        onFinish: () => {
+          processing.value = false
+        },
       })
     }
   })

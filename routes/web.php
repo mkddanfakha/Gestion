@@ -149,6 +149,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('backups', \App\Http\Controllers\Admin\BackupController::class)->only(['index', 'store', 'destroy']);
         Route::get('/backups/{backup}/download', [\App\Http\Controllers\Admin\BackupController::class, 'download'])->name('backups.download');
         Route::post('/backups/{backup}/restore', [\App\Http\Controllers\Admin\BackupController::class, 'restore'])->name('backups.restore');
+        Route::post('/backups/{backup}/restore-files', [\App\Http\Controllers\Admin\BackupController::class, 'restoreApplicationFiles'])->name('backups.restore-files');
         Route::post('/backups/import', [\App\Http\Controllers\Admin\BackupController::class, 'import'])->name('backups.import');
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
         Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('activity-logs.show');

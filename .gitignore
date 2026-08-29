@@ -37,3 +37,25 @@ yarn-error.log
 /.vscode
 /.zed
 /.cert
+
+# Local MySQL app credentials (PRE-PROD 9.1)
+.mysql-gestion-app.local
+
+# PRE-PROD 9.2 cutover rollback snapshot (contains prior DB credentials)
+.mysql-cutover-rollback.local
+
+# PRE-PROD 9.3.1 backup account credentials
+.mysql-gestion-backup.local
+
+# PRE-PROD 9.3.2 restore account credentials
+.mysql-gestion-restore.local
+
+# PRE-PROD 9.3.3 migration account credentials
+.mysql-gestion-migration.local
+
+# Local SQL dumps / ad-hoc archives (never commit)
+/*.sql
+/*.sql.gz
+/*.dump
+/backups/
+/backup/

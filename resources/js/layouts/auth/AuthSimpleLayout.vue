@@ -6,45 +6,60 @@ defineProps<{
     title?: string;
     description?: string;
 }>();
+
+const year = new Date().getFullYear();
 </script>
 
 <template>
-    <div class="min-vh-100 d-flex flex-column align-items-center justify-content-center bg-light p-3 p-md-5">
-        <div class="w-100" style="max-width: 400px;">
-            <div class="d-flex flex-column gap-4">
-                <div class="d-flex flex-column align-items-center gap-3">
-                    <Link
-                        :href="home()"
-                        class="d-flex flex-column align-items-center text-decoration-none"
-                    >
-                        <div class="mb-2 d-flex align-items-center gap-2">
-                            <img 
-                                src="/logo.png" 
-                                alt="Logo Gestion" 
-                                style="width: 60px; height: 60px; object-fit: contain;"
-                            />
-                            <h2 class="mb-0 fw-bold text-primary">Gestion</h2>
-                        </div>
-                        <span class="visually-hidden">{{ title }}</span>
-                    </Link>
-                    <div class="text-center">
-                        <h1 class="h4 mb-2 fw-medium">{{ title }}</h1>
-                        <p class="text-muted mb-0">
-                            {{ description }}
-                        </p>
-                    </div>
+    <div class="mkd-marketing mkd-auth">
+        <aside class="mkd-auth__brand" aria-hidden="false">
+            <div class="mkd-auth__brand-inner">
+                <Link :href="home()" class="mkd-brand text-decoration-none">
+                    <img src="/logo.png" alt="" class="mkd-brand__logo" width="44" height="44" />
+                    <span class="mkd-brand__name" style="color: #f8fafc">MKD-Pro</span>
+                </Link>
+                <div class="mkd-auth__brand-copy">
+                    <h2>La gestion commerciale, clairement organisée.</h2>
+                    <p>
+                        Produits, stocks, ventes, clients, devis et factures — centralisés pour votre activité.
+                    </p>
                 </div>
-                <slot />
+                <ul class="mkd-auth__brand-points list-unstyled mb-0">
+                    <li class="mkd-auth__brand-point">
+                        <i class="bi bi-box-seam" aria-hidden="true"></i>
+                        Catalogue et inventaire
+                    </li>
+                    <li class="mkd-auth__brand-point">
+                        <i class="bi bi-receipt" aria-hidden="true"></i>
+                        Ventes, devis et factures
+                    </li>
+                    <li class="mkd-auth__brand-point">
+                        <i class="bi bi-people" aria-hidden="true"></i>
+                        Clients et suivi d’activité
+                    </li>
+                </ul>
+            </div>
+        </aside>
+
+        <div class="mkd-auth__panel">
+            <div class="mkd-auth__panel-inner mkd-fade-in">
+                <div class="mkd-auth__mobile-brand">
+                    <Link :href="home()" class="mkd-brand justify-content-center text-decoration-none">
+                        <img src="/logo.png" alt="MKD-Pro" class="mkd-brand__logo" width="44" height="44" />
+                        <span class="mkd-brand__name">MKD-Pro</span>
+                    </Link>
+                </div>
+
+                <div class="mkd-auth__card">
+                    <h1 class="mkd-auth__title">{{ title }}</h1>
+                    <p v-if="description" class="mkd-auth__desc">{{ description }}</p>
+                    <slot />
+                </div>
+
+                <footer class="mkd-auth__footer">
+                    MKD-Pro {{ year }} © Tous droits réservés
+                </footer>
             </div>
         </div>
-        
-        <!-- Footer -->
-        <footer class="mt-auto w-100 text-center py-4">
-            <p class="text-muted mb-0">
-                <small>
-                    MKD-pro {{ new Date().getFullYear() }} © Tous droits réservés
-                </small>
-            </p>
-        </footer>
     </div>
 </template>

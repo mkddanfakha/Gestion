@@ -13,12 +13,16 @@ class BackupHasFailedNotification extends BaseNotification
     }
 
     /**
-     * Get the notification's delivery channels.
-     * Retourner un tableau vide pour désactiver complètement les notifications
+     * @return list<string>
      */
     public function via(): array
     {
-        return []; // Ne pas envoyer de notifications
+        \Log::error('backup.failed', [
+            'message' => property_exists($this, 'event') && isset($this->event->exception)
+                ? $this->event->exception?->getMessage()
+                : 'backup_failed',
+        ]);
+
+        return BackupAlertChannels::mailWhenConfigured();
     }
 }
-
