@@ -1,1 +1,0 @@
-import{_ as o}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{f as s,H as t,o as r}from"./app-BocMhw0b.js";const n={},a={class:"index-page"};function c(e,_){return r(),s("div",a,[t(e.$slots,"default")])}const i=o(n,[["render",c]]);export{i as I};

@@ -10,6 +10,7 @@ import {
   inventorySessionSummary,
   isInventoryItemCounted,
   resolveVarianceStatus,
+  resolveInventoryCanSubmit,
   shouldRefocusInventoryScanner,
   type InventoryCountingItem,
 } from './inventoryCounting'
@@ -92,6 +93,9 @@ describe('inventoryCounting', () => {
     expect(updated[0].quantity_counted).toBe(1)
     expect(updated[0].variance_status).toBe('manque')
     expect(inventoryCountProgress(updated).counted).toBe(3)
+    expect(resolveInventoryCanSubmit('counting', sampleItems)).toBe(false)
+    expect(resolveInventoryCanSubmit('counting', updated)).toBe(true)
+    expect(resolveInventoryCanSubmit('review', updated)).toBe(false)
   })
 
   it('filters uncounted items using null check', () => {

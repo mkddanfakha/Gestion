@@ -162,7 +162,7 @@
               <button
                 type="button"
                 class="btn btn-primary btn-lg"
-                :disabled="!canSubmitNow || workflowLoading || !session.permissions?.submit || !session.can_submit"
+                :disabled="!canSubmitNow || workflowLoading || !session.permissions?.submit"
                 @click="handleSubmit"
               >
                 <span v-if="workflowLoading" class="spinner-border spinner-border-sm me-2"></span>
@@ -304,6 +304,7 @@ import {
   formatScanSuccessMessage,
   inventoryCountProgress,
   inventorySessionSummary,
+  resolveInventoryCanSubmit,
   shouldRefocusInventoryScanner,
   type InventoryCountingItem,
   type InventoryItemFilter,
@@ -505,7 +506,7 @@ const varianceRows = computed<InventoryVarianceRow[]>(() => items.value
     variance_label: formatInventoryVarianceType(item.variance_status),
   })))
 const scannerReadyMessage = computed(() => getScannerReadyMessage(scanning.value, workflowLoading.value))
-const canSubmitNow = computed(() => progress.value.uncounted === 0 && session.value.status === 'counting')
+const canSubmitNow = computed(() => resolveInventoryCanSubmit(session.value.status, items.value))
 const canManualEdit = computed(() => canShowManualQuantityEdit(session.value.status, session.value.permissions?.count ?? false))
 const canCancel = computed(() => ['draft', 'counting', 'review', 'validated'].includes(session.value.status))
 const showReviewSummary = computed(() => ['review', 'validated', 'applied', 'closed'].includes(session.value.status))
@@ -537,6 +538,20 @@ function updateFilter(value: string): void {
 const displayItems = computed(() => isReviewLike.value
   ? filterInventoryReviewItems(items.value, searchQuery.value, reviewFilter.value)
   : filterInventoryItems(items.value, searchQuery.value, countingFilter.value))
+
+/**
+ * Après scan / saisie manuelle : items mis à jour + can_submit/progress session
+ * recalculés localement (les endpoints JSON ne renvoient que l'item).
+ */
+function applyCountedItemToLocalState(scannedItem: InventoryCountingItem | Parameters<typeof applyScanToItems>[1]): void {
+  items.value = applyScanToItems(items.value, scannedItem)
+  const nextProgress = inventoryCountProgress(items.value)
+  session.value = {
+    ...session.value,
+    progress: nextProgress,
+    can_submit: resolveInventoryCanSubmit(session.value.status, items.value),
+  }
+}
 
 const statusBanner = computed(() => {
   const historyBanner = inventoryHistoryStatusBanner(session.value.status)
@@ -697,7 +712,7 @@ async function handleBarcodeScan(barcode: string): Promise<void> {
     }
     const previousItem = items.value.find((item) => item.id === payload.item!.id)
     const previousQuantity = previousItem?.quantity_counted
-    items.value = applyScanToItems(items.value, payload.item)
+    applyCountedItemToLocalState(payload.item)
     lastScannedItemId.value = payload.item.id
     lastScanDisplay.value = {
       product: payload.product,
@@ -757,7 +772,7 @@ async function saveManualQuantity(quantity: number): Promise<void> {
       quantityError.value = payload.message ?? payload.errors?.quantity_counted?.[0] ?? 'Enregistrement impossible.'
       return
     }
-    items.value = applyScanToItems(items.value, payload.item)
+    applyCountedItemToLocalState(payload.item)
     lastScannedItemId.value = payload.item.id
     closeQuantityModal()
     await waitForInventoryModalHidden()

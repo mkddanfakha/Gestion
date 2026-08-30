@@ -120,6 +120,18 @@ export function applyScanToItems(
   })
 }
 
+/**
+ * Éligibilité « Terminer le comptage » alignée sur InventorySessionService::canSubmit().
+ * Doit être recalculée localement après chaque scan/saisie : les endpoints count/scan
+ * ne renvoient que l'item, pas can_submit.
+ */
+export function resolveInventoryCanSubmit(
+  status: string,
+  items: InventoryCountingItem[],
+): boolean {
+  return status === 'counting' && inventoryCountProgress(items).uncounted === 0
+}
+
 export function resolveVarianceStatus(
   quantityCounted: number | null,
   difference: number | null,

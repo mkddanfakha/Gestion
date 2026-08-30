@@ -2,29 +2,31 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\App;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     *
+     * Le jeu de démonstration complet NIANE est chargé via :
+     *   php artisan demo:seed-local
+     *
+     * `db:seed` reste bloqué sur les bases protégées (ex. gestion).
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        if (App::environment('production')) {
+            throw new RuntimeException('DatabaseSeeder refusé en production.');
+        }
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Catalogue de permissions uniquement — données métier via demo:seed-local.
+        $this->call(PermissionSeeder::class);
 
-        // Exécuter les seeders pour les données de démonstration
-        $this->call([
-            CategorySeeder::class,
-            ProductSeeder::class,
-            CustomerSeeder::class,
-        ]);
+        $this->command?->warn(
+            'Données métier de démonstration : exécutez `php artisan demo:seed-local` (local uniquement).',
+        );
     }
 }
