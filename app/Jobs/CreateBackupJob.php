@@ -2,85 +2,137 @@
 
 namespace App\Jobs;
 
-use App\Database\BackupConcurrencyGuard;
+use App\Services\Backup\BackupAuditService;
+use App\Services\Backup\BackupCreationProgress;
+use App\Services\Backup\BackupCreationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
+/**
+ * Queued backup creation for the admin UI.
+ *
+ * Lock ownership stays exclusively in backup:production.
+ * Do NOT wrap Artisan::call with BackupConcurrencyGuard here.
+ */
 class CreateBackupJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Indique si seule la base de données doit être sauvegardée
-     */
+    public int $timeout = 600;
+
     public bool $onlyDb;
-    
-    /**
-     * ID de l'utilisateur qui a lancé la sauvegarde
-     */
+
     public int $userId;
 
-    /**
-     * Créer une nouvelle instance du job
-     */
-    public function __construct(bool $onlyDb = false, int $userId = null)
+    public string $jobId;
+
+    public function __construct(bool $onlyDb = false, ?int $userId = null, ?string $jobId = null)
     {
         $this->onlyDb = $onlyDb;
-        $this->userId = $userId ?? auth()->id() ?? 0;
+        $this->userId = $userId ?? (int) (auth()->id() ?? 0);
+        $this->jobId = $jobId ?: (string) Str::uuid();
     }
 
-    /**
-     * Exécuter le job
-     */
-    public function handle(): void
+    public function handle(BackupCreationService $creation): void
     {
-        $progressKey = "backup_progress_{$this->userId}";
-        
+        $startedAt = time();
+
+        BackupCreationProgress::put($this->jobId, [
+            'status' => 'running',
+            'percentage' => 15,
+            'message' => $this->onlyDb
+                ? 'Sauvegarde de la base de données en cours…'
+                : 'Sauvegarde (base + fichiers) en cours…',
+            'user_id' => $this->userId,
+            'only_db' => $this->onlyDb,
+            'started_at' => now()->toIso8601String(),
+        ]);
+
         try {
-            Cache::put($progressKey, [
-                'percentage' => 10,
-                'message' => $this->onlyDb ? 'Sauvegarde de la base de données en cours...' : 'Sauvegarde complète en cours...',
+            Log::info('backup.job.create.start', [
+                'job_id' => $this->jobId,
+                'only_db' => $this->onlyDb,
+                'user_id' => $this->userId,
+            ]);
+
+            $exitCode = $this->onlyDb
+                ? Artisan::call('backup:production', ['--only-db' => true])
+                : Artisan::call('backup:production');
+
+            if ($exitCode !== 0) {
+                $preview = substr(Artisan::output(), 0, 500);
+                Log::error('backup.job.create.failed', [
+                    'job_id' => $this->jobId,
+                    'exit_code' => $exitCode,
+                    'output_preview' => $preview,
+                    'user_id' => $this->userId,
+                ]);
+
+                throw new \RuntimeException('backup:production failed with exit code '.$exitCode);
+            }
+
+            BackupCreationProgress::put($this->jobId, [
                 'status' => 'running',
-                'timestamp' => now()->timestamp,
-            ], 600);
+                'percentage' => 85,
+                'message' => 'Finalisation des métadonnées…',
+                'user_id' => $this->userId,
+                'only_db' => $this->onlyDb,
+            ]);
 
-            BackupConcurrencyGuard::runBackup(function () {
-                if ($this->onlyDb) {
-                    Artisan::call('backup:production', ['--only-db' => true]);
-                } else {
-                    Artisan::call('backup:production');
-                }
-            });
+            $meta = $creation->attachManualMetadata($this->onlyDb, $this->userId > 0 ? $this->userId : null, $startedAt);
 
-            $this->updateProgress(95, 'Sauvegarde réussie, finalisation...');
-            
-        } catch (\Exception $e) {
-            $this->updateProgress(0, 'Erreur : ' . $e->getMessage(), 'error');
-            \Log::error('Erreur lors de la création de la sauvegarde: ' . $e->getMessage());
+            if (is_array($meta)) {
+                BackupAuditService::created($meta);
+            } else {
+                BackupAuditService::created([
+                    'filename' => null,
+                    'type' => $this->onlyDb ? 'DATABASE' : 'FULL',
+                    'status' => 'valid',
+                    'source' => 'manual',
+                    'user_id' => $this->userId > 0 ? $this->userId : null,
+                ]);
+            }
+
+            BackupCreationProgress::put($this->jobId, [
+                'status' => 'completed',
+                'percentage' => 100,
+                'message' => $this->onlyDb
+                    ? 'Sauvegarde de la base de données créée avec succès.'
+                    : 'Sauvegarde (base de données + fichiers) créée avec succès.',
+                'user_id' => $this->userId,
+                'only_db' => $this->onlyDb,
+                'filename' => $meta['filename'] ?? null,
+                'sha256' => $meta['sha256'] ?? null,
+            ]);
+
+            Log::info('backup.job.create.success', [
+                'job_id' => $this->jobId,
+                'only_db' => $this->onlyDb,
+                'user_id' => $this->userId,
+                'filename' => $meta['filename'] ?? null,
+            ]);
+        } catch (\Throwable $e) {
+            BackupCreationProgress::put($this->jobId, [
+                'status' => 'failed',
+                'percentage' => 0,
+                'message' => 'La sauvegarde n\'a pas pu être créée. Veuillez réessayer.',
+                'user_id' => $this->userId,
+                'only_db' => $this->onlyDb,
+            ]);
+
+            Log::error('backup.job.create.exception', [
+                'job_id' => $this->jobId,
+                'message' => $e->getMessage(),
+                'user_id' => $this->userId,
+            ]);
+
             throw $e;
         }
-    }
-    
-    /**
-     * Mettre à jour la progression
-     */
-    private function updateProgress(int $percentage, string $message, string $status = 'running'): void
-    {
-        $progressKey = "backup_progress_{$this->userId}";
-        
-        $progress = [
-            'percentage' => $percentage,
-            'message' => $message,
-            'status' => $status,
-            'timestamp' => now()->timestamp
-        ];
-        
-        Cache::put($progressKey, $progress, 600);
     }
 }

@@ -15,6 +15,8 @@ class PrivilegedProcessRunner
 
     public const SUBPROCESS_OPERATION_BACKUP = 'backup';
 
+    public const SUBPROCESS_OPERATION_RESTORE = 'restore';
+
     public function __construct(
         private PrivilegedCredentialLoader $credentialLoader,
     ) {}

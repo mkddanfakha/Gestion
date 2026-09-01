@@ -4,7 +4,13 @@ namespace App\Services\Restore;
 
 use App\Database\BackupArchiveInspector;
 use App\Database\BackupConcurrencyGuard;
+use App\Database\DatabaseAccountGuard;
 use App\Database\DatabaseSafetyGuard;
+use App\Database\PrivilegedProcessRunner;
+use App\Database\PrivilegedRestoreProcessRunner;
+use App\Services\Backup\BackupManifest;
+use App\Services\Backup\BackupManifestService;
+use App\Services\Backup\BackupPathGuard;
 use RuntimeException;
 use ZipArchive;
 
@@ -12,6 +18,7 @@ class DatabaseRestoreService
 {
     public function __construct(
         private SqlDumpImporter $importer,
+        private PrivilegedRestoreProcessRunner $privilegedRestoreRunner,
     ) {}
 
     /**
@@ -34,13 +41,79 @@ class DatabaseRestoreService
 
         DatabaseSafetyGuard::assertRestoreConfirmationPhrase($confirmationPhrase);
         $target = DatabaseSafetyGuard::assertExplicitRestoreTarget($explicitTarget);
-        \App\Database\DatabaseAccountGuard::assertAccountForOperation(
-            \App\Database\DatabaseAccountGuard::OPERATION_RESTORE,
-        );
 
         // --force never bypasses DatabaseSafetyGuard.
         unset($force);
 
+        if (DatabaseAccountGuard::isRestoreSubprocess()) {
+            DatabaseAccountGuard::assertAccountForOperation(
+                DatabaseAccountGuard::OPERATION_RESTORE,
+            );
+
+            return $this->executeRestoreImport($backupFileName, $target, $started);
+        }
+
+        $this->assertBackupReadyForPrivilegedRestore($backupFileName);
+
+        return $this->restoreViaPrivilegedSubprocess(
+            $backupFileName,
+            $target,
+            $confirmationPhrase,
+            $started,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function restoreViaPrivilegedSubprocess(
+        string $backupFileName,
+        string $target,
+        string $confirmationPhrase,
+        float $started,
+    ): array {
+        $result = $this->privilegedRestoreRunner->runRestore(
+            $backupFileName,
+            $target,
+            $confirmationPhrase,
+        );
+
+        if (! $result->successful()) {
+            $message = trim($result->combinedOutput());
+            if ($message === '') {
+                $message = 'Privileged restore subprocess failed.';
+            }
+
+            throw new RuntimeException($message);
+        }
+
+        $report = $this->parseSubprocessReport($result->output);
+        if ($report !== null) {
+            return $report;
+        }
+
+        $zipPath = BackupPathGuard::resolveExistingBackupPath($backupFileName);
+        $inspection = BackupArchiveInspector::inspect($zipPath);
+        $durationMs = (int) round((microtime(true) - $started) * 1000);
+
+        return [
+            'mode' => 'database',
+            'backup' => BackupPathGuard::sanitizeBackupFileName($backupFileName),
+            'target' => $target,
+            'sha256' => $inspection['sha256'] ?? null,
+            'files_touched' => false,
+            'application_files_restore_invoked' => false,
+            'duration_ms' => $durationMs,
+            'inspection_verdict' => $inspection['verdict'] ?? null,
+            'status' => 'imported',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function executeRestoreImport(string $backupFileName, string $target, float $started): array
+    {
         return BackupConcurrencyGuard::runRestore(function () use ($backupFileName, $target, $started) {
             $zipPath = $this->resolveBackupPath($backupFileName);
             $inspection = BackupArchiveInspector::inspect($zipPath);
@@ -88,6 +161,47 @@ class DatabaseRestoreService
 
             return $report;
         });
+    }
+
+    private function assertBackupReadyForPrivilegedRestore(string $backupFileName): void
+    {
+        $zipPath = BackupPathGuard::resolveExistingBackupPath($backupFileName);
+        $inspection = BackupArchiveInspector::inspect($zipPath);
+
+        if (! ($inspection['readable'] ?? false)) {
+            throw new RuntimeException('Backup archive is unreadable.');
+        }
+
+        if (! ($inspection['sql']['present'] ?? false)) {
+            throw new RuntimeException('Backup has no SQL dump.');
+        }
+
+        $integrity = app(BackupManifestService::class)->verifyIntegrity(basename($zipPath));
+
+        if (($integrity['result'] ?? null) === BackupManifest::INTEGRITY_INVALID) {
+            throw new RuntimeException($integrity['message'] ?? 'Backup integrity check failed.');
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function parseSubprocessReport(string $output): ?array
+    {
+        $lines = array_reverse(array_filter(array_map('trim', explode("\n", $output))));
+
+        foreach ($lines as $line) {
+            if (! str_starts_with($line, '{')) {
+                continue;
+            }
+
+            $decoded = json_decode($line, true);
+            if (is_array($decoded) && isset($decoded['target'], $decoded['status'])) {
+                return $decoded;
+            }
+        }
+
+        return null;
     }
 
     private function resolveBackupPath(string $backupFileName): string

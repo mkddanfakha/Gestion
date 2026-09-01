@@ -147,6 +147,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/roles-permissions', [RolesPermissionsController::class, 'index'])
             ->name('roles-permissions.index');
         Route::resource('backups', \App\Http\Controllers\Admin\BackupController::class)->only(['index', 'store', 'destroy']);
+        Route::get('/backups/create-status/{jobId}', [\App\Http\Controllers\Admin\BackupController::class, 'createStatus'])->name('backups.create-status');
+        Route::get('/backups/{backup}/inspect', [\App\Http\Controllers\Admin\BackupController::class, 'inspect'])->name('backups.inspect');
+        Route::post('/backups/{backup}/verify-integrity', [\App\Http\Controllers\Admin\BackupController::class, 'verifyIntegrity'])->name('backups.verify-integrity');
         Route::get('/backups/{backup}/download', [\App\Http\Controllers\Admin\BackupController::class, 'download'])->name('backups.download');
         Route::post('/backups/{backup}/restore', [\App\Http\Controllers\Admin\BackupController::class, 'restore'])->name('backups.restore');
         Route::post('/backups/{backup}/restore-files', [\App\Http\Controllers\Admin\BackupController::class, 'restoreApplicationFiles'])->name('backups.restore-files');

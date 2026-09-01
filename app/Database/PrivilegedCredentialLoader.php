@@ -11,6 +11,8 @@ class PrivilegedCredentialLoader
 {
     public const BACKUP_CREDENTIAL_FILE = '.mysql-gestion-backup.local';
 
+    public const RESTORE_CREDENTIAL_FILE = '.mysql-gestion-restore.local';
+
     /**
      * Keys allowed in credential files (password never logged or returned in exceptions).
      *
@@ -65,6 +67,81 @@ class PrivilegedCredentialLoader
         if ($database === '') {
             throw new RuntimeException(
                 'DATABASE SAFETY BLOCK: backup credential file must define DB_DATABASE.',
+            );
+        }
+
+        return [
+            'username' => $username,
+            'password' => $password,
+            'host' => $host,
+            'port' => $port !== '' ? $port : null,
+            'database' => $database,
+            'source' => basename($path),
+        ];
+    }
+
+    /**
+     * @return array{username: string, password: string, host: string, port: ?string, database: string, source: string}
+     */
+    public function loadRestoreCredentials(?string $path = null): array
+    {
+        $path ??= base_path(self::RESTORE_CREDENTIAL_FILE);
+
+        $this->assertRestoreCredentialFileAllowed($path);
+
+        if (! is_file($path) || ! is_readable($path)) {
+            throw new RuntimeException(
+                'DATABASE SAFETY BLOCK: restore credential file is missing or unreadable. '.
+                'Expected '.self::RESTORE_CREDENTIAL_FILE.' at the project root (gitignored).',
+            );
+        }
+
+        $parsed = $this->parseCredentialFile($path);
+
+        $username = trim($parsed['DB_USERNAME'] ?? $parsed['DB_RESTORE_USERNAME'] ?? '');
+        $password = $parsed['DB_PASSWORD'] ?? $parsed['DB_RESTORE_PASSWORD'] ?? '';
+        $database = trim($parsed['DB_DATABASE'] ?? $parsed['DB_RESTORE_DATABASE'] ?? '');
+        $host = trim($parsed['DB_HOST'] ?? $parsed['DB_RESTORE_HOST'] ?? '127.0.0.1');
+        $port = isset($parsed['DB_PORT']) ? trim((string) $parsed['DB_PORT']) : null;
+        if ($port === null && isset($parsed['DB_RESTORE_PORT'])) {
+            $port = trim((string) $parsed['DB_RESTORE_PORT']);
+        }
+
+        $expectedUser = DatabaseAccountGuard::restoreAccountName();
+
+        if ($username === '' || strcasecmp($username, $expectedUser) !== 0) {
+            throw new RuntimeException(
+                "DATABASE SAFETY BLOCK: restore credential file must define DB_USERNAME={$expectedUser}.",
+            );
+        }
+
+        if ($password === '') {
+            throw new RuntimeException(
+                'DATABASE SAFETY BLOCK: restore credential file must define DB_PASSWORD (value not shown).',
+            );
+        }
+
+        if ($host === '') {
+            throw new RuntimeException(
+                'DATABASE SAFETY BLOCK: restore credential file must define DB_HOST.',
+            );
+        }
+
+        if ($port === null || $port === '') {
+            throw new RuntimeException(
+                'DATABASE SAFETY BLOCK: restore credential file must define DB_PORT.',
+            );
+        }
+
+        if ($database === '') {
+            throw new RuntimeException(
+                'DATABASE SAFETY BLOCK: restore credential file must define DB_DATABASE.',
+            );
+        }
+
+        if (DatabaseSafetyGuard::isProtectedDatabase($database)) {
+            throw new RuntimeException(
+                'DATABASE SAFETY BLOCK: restore credential file DB_DATABASE must not reference a protected database.',
             );
         }
 
@@ -142,14 +219,32 @@ class PrivilegedCredentialLoader
             );
         }
 
+        $this->assertCredentialFileIsGitignored(self::BACKUP_CREDENTIAL_FILE);
+    }
+
+    private function assertRestoreCredentialFileAllowed(string $path): void
+    {
+        $basename = basename($path);
+
+        if ($basename !== self::RESTORE_CREDENTIAL_FILE) {
+            throw new RuntimeException(
+                'DATABASE SAFETY BLOCK: unexpected restore credential filename.',
+            );
+        }
+
+        $this->assertCredentialFileIsGitignored(self::RESTORE_CREDENTIAL_FILE);
+    }
+
+    private function assertCredentialFileIsGitignored(string $filename): void
+    {
         $gitignorePath = base_path('.gitignore');
 
         if (is_readable($gitignorePath)) {
             $gitignore = file_get_contents($gitignorePath);
 
-            if (is_string($gitignore) && ! str_contains($gitignore, self::BACKUP_CREDENTIAL_FILE)) {
+            if (is_string($gitignore) && ! str_contains($gitignore, $filename)) {
                 throw new RuntimeException(
-                    'DATABASE SAFETY BLOCK: '.self::BACKUP_CREDENTIAL_FILE.' must remain gitignored.',
+                    'DATABASE SAFETY BLOCK: '.$filename.' must remain gitignored.',
                 );
             }
         }

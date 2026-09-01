@@ -59,6 +59,7 @@ beforeEach(function () {
     Config::set('database-safety.restore_allowed_databases', ['gestion_recovery', 'gestion_test']);
     Config::set('app.env', 'testing');
     app()->instance(SqlDumpImporter::class, new FakeSqlDumpImporter());
+    putenv(\App\Database\PrivilegedProcessRunner::SUBPROCESS_MARKER.'='.\App\Database\PrivilegedProcessRunner::SUBPROCESS_OPERATION_RESTORE);
 });
 
 afterEach(function () {
@@ -67,6 +68,7 @@ afterEach(function () {
     ApplicationFilesRestoreService::$invokeCount = 0;
     Config::set('database.default', 'sqlite');
     Config::set('database.connections.sqlite.database', ':memory:');
+    putenv(\App\Database\PrivilegedProcessRunner::SUBPROCESS_MARKER);
 });
 
 test('TEST 1 target gestion is blocked', function () {

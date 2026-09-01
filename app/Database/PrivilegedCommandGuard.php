@@ -15,6 +15,7 @@ class PrivilegedCommandGuard
      */
     private const COMMAND_OPERATIONS = [
         'backup:run' => DatabaseAccountGuard::OPERATION_BACKUP,
+        'db:restore' => DatabaseAccountGuard::OPERATION_RESTORE,
         'migrate' => DatabaseAccountGuard::OPERATION_MIGRATION,
     ];
 

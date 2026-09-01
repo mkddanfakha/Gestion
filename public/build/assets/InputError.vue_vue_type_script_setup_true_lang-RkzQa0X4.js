@@ -1,1 +1,0 @@
-import{d as s,e as t,z as a,f as r,b as o,t as i,o as n}from"./app-CMwyItuN.js";const c=["id"],d={class:"input-error",role:"alert"},_=s({__name:"InputError",props:{message:{},id:{}},setup(e){return(m,p)=>t((n(),r("div",{id:e.id,class:"input-error-wrap"},[o("p",d,i(e.message),1)],8,c)),[[a,e.message]])}});export{_};

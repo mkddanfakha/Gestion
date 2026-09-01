@@ -2,19 +2,28 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Database\BackupArchiveInspector;
 use App\Database\BackupConcurrencyGuard;
 use App\Database\DatabaseSafetyGuard;
 use App\Database\ProtectedDatabaseException;
 use App\Http\Controllers\Controller;
-use App\Jobs\CreateBackupJob;
+use App\Services\Backup\BackupAuditService;
+use App\Services\Backup\BackupCreationProgress;
+use App\Services\Backup\BackupCreationService;
+use App\Services\Backup\BackupImportService;
+use App\Services\Backup\BackupManifestService;
+use App\Services\Backup\BackupMetadataService;
+use App\Services\Backup\BackupPathGuard;
 use App\Services\Restore\ApplicationFilesRestoreService;
 use App\Services\Restore\DatabaseRestoreService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Session;
-use Spatie\Backup\BackupDestination\BackupDestination;
 use Inertia\Inertia;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class BackupController extends Controller
 {
@@ -26,486 +35,312 @@ class BackupController extends Controller
         $this->checkPermission(request(), 'backups', 'view');
 
         $backups = $this->getBackups();
+        $latest = $backups[0] ?? null;
 
         return Inertia::render('Admin/Backups/Index', [
             'backups' => $backups,
-            'disk' => config('backup.backup.destination.disks')[0] ?? 'local',
+            'disk' => BackupPathGuard::backupDiskName(),
             'restore_allowed_databases' => DatabaseSafetyGuard::restoreAllowedDatabases(),
             'protected_database' => DatabaseSafetyGuard::protectedDatabases()[0] ?? 'gestion',
+            'operations_busy' => BackupConcurrencyGuard::isBackupLocked()
+                || BackupConcurrencyGuard::isRestoreLocked(),
+            'summary' => [
+                'count' => count($backups),
+                'last_backup_at' => $latest['date'] ?? null,
+                'last_backup_type' => $latest['type'] ?? null,
+                'last_backup_status' => $latest['status'] ?? null,
+                'is_busy' => BackupConcurrencyGuard::isBackupLocked()
+                    || BackupConcurrencyGuard::isRestoreLocked(),
+            ],
         ]);
     }
 
     /**
-     * Créer une nouvelle sauvegarde
+     * Créer une nouvelle sauvegarde (async via CreateBackupJob).
+     *
+     * Lock ownership: ONLY backup:production (RunProductionBackupCommand).
+     * Do not wrap the job / Artisan::call with BackupConcurrencyGuard here.
      */
-    public function store(Request $request)
+    public function store(Request $request, BackupCreationService $creation)
     {
-        \Log::info('BackupController@store appelé', [
-            'method' => $request->method(),
-            'only_db' => $request->input('only_db', false),
-            'all_input' => $request->all()
-        ]);
-        
         $this->checkPermission(request(), 'backups', 'create');
 
         try {
-            return BackupConcurrencyGuard::runBackup(function () use ($request) {
-                return $this->executeBackupStore($request);
-            });
-        } catch (\RuntimeException $e) {
-            if (str_contains($e->getMessage(), 'already in progress')) {
-                return redirect()->route('admin.backups.index')
-                    ->with('error', $e->getMessage());
+            $onlyDb = $request->boolean('only_db');
+            $user = $request->user();
+            if ($user === null) {
+                abort(403);
             }
-            throw $e;
+
+            Log::info('backup.ui.create.queued', [
+                'only_db' => $onlyDb,
+                'user_id' => $user->id,
+            ]);
+
+            $result = $creation->start($onlyDb, $user);
+
+            return redirect()->route('admin.backups.index')
+                ->with('success', 'Création de sauvegarde démarrée. Le suivi s\'affiche ci-dessous.')
+                ->with('backup_job_id', $result['job_id']);
+        } catch (RuntimeException $e) {
+            if (str_contains(strtolower($e->getMessage()), 'already in progress')) {
+                return redirect()->route('admin.backups.index')
+                    ->with('error', 'Une opération de sauvegarde est déjà en cours. Veuillez patienter.');
+            }
+
+            Log::error('backup.ui.create.exception', [
+                'message' => $e->getMessage(),
+                'user_id' => $request->user()?->id,
+            ]);
+
+            return redirect()->route('admin.backups.index')
+                ->with('error', 'La sauvegarde n\'a pas pu être créée. Veuillez réessayer.');
+        } catch (Throwable $e) {
+            Log::error('backup.ui.create.exception', [
+                'message' => $e->getMessage(),
+                'user_id' => $request->user()?->id,
+            ]);
+
+            return redirect()->route('admin.backups.index')
+                ->with('error', 'La sauvegarde n\'a pas pu être créée. Veuillez réessayer.');
         }
     }
 
     /**
-     * Exécuter la sauvegarde (appelé sous lock).
+     * JSON progress for an async backup creation job.
      */
-    private function executeBackupStore(Request $request)
+    public function createStatus(Request $request, string $jobId)
     {
-        \Log::info('BackupController@store appelé', [
-            'method' => $request->method(),
-            'only_db' => $request->input('only_db', false),
-            'all_input' => $request->all()
-        ]);
+        $this->checkPermission(request(), 'backups', 'create');
 
-        try {
-            $onlyDb = (bool) $request->input('only_db', false);
-
-            set_time_limit(600);
-            ini_set('max_execution_time', '600');
-            ini_set('memory_limit', '512M');
-
-            \Log::info('Début de la création de la sauvegarde via backup:production', [
-                'only_db' => $onlyDb,
-            ]);
-
-            $exitCode = 0;
-            $artisanOutput = '';
-
-            if ($onlyDb) {
-                $exitCode = Artisan::call('backup:production', ['--only-db' => true]);
-            } else {
-                $exitCode = Artisan::call('backup:production');
-            }
-
-            $artisanOutput = Artisan::output();
-
-            \Log::info('Commande backup:production exécutée', [
-                'exit_code' => $exitCode,
-                'output_length' => strlen($artisanOutput),
-            ]);
-
-            if ($exitCode !== 0) {
-                \Log::error('La commande backup:production a échoué', [
-                    'exit_code' => $exitCode,
-                    'output_preview' => substr($artisanOutput, 0, 500),
-                ]);
-
-                throw new \Exception('La commande de sauvegarde a échoué.');
-            }
-
-            \Log::info('Sauvegarde créée avec succès');
-
-            sleep(2);
-
-            return redirect()->route('admin.backups.index')
-                ->with('success', 'Sauvegarde créée avec succès.');
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors de la création de la sauvegarde', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return redirect()->route('admin.backups.index')
-                ->with('error', 'Erreur lors de la création de la sauvegarde: ' . $e->getMessage());
+        $progress = BackupCreationProgress::get($jobId);
+        if ($progress === null) {
+            return response()->json([
+                'status' => 'unknown',
+                'percentage' => 0,
+                'message' => 'Aucune de création introuvable ou expirée.',
+                'job_id' => $jobId,
+            ], 404);
         }
-    }
 
+        $ownerId = (int) ($progress['user_id'] ?? 0);
+        if ($ownerId > 0 && $ownerId !== (int) $request->user()?->id) {
+            abort(403, 'Cette action de création ne vous appartient pas.');
+        }
+
+        return response()->json([
+            'job_id' => $progress['job_id'] ?? $jobId,
+            'status' => $progress['status'] ?? 'unknown',
+            'percentage' => (int) ($progress['percentage'] ?? 0),
+            'message' => (string) ($progress['message'] ?? ''),
+            'only_db' => (bool) ($progress['only_db'] ?? false),
+            'filename' => $progress['filename'] ?? null,
+            'updated_at' => $progress['updated_at'] ?? null,
+        ]);
+    }
 
     /**
      * Télécharger une sauvegarde
      */
-    public function download(Request $request, string $backupName)
+    public function download(Request $request, string $backup): StreamedResponse|\Illuminate\Http\RedirectResponse
     {
         $this->checkPermission(request(), 'backups', 'download');
 
-        $disk = config('backup.backup.destination.disks')[0] ?? 'local';
-        $backupName = urldecode($backupName);
-        $backupPath = $this->getBackupFolderName() . '/' . $backupName;
+        try {
+            $absolute = BackupPathGuard::resolveExistingBackupPath($backup);
+            $relative = BackupPathGuard::relativePathFromAbsolute($absolute);
+            $disk = BackupPathGuard::backupDiskName();
 
-        if (!Storage::disk($disk)->exists($backupPath)) {
+            return Storage::disk($disk)->download($relative, basename($absolute));
+        } catch (RuntimeException $e) {
             return redirect()->route('admin.backups.index')
-                ->with('error', 'Sauvegarde introuvable.');
+                ->with('error', $e->getMessage());
         }
-
-        return Storage::disk($disk)->download($backupPath);
     }
 
     /**
      * Supprimer une sauvegarde
      */
-    public function destroy(Request $request, string $backupName)
+    public function destroy(Request $request, string $backup)
     {
         $this->checkPermission(request(), 'backups', 'delete');
 
-        $disk = config('backup.backup.destination.disks')[0] ?? 'local';
-        $backupName = urldecode($backupName);
-        $backupPath = $this->getBackupFolderName() . '/' . $backupName;
+        try {
+            if (BackupConcurrencyGuard::isRestoreLocked() || BackupConcurrencyGuard::isBackupLocked()) {
+                return redirect()->route('admin.backups.index')
+                    ->with('error', 'Impossible de supprimer une sauvegarde pendant une opération backup/restore.');
+            }
 
-        if (!Storage::disk($disk)->exists($backupPath)) {
+            $absolute = BackupPathGuard::resolveExistingBackupPath($backup);
+            $safeName = BackupPathGuard::sanitizeBackupFileName($backup);
+            if (! @unlink($absolute)) {
+                return redirect()->route('admin.backups.index')
+                    ->with('error', 'Impossible de supprimer la sauvegarde.');
+            }
+
+            BackupMetadataService::deleteForZip($safeName);
+
             return redirect()->route('admin.backups.index')
-                ->with('error', 'Sauvegarde introuvable.');
+                ->with('success', 'Sauvegarde supprimée avec succès.');
+        } catch (RuntimeException $e) {
+            return redirect()->route('admin.backups.index')
+                ->with('error', $e->getMessage());
         }
-
-        Storage::disk($disk)->delete($backupPath);
-
-        return redirect()->route('admin.backups.index')
-            ->with('success', 'Sauvegarde supprimée avec succès.');
     }
 
     /**
-     * ====================================================================
-     * ⚠️  SECTION CRITIQUE - IMPORT DE SAUVEGARDE ⚠️
-     * ====================================================================
-     * 
-     * ⚠️  ATTENTION : NE PAS SUPPRIMER CETTE SECTION ⚠️
-     * 
-     * Cette méthode est essentielle pour la fonctionnalité d'import
-     * de fichiers zip de sauvegarde depuis l'interface utilisateur.
-     * 
-     * Fonctionnalités incluses :
-     * - Validation du fichier uploadé (type, taille, erreurs)
-     * - Création d'un fichier temporaire pour valider le zip
-     * - Validation de l'intégrité du zip
-     * - Vérification du contenu (dump DB ou fichiers)
-     * - Protection contre les doublons
-     * - Stockage sécurisé dans le dossier de sauvegardes
-     * 
-     * ⚠️  NE PAS MODIFIER OU SUPPRIMER SANS CONNAISSANCE ⚠️
-     * ====================================================================
-     * 
-     * Importer un fichier zip de sauvegarde
+     * Importer un ZIP de sauvegarde (ne restaure pas).
      */
-    public function import(Request $request)
+    public function import(Request $request, BackupImportService $importService)
     {
         $this->checkPermission(request(), 'backups', 'create');
 
-        // Augmenter les limites pour permettre l'upload de gros fichiers
-        ini_set('max_execution_time', 600);
+        ini_set('max_execution_time', '600');
         ini_set('memory_limit', '512M');
 
-        \Log::info('Import de sauvegarde - Début', [
-            'has_file' => $request->hasFile('backup_file'),
-            'all_files' => array_keys($request->allFiles()),
-            'all_input' => array_keys($request->all()),
-            'content_type' => $request->header('Content-Type'),
-            'method' => $request->method(),
-        ]);
-
-        // Vérifier que le fichier est présent
-        if (!$request->hasFile('backup_file')) {
-            // Essayer de récupérer le fichier d'une autre manière
-            $allFiles = $request->allFiles();
-            \Log::error('Import de sauvegarde - Fichier manquant', [
-                'has_file' => $request->hasFile('backup_file'),
-                'all_files_keys' => array_keys($allFiles),
-                'all_files_count' => count($allFiles),
-                'request_keys' => array_keys($request->all()),
-            ]);
-            
-            // Si aucun fichier n'est trouvé, retourner une erreur
-            if (empty($allFiles)) {
-                return redirect()->route('admin.backups.index')
-                    ->with('error', 'Veuillez sélectionner un fichier zip de sauvegarde. Aucun fichier n\'a été reçu.');
-            }
-            
-            // Essayer de récupérer le premier fichier disponible
-            $file = reset($allFiles);
-            if (!$file) {
-                return redirect()->route('admin.backups.index')
-                    ->with('error', 'Le fichier uploadé n\'est pas valide.');
-            }
-        } else {
-            $file = $request->file('backup_file');
-        }
-        
-        // Logger les informations du fichier
-        \Log::info('Import de sauvegarde - Fichier récupéré', [
-            'file_name' => $file ? $file->getClientOriginalName() : 'null',
-            'error' => $file ? $file->getError() : 'null',
-            'error_message' => $file ? $file->getErrorMessage() : 'null',
-        ]);
-        
-        // Vérifier que c'est bien un fichier
-        if (!$file) {
+        if (! $request->hasFile('backup_file')) {
             return redirect()->route('admin.backups.index')
-                ->with('error', 'Le fichier uploadé n\'est pas valide.');
-        }
-        
-        // Vérifier la taille du fichier
-        try {
-            $fileSize = $file->getSize();
-            if ($fileSize === 0) {
-                return redirect()->route('admin.backups.index')
-                    ->with('error', 'Le fichier uploadé est vide.');
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Impossible de vérifier la taille du fichier (getSize)', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-        
-        // Vérifier l'erreur d'upload
-        $uploadError = $file->getError();
-        if ($uploadError !== UPLOAD_ERR_OK && $uploadError !== UPLOAD_ERR_NO_FILE) {
-            \Log::error('Import de sauvegarde - Erreur d\'upload', [
-                'error_code' => $uploadError,
-                'error_message' => $file->getErrorMessage(),
-            ]);
-            return redirect()->route('admin.backups.index')
-                ->with('error', 'Erreur lors de l\'upload du fichier: ' . $file->getErrorMessage());
+                ->with('error', 'Veuillez sélectionner un fichier zip de sauvegarde.');
         }
 
-        // Vérifier l'extension
-        $extension = strtolower($file->getClientOriginalExtension());
-        if ($extension !== 'zip') {
-            return redirect()->route('admin.backups.index')
-                ->with('error', 'Le fichier doit être un fichier zip (.zip).');
-        }
-
-        // Vérifier la taille (10 GB = 10737418240 bytes)
-        try {
-            $fileSize = $file->getSize();
-            $maxSize = 10 * 1024 * 1024 * 1024; // 10 GB en bytes
-            if ($fileSize > $maxSize) {
-                return redirect()->route('admin.backups.index')
-                    ->with('error', 'Le fichier est trop volumineux. Taille maximale : 10 GB.');
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Impossible de vérifier la taille du fichier', [
-                'error' => $e->getMessage(),
-            ]);
-        }
+        $originalName = $request->file('backup_file')?->getClientOriginalName();
 
         try {
-            $disk = config('backup.backup.destination.disks')[0] ?? 'local';
-            $backupName = $this->getBackupFolderName();
-            $originalFilename = $file->getClientOriginalName();
-            $backupPath = $backupName . '/' . $originalFilename;
+            $result = $importService->import($request->file('backup_file'));
 
-            // Vérifier si un fichier avec le même nom existe déjà
-            if (Storage::disk($disk)->exists($backupPath)) {
-                return redirect()->route('admin.backups.index')
-                    ->with('error', 'Un fichier de sauvegarde avec ce nom existe déjà. Veuillez renommer votre fichier ou supprimer l\'ancien.');
-            }
-
-            // Valider que le fichier est un zip valide
-            $zip = new \ZipArchive();
-            
-            // Créer un fichier temporaire pour valider le zip
-            $tempFile = tmpfile();
-            if ($tempFile === false) {
-                return redirect()->route('admin.backups.index')
-                    ->with('error', 'Impossible de créer un fichier temporaire. Veuillez réessayer.');
-            }
-            
-            $tempPath = stream_get_meta_data($tempFile)['uri'];
-            
-            // Lire le contenu du fichier uploadé et l'écrire dans le fichier temporaire
-            try {
-                $sourcePath = $file->getRealPath();
-                if (empty($sourcePath) || !file_exists($sourcePath)) {
-                    $sourcePath = $file->getPathname();
-                }
-                
-                if (!empty($sourcePath) && file_exists($sourcePath)) {
-                    copy($sourcePath, $tempPath);
-                } else {
-                    $fileStream = fopen($file->getRealPath() ?: $file->getPathname(), 'r');
-                    if ($fileStream !== false) {
-                        stream_copy_to_stream($fileStream, $tempFile);
-                        fclose($fileStream);
-                    } else {
-                        $fileContent = file_get_contents($file->getRealPath() ?: $file->getPathname());
-                        if ($fileContent !== false) {
-                            fwrite($tempFile, $fileContent);
-                        } else {
-                            fclose($tempFile);
-                            return redirect()->route('admin.backups.index')
-                                ->with('error', 'Impossible de lire le fichier uploadé. Veuillez réessayer.');
-                        }
-                    }
-                }
-            } catch (\Exception $e) {
-                fclose($tempFile);
-                \Log::error('Erreur lors de la création du fichier temporaire', [
-                    'error' => $e->getMessage(),
-                ]);
-                return redirect()->route('admin.backups.index')
-                    ->with('error', 'Erreur lors du traitement du fichier: ' . $e->getMessage());
-            }
-            
-            \Log::info('Import de sauvegarde - Validation du zip', [
-                'temp_path' => $tempPath,
-                'file_exists' => file_exists($tempPath),
-                'is_readable' => is_readable($tempPath),
-                'file_size' => file_exists($tempPath) ? filesize($tempPath) : 0,
-            ]);
-            
-            if (empty($tempPath) || !file_exists($tempPath) || !is_readable($tempPath)) {
-                fclose($tempFile);
-                return redirect()->route('admin.backups.index')
-                    ->with('error', 'Impossible d\'accéder au fichier uploadé. Veuillez réessayer.');
-            }
-            
-            if ($zip->open($tempPath) !== true) {
-                fclose($tempFile);
-                return redirect()->route('admin.backups.index')
-                    ->with('error', 'Le fichier zip est corrompu ou invalide.');
-            }
-            
-            // Vérifier que le zip contient au moins un fichier de base de données ou des fichiers
-            $hasDbDump = false;
-            $hasFiles = false;
-            
-            for ($i = 0; $i < $zip->numFiles; $i++) {
-                $filename = $zip->getNameIndex($i);
-                if (substr($filename, -1) === '/') {
-                    continue;
-                }
-                if (strpos($filename, 'db-dumps') !== false && pathinfo($filename, PATHINFO_EXTENSION) === 'sql') {
-                    $hasDbDump = true;
-                }
-                if (strpos($filename, 'db-dumps') === false) {
-                    $hasFiles = true;
-                }
-            }
-            
-            $zip->close();
-            
-            if (!$hasDbDump && !$hasFiles) {
-                fclose($tempFile);
-                return redirect()->route('admin.backups.index')
-                    ->with('error', 'Le fichier zip ne contient pas de sauvegarde valide (aucun dump de base de données ou fichier trouvé).');
-            }
-
-            // Stocker le fichier dans le dossier de sauvegardes
-            $destinationPath = Storage::disk($disk)->path($backupPath);
-            $destinationDir = dirname($destinationPath);
-            
-            if (!is_dir($destinationDir)) {
-                mkdir($destinationDir, 0755, true);
-            }
-            
-            // Copier le fichier temporaire vers la destination finale
-            try {
-                $tempFileHandle = fopen($tempPath, 'r');
-                if ($tempFileHandle === false) {
-                    fclose($tempFile);
-                    throw new \Exception('Impossible de rouvrir le fichier temporaire pour la copie.');
-                }
-                
-                $destinationHandle = fopen($destinationPath, 'w');
-                if ($destinationHandle === false) {
-                    fclose($tempFileHandle);
-                    fclose($tempFile);
-                    throw new \Exception('Impossible de créer le fichier de destination.');
-                }
-                
-                stream_copy_to_stream($tempFileHandle, $destinationHandle);
-                
-                fclose($tempFileHandle);
-                fclose($destinationHandle);
-                
-                \Log::info('Fichier stocké avec succès', [
-                    'source_path' => $tempPath,
-                    'destination_path' => $destinationPath,
-                    'file_exists' => file_exists($destinationPath),
-                    'file_size' => file_exists($destinationPath) ? filesize($destinationPath) : 0,
-                ]);
-            } catch (\Exception $storageException) {
-                \Log::error('Erreur lors du stockage du fichier', [
-                    'error' => $storageException->getMessage(),
-                    'temp_path' => $tempPath,
-                    'destination_path' => $destinationPath,
-                ]);
-                
-                fclose($tempFile);
-                throw new \Exception('Erreur lors du stockage du fichier: ' . $storageException->getMessage());
-            }
-            
-            fclose($tempFile);
-
-            \Log::info('Sauvegarde importée avec succès', [
-                'filename' => $originalFilename,
-            ]);
+            $preview = [
+                'filename' => $result['filename'],
+                'type' => BackupMetadataService::uiTypeFromMetaType($result['type'] ?? null) ?? 'database',
+                'status' => 'imported',
+                'size_bytes' => $result['size'] ?? null,
+                'size' => $this->formatBytes((int) ($result['size'] ?? 0)),
+                'sha256' => $result['sha256'] ?? null,
+                'restored' => false,
+            ];
 
             return redirect()->route('admin.backups.index')
-                ->with('success', 'Sauvegarde importée avec succès. Le fichier a été ajouté à la liste des sauvegardes.');
-                
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            $errors = $e->errors();
-            $firstError = collect($errors)->flatten()->first();
-            
-            \Log::error('Erreur de validation lors de l\'import de la sauvegarde', [
-                'errors' => $errors
-            ]);
-            
-            return redirect()->route('admin.backups.index')
-                ->with('error', $firstError ?: 'Erreur de validation lors de l\'import de la sauvegarde.');
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors de l\'import de la sauvegarde', [
+                ->with('success', 'Sauvegarde importée avec succès. Aucune restauration n\'a été effectuée.')
+                ->with('import_preview', $preview);
+        } catch (RuntimeException $e) {
+            Log::warning('backup.import.rejected', [
                 'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+                'user_id' => $request->user()?->id,
             ]);
-            
-            $errorMessage = 'Erreur lors de l\'import de la sauvegarde: ' . $e->getMessage();
-            
-            if (strlen($errorMessage) > 500) {
-                $errorMessage = substr($errorMessage, 0, 500) . '...';
-            }
-            
+
+            BackupAuditService::importRejected($e->getMessage(), $originalName);
+
             return redirect()->route('admin.backups.index')
-                ->with('error', $errorMessage);
+                ->with('error', $this->friendlyImportErrorMessage($e->getMessage()));
+        } catch (Throwable $e) {
+            Log::error('backup.import.exception', [
+                'message' => $e->getMessage(),
+                'user_id' => $request->user()?->id,
+            ]);
+
+            BackupAuditService::importRejected('unexpected_error', $originalName);
+
+            return redirect()->route('admin.backups.index')
+                ->with('error', 'L\'import de la sauvegarde a échoué. Veuillez réessayer.');
         }
     }
-    // ====================================================================
-    // ⚠️  FIN DE LA SECTION CRITIQUE - IMPORT DE SAUVEGARDE ⚠️
-    // ====================================================================
-    // 
-    // ⚠️  ATTENTION : La méthode ci-dessus est essentielle ⚠️
-    // Ne pas supprimer la section d'import ci-dessus
-    // ====================================================================
 
     /**
-     * ====================================================================
-     * ⚠️  SECTION CRITIQUE - RESTAURATION COMPLÈTE ⚠️
-     * ====================================================================
-     * 
-     * ⚠️  ATTENTION : NE PAS SUPPRIMER CETTE SECTION ⚠️
-     * 
-     * Cette méthode et toutes les méthodes privées ci-dessous sont essentielles
-     * pour la fonctionnalité de restauration complète des sauvegardes.
-     * 
-     * Méthodes incluses dans cette section :
-     * - restore() : Méthode principale de restauration
-     * - findDatabaseDump() : Trouve le dump SQL dans le zip
-     * - restoreDatabase() : Restaure la base de données
-     * - restoreFiles() : Restaure les fichiers de l'application
-     * - deleteDirectory() : Supprime les dossiers temporaires
-     * 
-     * ⚠️  NE PAS MODIFIER OU SUPPRIMER SANS CONNAISSANCE ⚠️
-     * ====================================================================
-     * 
-     * Restaurer une sauvegarde
+     * Read-only inspection preview for restore UX (no restore performed).
      */
-    public function restore(Request $request, string $backupName, DatabaseRestoreService $restore)
+    public function inspect(Request $request, string $backup)
+    {
+        $this->checkPermission(request(), 'backups', 'restore');
+
+        try {
+            $absolute = BackupPathGuard::resolveExistingBackupPath($backup);
+            $inspection = BackupArchiveInspector::inspect($absolute);
+            $meta = BackupMetadataService::readForZip(basename($absolute));
+
+            $readable = ($inspection['readable'] ?? false) === true && empty($inspection['error']);
+            $sqlPresent = (bool) ($inspection['sql']['present'] ?? false);
+            $verdict = (string) ($inspection['verdict'] ?? '');
+
+            $canRestore = $readable && $sqlPresent
+                && ! in_array($verdict, ['INVALID_TOO_SMALL', 'INVALID_NO_SQL'], true);
+
+            $integrity = app(BackupManifestService::class)->verifyIntegrity(basename($absolute));
+
+            // Soft gate: integrity INVALID does not bypass allow-list later, but blocks "Continuer" UX.
+            if (($integrity['result'] ?? null) === \App\Services\Backup\BackupManifest::INTEGRITY_INVALID) {
+                $canRestore = false;
+            }
+
+            return response()->json([
+                'filename' => basename($absolute),
+                'readable' => $readable,
+                'can_restore' => $canRestore,
+                'size_bytes' => $inspection['size_bytes'] ?? null,
+                'sha256' => $inspection['sha256'] ?? null,
+                'verdict' => $verdict !== '' ? $verdict : null,
+                'sql_present' => $sqlPresent,
+                'sql_file_count' => count($inspection['sql']['files'] ?? []),
+                'business_inserts' => (int) ($inspection['sql']['business_inserts'] ?? 0),
+                'looks_like_schema_only' => (bool) ($inspection['sql']['looks_like_schema_only'] ?? false),
+                'has_attachments_paths' => (bool) ($inspection['has_attachments_paths'] ?? false),
+                'contains_dotenv' => (bool) ($inspection['contains_dotenv'] ?? false),
+                'type' => BackupMetadataService::uiTypeFromMetaType($meta['type'] ?? null)
+                    ?? (($inspection['has_attachments_paths'] ?? false) ? 'full' : 'database'),
+                'source' => isset($meta['source']) && is_string($meta['source']) ? $meta['source'] : null,
+                'status' => BackupMetadataService::uiStatusFromMeta($meta, $canRestore ? 'valid' : 'invalid'),
+                'integrity' => $integrity['result'] ?? null,
+                'compatibility' => $integrity['compatibility'] ?? null,
+                'integrity_message' => $integrity['message'] ?? null,
+                'protected_database' => DatabaseSafetyGuard::protectedDatabases()[0] ?? 'gestion',
+                'restore_allowed_databases' => DatabaseSafetyGuard::restoreAllowedDatabases(),
+                'mode' => 'database',
+                'files_will_be_modified' => false,
+            ]);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'readable' => false,
+                'can_restore' => false,
+                'message' => 'Impossible d\'inspecter cette sauvegarde.',
+            ], 404);
+        }
+    }
+
+    /**
+     * Verify archive integrity (read-only: no restore, no backup:production).
+     */
+    public function verifyIntegrity(Request $request, string $backup, BackupManifestService $manifests)
+    {
+        $this->checkPermission(request(), 'backups', 'view');
+
+        try {
+            $result = $manifests->verifyIntegrity($backup);
+            $manifest = $result['manifest'] ?? null;
+
+            BackupAuditService::integrityChecked([
+                'filename' => $result['filename'] ?? $backup,
+                'backup_id' => is_array($manifest) ? ($manifest['backup_id'] ?? null) : null,
+                'result' => $result['result'] ?? null,
+                'type' => is_array($manifest) ? ($manifest['type'] ?? null) : null,
+                'source' => is_array($manifest) ? ($manifest['source'] ?? null) : null,
+                'compatibility' => $result['compatibility'] ?? null,
+            ]);
+
+            return response()->json($result);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'result' => 'MISSING',
+                'integrity' => 'MISSING',
+                'message' => 'Impossible de vérifier cette sauvegarde.',
+            ], 404);
+        }
+    }
+
+    /**
+     * Restaurer une sauvegarde (DB-only, allow-list).
+     *
+     * Optional safety_backup: runs backup:production --only-db first (app DB snapshot),
+     * then restores into allow-listed target only. Never targets gestion.
+     */
+    public function restore(Request $request, string $backup, DatabaseRestoreService $restore, BackupCreationService $creation)
     {
         $this->checkPermission(request(), 'backups', 'restore');
 
@@ -514,36 +349,97 @@ class BackupController extends Controller
             'confirmation_phrase' => 'required|string',
             'target_database' => 'required|string',
             'restore_mode' => 'required|in:database',
+            'safety_backup' => 'sometimes|boolean',
+            'acknowledge_overwrite' => 'required|accepted',
         ], [
             'confirm.accepted' => 'Vous devez confirmer la restauration.',
             'confirmation_phrase.required' => 'La phrase de confirmation serveur est obligatoire.',
             'target_database.required' => 'La base cible explicite est obligatoire.',
             'restore_mode.in' => 'Seul le mode database (DB-only) est autorisé sur cette route.',
+            'acknowledge_overwrite.accepted' => 'Vous devez confirmer le remplacement des données de la base cible.',
         ]);
 
+        $safeName = BackupPathGuard::sanitizeBackupFileName($backup);
+        $target = (string) $request->input('target_database');
+        $wantSafety = $request->boolean('safety_backup');
+        $safetyFilename = null;
+
         try {
+            BackupPathGuard::resolveExistingBackupPath($backup);
+
+            if ($wantSafety) {
+                if (BackupConcurrencyGuard::isBackupLocked() || BackupConcurrencyGuard::isRestoreLocked()) {
+                    return redirect()->route('admin.backups.index')
+                        ->with('error', 'Une opération backup/restore est déjà en cours. Réessayez plus tard.');
+                }
+
+                Log::info('backup.ui.restore.safety.start', [
+                    'backup' => $safeName,
+                    'target' => $target,
+                    'user_id' => $request->user()?->id,
+                ]);
+
+                $started = time();
+                $exitCode = Artisan::call('backup:production', ['--only-db' => true]);
+                if ($exitCode !== 0) {
+                    BackupAuditService::restoreFailed('safety_backup_failed', $safeName, $target);
+
+                    return redirect()->route('admin.backups.index')
+                        ->with('error', 'La sauvegarde de sécurité a échoué. La restauration a été annulée.');
+                }
+
+                $meta = $creation->attachManualMetadata(true, $request->user()?->id, $started);
+                $safetyFilename = is_array($meta) ? ($meta['filename'] ?? null) : null;
+            }
+
             $report = $restore->restore(
-                urldecode($backupName),
-                (string) $request->input('target_database'),
+                $safeName,
+                $target,
                 (string) $request->input('confirmation_phrase'),
                 false,
             );
 
+            BackupAuditService::restored([
+                'filename' => $safeName,
+                'target' => $report['target'] ?? $target,
+                'sha256' => $report['sha256'] ?? null,
+                'safety_backup' => $wantSafety,
+                'safety_filename' => $safetyFilename,
+            ]);
+
+            $message = 'Restauration DB-only vers '.($report['target'] ?? $target).' terminée. Aucun fichier applicatif n\'a été modifié.';
+            if ($wantSafety && $safetyFilename) {
+                $message .= ' Sauvegarde de sécurité créée : '.$safetyFilename.'.';
+            }
+
             return redirect()->route('admin.backups.index')
-                ->with('success', 'Restauration DB-only vers '.$report['target'].' terminée. Aucun fichier applicatif n\'a été modifié.');
+                ->with('success', $message);
         } catch (ProtectedDatabaseException $e) {
+            BackupAuditService::restoreFailed($e->getMessage(), $safeName, $target);
             abort(403, $e->getMessage());
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
+            BackupAuditService::restoreFailed($e->getMessage(), $safeName, $target);
+
             if (str_contains($e->getMessage(), 'already in progress')) {
                 abort(409, $e->getMessage());
             }
 
             return redirect()->route('admin.backups.index')
-                ->with('error', $e->getMessage());
+                ->with('error', $this->friendlyRestoreErrorMessage($e->getMessage()));
+        } catch (Throwable $e) {
+            BackupAuditService::restoreFailed($e->getMessage(), $safeName, $target);
+            Log::error('backup.ui.restore.exception', [
+                'message' => $e->getMessage(),
+                'backup' => $safeName,
+                'user_id' => $request->user()?->id,
+            ]);
+
+            return redirect()->route('admin.backups.index')
+                ->with('error', 'La restauration a échoué. Vérifiez la cible et réessayez.');
         }
     }
 
-    public function restoreApplicationFiles(Request $request, string $backupName, ApplicationFilesRestoreService $files)
+    public function restoreApplicationFiles(Request $request, string $backup, ApplicationFilesRestoreService $files)
     {
         $this->checkPermission(request(), 'backups', 'restore_files');
 
@@ -553,243 +449,220 @@ class BackupController extends Controller
         ]);
 
         try {
+            BackupPathGuard::resolveExistingBackupPath($backup);
+
             $report = $files->restore(
-                urldecode($backupName),
+                BackupPathGuard::sanitizeBackupFileName($backup),
                 (string) $request->input('confirmation_phrase'),
                 true,
             );
 
             return redirect()->route('admin.backups.index')
                 ->with('success', 'File restore dry-run only: '.json_encode($report));
-        } catch (ProtectedDatabaseException|\RuntimeException $e) {
+        } catch (ProtectedDatabaseException|RuntimeException $e) {
             abort(403, $e->getMessage());
         }
     }
 
     /**
-     * Retired fused restore. Kept only to fail closed if called accidentally.
-     */
-    private function executeRestore(Request $request, string $backupName)
-    {
-        throw new \RuntimeException(
-            'DATABASE SAFETY BLOCK: fused executeRestore(DB+files) has been removed. Use DatabaseRestoreService.',
-        );
-    }
-
-    /**
-     * Trouver le fichier de dump de base de données dans le dossier extrait
-     */
-    private function findDatabaseDump(string $tempDir): ?string
-    {
-        // Chercher dans db-dumps/
-        $dbDumpsDir = $tempDir . DIRECTORY_SEPARATOR . 'db-dumps';
-        if (is_dir($dbDumpsDir)) {
-            $files = glob($dbDumpsDir . DIRECTORY_SEPARATOR . '*.sql');
-            if (!empty($files)) {
-                return $files[0];
-            }
-        }
-        
-        // Chercher récursivement dans tout le dossier
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($tempDir, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST
-        );
-        
-        foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'sql') {
-                return $file->getPathname();
-            }
-        }
-        
-        return null;
-    }
-
-    /**
-     * Retired — use DatabaseRestoreService with an explicit allow-listed target.
-     */
-    private function restoreDatabase(string $dumpPath): void
-    {
-        throw new \RuntimeException(
-            'DATABASE SAFETY BLOCK: BackupController::restoreDatabase is retired. Use DatabaseRestoreService with an explicit target.',
-        );
-    }
-
-    /**
-     * Retired — file restore is never coupled to DB restore.
-     */
-    private function restoreFiles(string $tempDir, string $targetPath): void
-    {
-        throw new \RuntimeException(
-            'DATABASE SAFETY BLOCK: BackupController::restoreFiles cannot run during DB restore. Use ApplicationFilesRestoreService.',
-        );
-    }
-
-    private function deleteDirectory(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-
-        $files = array_diff(scandir($dir), ['.', '..']);
-        foreach ($files as $file) {
-            $pathItem = $dir . DIRECTORY_SEPARATOR . $file;
-            if (is_dir($pathItem)) {
-                $this->deleteDirectory($pathItem);
-            } else {
-                unlink($pathItem);
-            }
-        }
-        rmdir($dir);
-    }
-
-    /**
-     * Obtenir le nom du dossier de sauvegarde
-     */
-    private function getBackupFolderName(): string
-    {
-        // Utiliser le nom de l'application depuis la config backup (qui utilise APP_NAME)
-        // Cela garantit que le contrôleur cherche dans le même dossier que le package Spatie Backup
-        return config('backup.backup.name', 'laravel-backup');
-    }
-
-    /**
-     * Obtenir la liste des sauvegardes
+     * @return list<array{
+     *   name: string,
+     *   path: string,
+     *   size: string,
+     *   size_bytes: int,
+     *   date: string,
+     *   timestamp: int,
+     *   type: string,
+     *   status: string
+     * }>
      */
     private function getBackups(): array
     {
-        $disk = config('backup.backup.destination.disks')[0] ?? 'local';
-        $backupName = $this->getBackupFolderName();
-        
-        // Utiliser directement le système de fichiers car l'API Spatie a des problèmes
-        // de détection sur Windows
-        $backups = $this->getBackupsFromFilesystem($disk, $backupName);
-        
-        \Log::info('Sauvegardes récupérées', [
-            'count' => count($backups),
-            'backup_name' => $backupName
-        ]);
-        
-        return $backups;
-    }
-    
-    /**
-     * Obtenir les sauvegardes depuis le système de fichiers (fallback)
-     */
-    private function getBackupsFromFilesystem(string $disk, string $backupName): array
-    {
-        $diskRoot = Storage::disk($disk)->path('');
-        $diskRoot = rtrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $diskRoot), DIRECTORY_SEPARATOR);
-        $backupPathNormalized = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $backupName);
-        $fullPath = $diskRoot . DIRECTORY_SEPARATOR . $backupPathNormalized;
-        
-        // Utiliser realpath si possible, sinon utiliser le chemin tel quel
-        $normalizedPath = realpath($fullPath);
-        if (!$normalizedPath) {
-            // Si realpath échoue, utiliser le chemin tel quel si le dossier existe
-            if (is_dir($fullPath)) {
-                $normalizedPath = $fullPath;
-            }
-        }
-        
-        \Log::info('Recherche de sauvegardes', [
-            'disk' => $disk,
-            'backup_name' => $backupName,
-            'disk_root' => $diskRoot,
-            'full_path' => $fullPath,
-            'normalized_path' => $normalizedPath,
-            'exists' => $normalizedPath ? is_dir($normalizedPath) : false,
-            'realpath_worked' => realpath($fullPath) !== false
-        ]);
-        
-        if (!$normalizedPath || !is_dir($normalizedPath)) {
-            \Log::warning('Le dossier de sauvegarde n\'existe pas', [
-                'path' => $fullPath,
-                'normalized' => $normalizedPath,
-                'disk_root' => $diskRoot,
-                'backup_name' => $backupName
-            ]);
+        try {
+            $directory = BackupPathGuard::backupDirectoryAbsolutePath();
+        } catch (RuntimeException) {
             return [];
         }
-        
+
+        $diskRoot = BackupPathGuard::normalizeSeparators(
+            rtrim(Storage::disk(BackupPathGuard::backupDiskName())->path(''), DIRECTORY_SEPARATOR),
+        );
+
         $backups = [];
-        $files = [];
-        
+
         try {
-            // Utiliser DirectoryIterator pour trouver tous les fichiers zip
-            // glob() peut avoir des problèmes avec les chemins Windows
-            $iterator = new \DirectoryIterator($normalizedPath);
+            $iterator = new \DirectoryIterator($directory);
             foreach ($iterator as $fileInfo) {
-                if ($fileInfo->isDot()) {
+                if ($fileInfo->isDot() || ! $fileInfo->isFile()) {
                     continue;
                 }
-                
-                if ($fileInfo->isFile()) {
-                    $extension = strtolower($fileInfo->getExtension());
-                    if ($extension === 'zip') {
-                        $files[] = $fileInfo->getPathname();
-                    }
+                if (strtolower($fileInfo->getExtension()) !== 'zip') {
+                    continue;
                 }
-            }
-            
-            \Log::info('Fichiers zip trouvés', [
-                'count' => count($files),
-                'path' => $normalizedPath,
-                'files' => array_map('basename', $files)
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors de la lecture du dossier', [
-                'path' => $normalizedPath,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return [];
-        }
-        
-        foreach ($files as $filePath) {
-            try {
-                $fileInfo = new \SplFileInfo($filePath);
-                $relativePath = str_replace($diskRoot . DIRECTORY_SEPARATOR, '', $filePath);
-                $relativePath = str_replace('\\', '/', $relativePath);
-                
+
+                $absolute = BackupPathGuard::normalizeSeparators($fileInfo->getPathname());
+                if (! BackupPathGuard::isPathInsideDirectory($absolute, $directory)) {
+                    continue;
+                }
+
+                $relative = ltrim(substr($absolute, strlen($diskRoot)), DIRECTORY_SEPARATOR);
+                $relative = str_replace('\\', '/', $relative);
+
+                $metaPeek = $this->classifyArchiveMetadata($absolute);
+                $meta = BackupMetadataService::readForZip($fileInfo->getFilename());
+                $sizeBytes = (int) $fileInfo->getSize();
+                $integrityHint = app(BackupManifestService::class)->listingIntegrityHint(
+                    $fileInfo->getFilename(),
+                    $meta,
+                );
+
+                $type = BackupMetadataService::uiTypeFromMetaType($meta['type'] ?? null)
+                    ?? $metaPeek['type'];
+                $status = BackupMetadataService::uiStatusFromMeta($meta, $metaPeek['status']);
+                $source = isset($meta['source']) && is_string($meta['source'])
+                    ? strtolower($meta['source'])
+                    : null;
+
+                $sha256 = null;
+                if (isset($meta['archive']['sha256']) && is_string($meta['archive']['sha256'])) {
+                    $sha256 = $meta['archive']['sha256'];
+                } elseif (isset($meta['sha256']) && is_string($meta['sha256'])) {
+                    $sha256 = $meta['sha256'];
+                } elseif (isset($integrityHint['sha256']) && is_string($integrityHint['sha256'])) {
+                    $sha256 = $integrityHint['sha256'];
+                }
+
                 $backups[] = [
                     'name' => $fileInfo->getFilename(),
-                    'path' => $relativePath,
-                    'size' => $this->formatBytes($fileInfo->getSize()),
+                    'path' => $relative,
+                    'size' => $this->formatBytes($sizeBytes),
+                    'size_bytes' => $sizeBytes,
                     'date' => date('Y-m-d H:i:s', $fileInfo->getMTime()),
                     'timestamp' => $fileInfo->getMTime(),
+                    'type' => $type,
+                    'status' => $status,
+                    'source' => $source,
+                    'sha256' => $sha256,
+                    'integrity' => $integrityHint['integrity'] ?? 'unknown',
+                    'compatibility' => $integrityHint['compatibility'] ?? null,
+                    'manifest_version' => $integrityHint['manifest_version'] ?? null,
                 ];
-            } catch (\Exception $e) {
-                \Log::warning('Impossible de lire le fichier', [
-                    'file' => $filePath,
-                    'error' => $e->getMessage()
-                ]);
             }
+        } catch (Throwable $e) {
+            Log::error('backup.list.failed', ['message' => $e->getMessage()]);
+
+            return [];
         }
-        
-        usort($backups, function ($a, $b) {
-            return $b['timestamp'] - $a['timestamp'];
-        });
-        
-        \Log::info('Sauvegardes depuis le système de fichiers', [
-            'count' => count($backups),
-            'path' => $normalizedPath
-        ]);
-        
+
+        usort($backups, fn ($a, $b) => $b['timestamp'] <=> $a['timestamp']);
+
         return $backups;
     }
 
     /**
-     * Formater la taille en bytes
+     * Lightweight ZIP peek (entry names only — no SQL content read).
+     *
+     * @return array{type: string, status: string}
      */
-    private function formatBytes(int $bytes, int $precision = 2): string
+    private function classifyArchiveMetadata(string $absolutePath): array
     {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-
-        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
-            $bytes /= 1024;
+        $zip = new \ZipArchive();
+        if ($zip->open($absolutePath) !== true) {
+            return ['type' => 'unknown', 'status' => 'invalid'];
         }
 
-        return round($bytes, $precision) . ' ' . $units[$i];
+        $hasSql = false;
+        $hasNonDbContent = false;
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if (! is_string($name) || $name === '') {
+                continue;
+            }
+
+            $normalized = str_replace('\\', '/', $name);
+            if (str_ends_with($normalized, '/')) {
+                continue;
+            }
+
+            if (str_ends_with(strtolower($normalized), '.sql')) {
+                $hasSql = true;
+
+                continue;
+            }
+
+            if (str_starts_with($normalized, 'db-dumps/')) {
+                continue;
+            }
+
+            $hasNonDbContent = true;
+        }
+
+        $zip->close();
+
+        if (! $hasSql) {
+            return ['type' => 'unknown', 'status' => 'invalid'];
+        }
+
+        return [
+            'type' => $hasNonDbContent ? 'full' : 'database',
+            'status' => 'valid',
+        ];
+    }
+
+    private function friendlyImportErrorMessage(string $technical): string
+    {
+        $map = [
+            'missing database dump' => 'Cette archive n\'est pas une sauvegarde MKD-Pro valide.',
+            'not a valid MKD-Pro' => 'Cette archive n\'est pas une sauvegarde MKD-Pro valide.',
+            'must be a .zip' => 'Le fichier doit être une archive .zip.',
+            'exceeds the maximum' => 'Le fichier est trop volumineux (maximum 10 Go).',
+            'empty or missing' => 'L\'archive est vide ou illisible.',
+            'unreadable or corrupted' => 'L\'archive est illisible ou corrompue.',
+            'path traversal' => 'Cette archive a été refusée pour des raisons de sécurité.',
+            'symlink' => 'Cette archive a été refusée pour des raisons de sécurité.',
+            'absolute path' => 'Cette archive a été refusée pour des raisons de sécurité.',
+        ];
+
+        foreach ($map as $needle => $friendly) {
+            if (stripos($technical, $needle) !== false) {
+                return $friendly;
+            }
+        }
+
+        return 'L\'import de la sauvegarde a échoué. Veuillez vérifier le fichier et réessayer.';
+    }
+
+    private function friendlyRestoreErrorMessage(string $technical): string
+    {
+        $map = [
+            'unreadable' => 'Cette archive est illisible et ne peut pas être restaurée.',
+            'no SQL' => 'Cette archive ne contient pas de dump de base de données.',
+            'Backup not found' => 'Sauvegarde introuvable.',
+            'already in progress' => 'Une restauration est déjà en cours. Veuillez patienter.',
+            'confirmation phrase' => 'La phrase de confirmation est incorrecte.',
+            'not allow-listed' => 'La base cible n\'est pas autorisée.',
+            'DATABASE SAFETY BLOCK' => 'La base cible n\'est pas autorisée pour la restauration.',
+        ];
+
+        foreach ($map as $needle => $friendly) {
+            if (stripos($technical, $needle) !== false) {
+                return $friendly;
+            }
+        }
+
+        return 'La restauration a échoué. Vérifiez la cible et réessayez.';
+    }
+
+    private function formatBytes(int $bytes, int $precision = 2): string
+    {
+        $units = ['o', 'Ko', 'Mo', 'Go', 'To'];
+
+        $value = (float) max($bytes, 0);
+        for ($i = 0; $value >= 1024 && $i < count($units) - 1; $i++) {
+            $value /= 1024;
+        }
+
+        return round($value, $precision).' '.$units[$i];
     }
 }

@@ -100,6 +100,18 @@ class DatabaseAccountGuard
         return is_string($marker) && trim($marker) !== '';
     }
 
+    public static function isRestoreSubprocess(): bool
+    {
+        if (! self::isPrivilegedSubprocess()) {
+            return false;
+        }
+
+        $marker = getenv(PrivilegedProcessRunner::SUBPROCESS_MARKER);
+
+        return is_string($marker)
+            && strcasecmp(trim($marker), PrivilegedProcessRunner::SUBPROCESS_OPERATION_RESTORE) === 0;
+    }
+
     /**
      * Laravel runtime mysql username must be gestion_app (not root, not privileged).
      */

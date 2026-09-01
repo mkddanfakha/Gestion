@@ -185,6 +185,9 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
                 'warning' => $request->session()->get('warning'),
                 'info' => $request->session()->get('info'),
+                'import_preview' => $request->session()->get('import_preview'),
+                // Consume once so partial Inertia reloads cannot re-arm create polling.
+                'backup_job_id' => $request->session()->pull('backup_job_id'),
             ],
             'auth' => [
                 'user' => $request->user() ? (function() use ($request) {
