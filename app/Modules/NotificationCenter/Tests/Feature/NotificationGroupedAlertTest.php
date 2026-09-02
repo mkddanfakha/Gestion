@@ -18,6 +18,20 @@ class NotificationGroupedAlertTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
 
+        Notification::create([
+            'user_id' => $admin->id,
+            'notification_type' => 'low_stock',
+            'notification_id' => 0,
+            'type' => 'low_stock',
+            'priority' => 'warning',
+            'status' => NotificationStatus::Resolved->value,
+            'entity_type' => 'product',
+            'entity_id' => 0,
+            'group_key' => 'low_stock:grouped',
+            'metadata' => ['grouped' => true, 'count' => 0, 'title' => 'Ancien'],
+            'resolved_at' => now(),
+        ]);
+
         $categoryId = \App\Models\Category::query()->create([
             'name' => 'Test',
             'slug' => 'test',
@@ -33,20 +47,6 @@ class NotificationGroupedAlertTest extends TestCase
             'unit' => 'pièce',
             'category_id' => $categoryId,
             'is_active' => true,
-        ]);
-
-        Notification::create([
-            'user_id' => $admin->id,
-            'notification_type' => 'low_stock',
-            'notification_id' => 0,
-            'type' => 'low_stock',
-            'priority' => 'warning',
-            'status' => NotificationStatus::Resolved->value,
-            'entity_type' => 'product',
-            'entity_id' => 0,
-            'group_key' => 'low_stock:grouped',
-            'metadata' => ['grouped' => true, 'count' => 0, 'title' => 'Ancien'],
-            'resolved_at' => now(),
         ]);
 
         $service = app(NotificationService::class);

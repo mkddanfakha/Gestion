@@ -43,8 +43,8 @@ test('manager receives inventory alerts but not backup notifications audience', 
     $resolver = app(NotificationAudienceResolver::class);
 
     expect($resolver->canReceiveInventoryAlerts($manager))->toBeTrue();
-    expect($resolver->resolveUserIds(NotificationType::LowStock))->toContain($manager->id);
-    expect($resolver->resolveUserIds(NotificationType::BackupFailed))->not->toContain($manager->id);
+    expect($resolver->resolveUserIds(NotificationType::LowStock->value))->toContain($manager->id);
+    expect($resolver->resolveUserIds(NotificationType::BackupFailed->value))->not->toContain($manager->id);
 });
 
 test('seller scoped notification targets only owning vendeur', function () {
@@ -65,8 +65,8 @@ test('seller scoped notification targets only owning vendeur', function () {
 
     app(NotificationService::class)->handleSaleCompleted($sale);
 
-    expect(Notification::query()->forUser($seller->id)->byType(NotificationType::SaleCompleted)->active()->exists())->toBeTrue();
-    expect(Notification::query()->forUser($admin->id)->byType(NotificationType::SaleCompleted)->active()->exists())->toBeFalse();
+    expect(Notification::query()->forUser($seller->id)->byType(NotificationType::SaleCompleted->value)->active()->exists())->toBeTrue();
+    expect(Notification::query()->forUser($admin->id)->byType(NotificationType::SaleCompleted->value)->active()->exists())->toBeFalse();
 });
 
 test('grouped low stock notification is not duplicated', function () {
@@ -98,13 +98,13 @@ test('grouped low stock notification is not duplicated', function () {
     ]);
 
     $service = app(NotificationService::class);
-    $service->syncGroupedAlert(NotificationType::LowStock);
-    $service->syncGroupedAlert(NotificationType::LowStock);
+    $service->syncGroupedAlert(NotificationType::LowStock->value);
+    $service->syncGroupedAlert(NotificationType::LowStock->value);
 
     $groupedCount = Notification::query()
-        ->byType(NotificationType::LowStock)
+        ->byType(NotificationType::LowStock->value)
         ->active()
-        ->grouped()
+        ->whereNotNull('group_key')
         ->count();
 
     expect($groupedCount)->toBe(1);
@@ -130,22 +130,23 @@ test('stock replenishment resolves active low stock notification', function () {
     $service = app(NotificationService::class);
     $service->handleProductStockChange($product);
 
-    expect(Notification::query()->byType(NotificationType::LowStock)->active()->exists())->toBeTrue();
+    expect(Notification::query()->byType(NotificationType::LowStock->value)->active()->exists())->toBeTrue();
 
     $product->update(['stock_quantity' => 20]);
     $service->handleProductStockChange($product->fresh());
 
-    expect(Notification::query()->byType(NotificationType::LowStock)->active()->exists())->toBeFalse();
-    expect(Notification::query()->byType(NotificationType::LowStock)->resolved()->exists())->toBeTrue();
+    expect(Notification::query()->byType(NotificationType::LowStock->value)->active()->exists())->toBeFalse();
+    expect(Notification::query()->byType(NotificationType::LowStock->value)->where('status', NotificationStatus::Resolved->value)->exists())->toBeTrue();
 });
 
 test('paid invoice resolves invoice due grouped notification', function () {
     Event::fake([\App\Events\NotificationSent::class]);
 
-    User::factory()->create(['role' => 'admin', 'is_active' => true]);
+    $user = User::factory()->create(['role' => 'admin', 'is_active' => true]);
 
     $sale = Sale::create([
         'sale_number' => 'VTE-002',
+        'user_id' => $user->id,
         'payment_method' => 'cash',
         'subtotal' => 5000,
         'total_amount' => 5000,
@@ -158,18 +159,18 @@ test('paid invoice resolves invoice due grouped notification', function () {
     $service = app(NotificationService::class);
     $service->handleSaleInvoiceDue($sale);
 
-    expect(Notification::query()->byType(NotificationType::InvoiceDue)->active()->exists())->toBeTrue();
+    expect(Notification::query()->byType(NotificationType::InvoiceDue->value)->active()->exists())->toBeTrue();
 
     $sale->update(['payment_status' => 'paid', 'remaining_amount' => 0]);
     $service->handleSaleInvoiceDue($sale->fresh());
 
-    expect(Notification::query()->byType(NotificationType::InvoiceDue)->active()->exists())->toBeFalse();
+    expect(Notification::query()->byType(NotificationType::InvoiceDue->value)->active()->exists())->toBeFalse();
 });
 
-test('legacy dismissed notifications still use read_at only', function () {
+test('read notifications are tracked via read_at without a separate dismissed flag', function () {
     $user = User::factory()->create(['role' => 'admin']);
 
-    Notification::create([
+    $notification = Notification::create([
         'user_id' => $user->id,
         'notification_type' => 'low_stock',
         'notification_id' => 10,
@@ -179,9 +180,9 @@ test('legacy dismissed notifications still use read_at only', function () {
         'read_at' => null,
     ]);
 
-    expect(app(\App\Repositories\NotificationRepository::class)->isLegacyDismissed($user->id, 'low_stock', 10))->toBeFalse();
+    expect($notification->read_at)->toBeNull();
 
-    Notification::query()->where('user_id', $user->id)->update(['read_at' => now()]);
+    $notification->update(['read_at' => now()]);
 
-    expect(app(\App\Repositories\NotificationRepository::class)->isLegacyDismissed($user->id, 'low_stock', 10))->toBeTrue();
+    expect($notification->fresh()->read_at)->not->toBeNull();
 });

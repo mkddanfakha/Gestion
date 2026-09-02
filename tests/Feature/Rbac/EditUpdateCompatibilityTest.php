@@ -101,26 +101,6 @@ test('RolePresets n utilise que des permissions update canoniques', function () 
     }
 });
 
-function createTestProduct(): \App\Models\Product
-{
-    $category = \App\Models\Category::create([
-        'name' => 'Cat test',
-        'slug' => 'cat-'.uniqid(),
-    ]);
-
-    return \App\Models\Product::create([
-        'name' => 'Test',
-        'sku' => 'TST-'.uniqid(),
-        'price' => 100,
-        'cost_price' => 80,
-        'stock_quantity' => 1,
-        'min_stock_level' => 0,
-        'unit' => 'u',
-        'category_id' => $category->id,
-        'is_active' => true,
-    ]);
-}
-
 test('Controller checkPermission accepte update pour formulaire edit produit', function () {
     $user = userWithPermissionNames(['products.update']);
     $product = createTestProduct();

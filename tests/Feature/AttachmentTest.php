@@ -56,22 +56,6 @@ function createUserWithQuotePermissions(array $actions = ['view', 'create', 'upd
     return $user;
 }
 
-function createTestProduct(): Product
-{
-    $category = Category::create(['name' => 'Test', 'slug' => 'test-' . uniqid()]);
-
-    return Product::create([
-        'name' => 'Produit test',
-        'sku' => 'SKU-' . uniqid(),
-        'price' => 1000,
-        'stock_quantity' => 10,
-        'min_stock_level' => 1,
-        'unit' => 'u',
-        'category_id' => $category->id,
-        'is_active' => true,
-    ]);
-}
-
 function createTestQuote(User $user, Product $product): Quote
 {
     $quote = Quote::create([

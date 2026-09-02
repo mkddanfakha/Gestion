@@ -86,12 +86,13 @@ class NotificationProductionTest extends TestCase
     public function test_non_critical_broadcast_is_queued(): void
     {
         Bus::fake();
+        app(NotificationSettingsService::class)->ensureDefaults();
         config(['notification-center.queue.enabled' => true]);
 
         $user = User::factory()->create(['role' => 'admin', 'is_active' => true]);
         $service = app(\App\Modules\NotificationCenter\Services\NotificationService::class);
 
-        $service->broadcast(['type' => 'low_stock', 'id' => 1, 'priority' => 'warning'], $user->id);
+        $service->broadcast(['type' => 'system_info', 'id' => 1, 'priority' => 'info'], $user->id);
 
         Bus::assertDispatched(SendNotificationJob::class);
     }

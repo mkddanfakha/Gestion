@@ -20,6 +20,7 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="APP_KEY" value="base64:2fl+KtvkblFZozaoKK+3mRcTbF3ny7W0/hZRkkshpjc="/>
         <env name="APP_URL" value="http://localhost"/>
         <env name="TRUSTED_PROXIES" value="127.0.0.1,::1"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
@@ -31,6 +32,7 @@
         <env name="DB_RESTORE_ALLOWED_DATABASES" value="gestion_recovery,gestion_test"/>
         <env name="DB_RESTORE_CONFIRMATION_PHRASE" value="RESTORE"/>
         <env name="BROADCAST_CONNECTION" value="log"/>
+        <env name="BROADCAST_DRIVER" value="log"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

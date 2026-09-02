@@ -9,10 +9,10 @@ Assurez-vous que votre fichier `.env` contient (sans guillemets) :
 ```env
 BROADCAST_DRIVER=pusher
 
-PUSHER_APP_ID=2078228
-PUSHER_APP_KEY=0b604b1b0012822b2c84
-PUSHER_APP_SECRET=69438884f164f32c9673
-PUSHER_APP_CLUSTER=eu
+PUSHER_APP_ID=<your-pusher-app-id>
+PUSHER_APP_KEY=<your-pusher-app-key>
+PUSHER_APP_SECRET=<your-pusher-app-secret>
+PUSHER_APP_CLUSTER=<your-pusher-app-cluster>
 
 VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
 VITE_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
@@ -36,7 +36,7 @@ Ouvrez la console du navigateur (F12) et vérifiez :
 #### Messages attendus au chargement :
 
 ```
-✅ Configuration Pusher détectée: { key: "0b604b1b0...", cluster: "eu" }
+✅ Configuration Pusher détectée: { key: "<your-key-prefix>...", cluster: "<your-cluster>" }
 ✅ Pusher connecté avec succès
 🔔 Tentative de connexion au canal privé pour l'utilisateur: X
 ✅ Canal privé souscrit avec succès: user.X.notifications

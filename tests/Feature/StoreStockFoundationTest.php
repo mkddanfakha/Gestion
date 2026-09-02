@@ -9,31 +9,6 @@ use Illuminate\Database\UniqueConstraintViolationException;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
-function createTestCategory(): Category
-{
-    return Category::create([
-        'name' => 'Catégorie test '.uniqid(),
-        'color' => '#3B82F6',
-    ]);
-}
-
-function createTestProduct(array $overrides = []): Product
-{
-    $category = $overrides['category_id'] ?? createTestCategory()->id;
-
-    return Product::create(array_merge([
-        'name' => 'Produit test '.uniqid(),
-        'sku' => 'TS'.strtoupper(substr(uniqid(), -4)),
-        'price' => 1000,
-        'cost_price' => 500,
-        'stock_quantity' => 12,
-        'min_stock_level' => 2,
-        'unit' => 'pièce',
-        'category_id' => $category,
-        'is_active' => true,
-    ], $overrides));
-}
-
 test('a company can have a store', function () {
     $company = Company::create([
         'name' => 'Entreprise A',

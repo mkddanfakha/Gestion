@@ -10,11 +10,11 @@ test('guests cannot access activity logs', function () {
 });
 
 test('non-admin users cannot access activity logs', function () {
-    $user = User::factory()->create(['role' => 'user']);
+    $user = User::factory()->create(['role' => 'vendeur', 'is_active' => true]);
 
     $this->actingAs($user)
         ->get(route('admin.activity-logs.index'))
-        ->assertForbidden();
+        ->assertRedirect(route('dashboard'));
 });
 
 test('admin users can view activity logs index', function () {

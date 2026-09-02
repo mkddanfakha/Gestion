@@ -44,7 +44,10 @@ function inventoryListSession(array $overrides = []): InventorySession
     $store = $company->defaultStore()->firstOrFail();
     $user = User::factory()->create();
 
-    return InventorySession::query()->create(array_merge([
+    $createdAt = $overrides['created_at'] ?? null;
+    unset($overrides['created_at']);
+
+    $session = InventorySession::query()->create(array_merge([
         'company_id' => $company->id,
         'store_id' => $store->id,
         'reference' => 'INV'.random_int(100000, 999999),
@@ -53,8 +56,17 @@ function inventoryListSession(array $overrides = []): InventorySession
         'status' => InventorySessionStatus::Draft,
         'scope_type' => InventoryScopeType::Complete,
         'created_by' => $user->id,
-        'created_at' => now(),
     ], $overrides));
+
+    if ($createdAt !== null) {
+        $session->forceFill([
+            'created_at' => $createdAt,
+        ])->saveQuietly();
+
+        return $session->fresh();
+    }
+
+    return $session;
 }
 
 test('inventory index search matches reference', function () {

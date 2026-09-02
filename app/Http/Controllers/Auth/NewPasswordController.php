@@ -76,7 +76,7 @@ class NewPasswordController extends Controller
         $errorMessages = [
             Password::INVALID_TOKEN => 'Ce lien de réinitialisation est invalide ou a expiré.',
             Password::INVALID_USER => 'Aucun utilisateur trouvé avec cette adresse email.',
-            Password::THROTTLED => 'Trop de tentatives. Veuillez réessayer plus tard.',
+            Password::RESET_THROTTLED => 'Trop de tentatives. Veuillez réessayer plus tard.',
         ];
 
         $errorMessage = $errorMessages[$status] ?? 'Une erreur est survenue lors de la réinitialisation du mot de passe.';

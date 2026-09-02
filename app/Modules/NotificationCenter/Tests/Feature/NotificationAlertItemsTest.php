@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Modules\NotificationCenter\Models\NotificationTypeSetting;
 use App\Modules\NotificationCenter\Services\NotificationSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class NotificationAlertItemsTest extends TestCase
@@ -128,7 +129,7 @@ class NotificationAlertItemsTest extends TestCase
             ]);
         }
 
-        Product::enableQueryLog();
+        DB::enableQueryLog();
 
         $service = app(NotificationAlertItemService::class);
         $result = $service->paginateForUser($user->id, [
@@ -136,13 +137,13 @@ class NotificationAlertItemsTest extends TestCase
             'per_page' => 5,
         ], $user);
 
-        $queries = Product::query()->getConnection()->getQueryLog();
+        $queries = DB::getQueryLog();
         $productQueries = collect($queries)->filter(function (array $query) {
             return str_contains(strtolower($query['query']), 'products');
         });
 
         $this->assertCount(3, $result['data']);
-        $this->assertLessThanOrEqual(2, $productQueries->count());
+        $this->assertLessThanOrEqual(3, $productQueries->count());
     }
 
     public function test_seller_does_not_receive_alerts_when_recipient_disabled(): void

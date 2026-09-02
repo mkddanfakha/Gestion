@@ -2,11 +2,13 @@
 
 namespace App\Modules\NotificationCenter\Tests\Feature;
 
+use App\Models\Product;
 use App\Models\User;
 use App\Modules\NotificationCenter\DTO\CreateNotificationData;
 use App\Modules\NotificationCenter\Enums\NotificationPriority;
 use App\Modules\NotificationCenter\Models\Notification;
 use App\Modules\NotificationCenter\Services\NotificationService;
+use App\Modules\NotificationCenter\Services\NotificationSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -37,21 +39,20 @@ class NotificationModuleTest extends TestCase
 
     public function test_api_lists_notifications(): void
     {
+        app(NotificationSettingsService::class)->ensureDefaults();
+
         $user = User::factory()->create(['role' => 'admin', 'is_active' => true]);
 
-        Notification::create([
-            'user_id' => $user->id,
-            'notification_type' => 'system_info',
-            'notification_id' => 1,
-            'type' => 'system_info',
-            'priority' => 'info',
-            'status' => 'active',
-            'metadata' => ['title' => 'Hello', 'description' => 'World'],
+        Product::factory()->create([
+            'name' => 'Hello',
+            'stock_quantity' => 2,
+            'min_stock_level' => 5,
+            'is_active' => true,
         ]);
 
-        $response = $this->actingAs($user)->getJson('/api/notifications');
+        $response = $this->actingAs($user)->getJson('/api/notifications?severity=warning');
 
-        $response->assertOk()->assertJsonPath('data.0.title', 'Hello');
+        $response->assertOk()->assertJsonPath('data.0.product.name', 'Hello');
     }
 
     public function test_mark_as_read_legacy_route(): void

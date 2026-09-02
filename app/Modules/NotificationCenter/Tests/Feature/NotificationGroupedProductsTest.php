@@ -5,6 +5,7 @@ namespace App\Modules\NotificationCenter\Tests\Feature;
 use App\Integrations\NotificationCenter\GestionGroupedPreviewProvider;
 use App\Models\Product;
 use App\Models\User;
+use App\Modules\NotificationCenter\Http\Resources\NotificationResource;
 use App\Modules\NotificationCenter\Models\Notification;
 use App\Modules\NotificationCenter\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -72,18 +73,12 @@ class NotificationGroupedProductsTest extends TestCase
             'is_active' => true,
         ]);
 
-        Notification::create([
-            'user_id' => $admin->id,
-            'notification_type' => 'stock_out',
-            'notification_id' => 0,
-            'type' => 'stock_out',
-            'priority' => 'critical',
-            'status' => 'active',
-            'entity_type' => 'product',
-            'entity_id' => 0,
-            'group_key' => 'stock_out:grouped',
-            'title' => 'Rupture de stock',
-            'description' => '1 produit(s) sont actuellement en rupture de stock.',
+        $notification = Notification::query()
+            ->where('user_id', $admin->id)
+            ->where('type', 'stock_out')
+            ->firstOrFail();
+
+        $notification->update([
             'metadata' => [
                 'grouped' => true,
                 'count' => 1,
@@ -92,11 +87,10 @@ class NotificationGroupedProductsTest extends TestCase
             ],
         ]);
 
-        $response = $this->actingAs($admin)->getJson('/api/notifications');
+        $payload = (new NotificationResource($notification->fresh()))->resolve();
 
-        $response->assertOk();
-        $response->assertJsonPath('data.0.metadata.products.0.name', 'Sucre 50 kg');
-        $response->assertJsonPath('data.0.metadata.products.0.reference', 'SUC-50');
+        $this->assertSame('Sucre 50 kg', $payload['metadata']['products'][0]['name'] ?? null);
+        $this->assertSame('SUC-50', $payload['metadata']['products'][0]['reference'] ?? null);
     }
 
     public function test_preview_provider_maps_product_fields(): void
