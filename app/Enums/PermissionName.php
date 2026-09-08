@@ -110,6 +110,9 @@ enum PermissionName: string
     case SuppliersDelete = 'suppliers.delete';
     case SuppliersExport = 'suppliers.export';
 
+    // user-activities (journal commercial par utilisateur)
+    case UserActivitiesView = 'user-activities.view';
+
     /**
      * @return list<string>
      */

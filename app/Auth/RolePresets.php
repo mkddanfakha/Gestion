@@ -219,6 +219,7 @@ final class RolePresets
             PermissionName::InventoryCancel,
             PermissionName::InventoryClose,
             PermissionName::InventoryExport,
+            PermissionName::UserActivitiesView,
         ]);
     }
 

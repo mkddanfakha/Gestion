@@ -115,3 +115,11 @@ test('inventory reopen est utilise dans le preset gestionnaire', function () {
     expect($gestionnaire)->toContain('inventory.reopen');
     expect($gestionnaire)->not->toContain('inventory.review');
 });
+
+test('gestionnaire contient user-activities.view', function () {
+    expect(RolePresets::permissionNames(User::ROLE_GESTIONNAIRE))->toContain('user-activities.view');
+});
+
+test('vendeur ne contient pas user-activities.view', function () {
+    expect(RolePresets::permissionNames(User::ROLE_VENDEUR))->not->toContain('user-activities.view');
+});

@@ -337,6 +337,7 @@ class ActivityLogger
             'Bon de livraison' => 'le bon de livraison',
             'Inventaire' => 'la session d\'inventaire',
             'Facture' => 'la facture',
+            'Devis' => 'le devis',
             'Dépense' => 'la dépense',
             'Entreprise' => 'les informations de l\'entreprise',
             'Utilisateur' => 'l\'utilisateur',

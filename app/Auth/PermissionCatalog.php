@@ -429,6 +429,13 @@ final class PermissionCatalog
                 'delete' => ['Supprimer un fournisseur', 'Permet de supprimer un fournisseur.', 40],
                 'export' => ['Exporter les fournisseurs', 'Permet d\'exporter la liste des fournisseurs.', 50],
             ],
+            'user-activities' => [
+                'view' => [
+                    'Voir l\'activité des utilisateurs',
+                    'Permet de consulter le journal commercial des opérations par utilisateur.',
+                    10,
+                ],
+            ],
         ];
     }
 }

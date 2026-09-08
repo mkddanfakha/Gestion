@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Company;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\ProductStockNotFoundException;
+use App\Services\ActivityLogger;
 use App\Services\AttachmentService;
 use App\Services\SaleStockService;
 use Dompdf\Dompdf;
@@ -188,6 +189,8 @@ class QuoteController extends Controller
             return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
         }
 
+        ActivityLogger::logCreate('Devis', $quote);
+
         return redirect()->route('quotes.index')
             ->with('success', 'Devis créé avec succès.');
     }
@@ -347,6 +350,8 @@ class QuoteController extends Controller
             return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
         }
 
+        ActivityLogger::logUpdate('Devis', $quote);
+
         return redirect()->route('quotes.index')
             ->with('success', 'Devis mis à jour avec succès.');
     }
@@ -357,7 +362,9 @@ class QuoteController extends Controller
     public function destroy(Request $request, Quote $quote)
     {
         $this->checkPermission($request, 'quotes', 'delete');
-        
+
+        ActivityLogger::logDelete('Devis', $quote);
+
         $quote->delete();
 
         return redirect()->route('quotes.index')

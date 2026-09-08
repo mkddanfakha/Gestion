@@ -108,6 +108,16 @@
               <span class="nav-label">Entreprise</span>
             </Link>
           </li>
+          <li v-if="canView('user-activities')" class="nav-item">
+            <Link
+              :href="route('user-activities.index')"
+              class="nav-link nav-link-pill"
+              :class="{ active: $page.url.startsWith('/user-activities') }"
+            >
+              <span class="nav-icon-wrap nav-icon-wrap--company"><i class="bi bi-people-fill"></i></span>
+              <span class="nav-label">Activité des utilisateurs</span>
+            </Link>
+          </li>
           
           <!-- Menu Administrateur -->
           <li v-if="isAdmin" class="nav-group-spacer" aria-hidden="true"></li>
