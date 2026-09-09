@@ -142,6 +142,61 @@ class DatabaseAccountGuard
     }
 
     /**
+     * Check whether the current MySQL database/user pair is explicitly
+     * authorized to run migrations (e.g. OVH shared hosting).
+     *
+     * Format:
+     * DB_MIGRATION_ALLOWED_PAIRS=database:username,database2:username2
+     */
+    public static function isMigrationPairAllowed(?string $username = null, ?string $database = null): bool
+    {
+        $username ??= self::mysqlUsername();
+        $database ??= self::mysqlDatabaseName();
+
+        if ($username === '' || $database === '') {
+            return false;
+        }
+
+        if (! DatabaseSafetyGuard::isProtectedDatabase($database)) {
+            return false;
+        }
+
+        $configured = config('database-accounts.migration_allowed_pairs', '');
+
+        if (! is_string($configured) || trim($configured) === '') {
+            return false;
+        }
+
+        foreach (explode(',', $configured) as $pair) {
+            $pair = trim($pair);
+
+            if ($pair === '' || ! str_contains($pair, ':')) {
+                continue;
+            }
+
+            [$allowedDatabase, $allowedUsername] = array_map('trim', explode(':', $pair, 2));
+
+            if (
+                $allowedDatabase !== ''
+                && $allowedUsername !== ''
+                && strcasecmp($database, $allowedDatabase) === 0
+                && strcasecmp($username, $allowedUsername) === 0
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function mysqlDatabaseName(): string
+    {
+        $database = Config::get('database.connections.mysql.database');
+
+        return is_string($database) ? trim($database) : '';
+    }
+
+    /**
      * Fail-closed: privileged Artisan operations must use the dedicated account.
      */
     public static function assertAccountForOperation(string $operation, ?string $username = null): void
@@ -154,7 +209,13 @@ class DatabaseAccountGuard
             default => throw new \InvalidArgumentException("Unknown database account operation: {$operation}"),
         };
 
-        if ($username === '' || strcasecmp($username, $expected) !== 0) {
+        $isExpectedAccount = $username !== ''
+            && strcasecmp($username, $expected) === 0;
+
+        $isAllowedMigrationPair = $operation === self::OPERATION_MIGRATION
+            && self::isMigrationPairAllowed($username);
+
+        if (! $isExpectedAccount && ! $isAllowedMigrationPair) {
             throw ProtectedDatabaseException::forPrivilegedOperationAccountMismatch(
                 $operation,
                 $username === '' ? '(empty)' : $username,

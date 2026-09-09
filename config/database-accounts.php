@@ -94,6 +94,7 @@ return [
     ],
 
     'migration_account' => 'gestion_migration',
+    'migration_allowed_pairs' => env('DB_MIGRATION_ALLOWED_PAIRS', ''),
     'migration_account_created' => true,
     'migration_hosts' => ['localhost', '127.0.0.1'],
     'migration_databases' => ['gestion'],
