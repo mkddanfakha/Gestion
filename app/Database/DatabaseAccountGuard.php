@@ -130,8 +130,15 @@ class DatabaseAccountGuard
             );
         }
 
-        if (config('database-accounts.env_cutover_executed') === true
-            && ! self::isRuntimeUsername($username)
+        $isConfiguredRuntime = self::isRuntimeUsername($username);
+
+        $isAllowedSharedHostingRuntime = $username !== ''
+            && self::isMigrationPairAllowed($username);
+
+        if (
+            config('database-accounts.env_cutover_executed') === true
+            && ! $isConfiguredRuntime
+            && ! $isAllowedSharedHostingRuntime
             && $username !== ''
         ) {
             throw ProtectedDatabaseException::forRuntimeAccountMismatch(
