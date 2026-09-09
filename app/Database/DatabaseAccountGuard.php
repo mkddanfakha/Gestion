@@ -246,7 +246,7 @@ class DatabaseAccountGuard
             'configured_mysql_username' => $username === '' ? null : $username,
             'runtime_is_root' => self::isRootUsername($username),
             'runtime_is_privileged' => self::isPrivilegedUsername($username),
-            'runtime_matches_policy' => self::isRuntimeUsername($username),
+            'runtime_matches_policy' => self::isRuntimeUsername($username) || self::isMigrationPairAllowed($username),
             'backup_account_created' => (bool) config('database-accounts.backup_account_created', false),
             'restore_account_created' => (bool) config('database-accounts.restore_account_created', false),
             'migration_account_created' => (bool) config('database-accounts.migration_account_created', false),
