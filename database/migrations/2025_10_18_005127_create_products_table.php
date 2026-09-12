@@ -24,7 +24,8 @@ return new class extends Migration
             $table->string('unit')->default('pièce'); // Unité (pièce, kg, litre, etc.)
             $table->string('image')->nullable(); // Image du produit
             $table->boolean('is_active')->default(true); // Produit actif/inactif
-            $table->foreignId('category_id')->constrained()->onDelete('cascade');
+            // PRE-PROD 9.5.4 — FK added after categories exists (2025_10_18_005128).
+            $table->foreignId('category_id');
             $table->timestamps();
         });
     }
