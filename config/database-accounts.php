@@ -13,6 +13,32 @@ return [
 
     'runtime_account' => env('DB_APP_USERNAME', 'gestion_app'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Runtime allowed pairs (PRE-PROD 9.5.2E)
+    |--------------------------------------------------------------------------
+    |
+    | Fail-closed: Laravel mysql runtime may only boot for an exact
+    | (database, username) pair. Never authorize by username alone.
+    | DB_APP_USERNAME remains a legacy label for status / privileged messaging;
+    | it does NOT grant a global username allow-list.
+    |
+    */
+
+    'runtime_allowed_pairs' =>  env('DB_RUNTIME_ALLOWED_PAIRS', ''),
+
+    /*
+    |--------------------------------------------------------------------------
+    | MySQL migrate allowed pairs (PRE-PROD 9.5.4)
+    |--------------------------------------------------------------------------
+    |
+    | Fail-closed: php artisan migrate on mysql is allowed only for an exact
+    | (database, username) pair. Username-only allow-lists are forbidden.
+    | Backup / restore keep dedicated accounts and are not listed here.
+    |
+    */
+
+    'migration_allowed_pairs' =>  env('DB_MIGRATION_ALLOWED_PAIRS', ''),
     'runtime_hosts' => [
         'localhost',
         '127.0.0.1',
@@ -94,7 +120,6 @@ return [
     ],
 
     'migration_account' => 'gestion_migration',
-    'migration_allowed_pairs' => env('DB_MIGRATION_ALLOWED_PAIRS', ''),
     'migration_account_created' => true,
     'migration_hosts' => ['localhost', '127.0.0.1'],
     'migration_databases' => ['gestion'],

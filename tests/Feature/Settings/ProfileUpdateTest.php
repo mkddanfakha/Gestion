@@ -50,7 +50,9 @@ test('email verification status is unchanged when the email address is unchanged
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
-test('user can delete their account', function () {
+
+
+test('user cannot delete their own account from profile', function () {
     $user = User::factory()->create();
 
     $response = $this
@@ -60,26 +62,28 @@ test('user can delete their account', function () {
         ]);
 
     $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('home'));
+        ->assertSessionHas('error')
+        ->assertRedirect(route('profile.edit'));
 
-    $this->assertGuest();
-    expect($user->fresh())->toBeNull();
+    $this->assertAuthenticatedAs($user);
+    expect($user->fresh())->not->toBeNull();
 });
 
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->create();
+test('administrator cannot delete their own account from profile', function () {
+    $user = User::factory()->create([
+        'role' => 'admin',
+    ]);
 
     $response = $this
         ->actingAs($user)
-        ->from(route('profile.edit'))
         ->delete(route('profile.destroy'), [
-            'password' => 'wrong-password',
+            'password' => 'password',
         ]);
 
     $response
-        ->assertSessionHasErrors('password')
+        ->assertSessionHas('error')
         ->assertRedirect(route('profile.edit'));
 
+    $this->assertAuthenticatedAs($user);
     expect($user->fresh())->not->toBeNull();
 });

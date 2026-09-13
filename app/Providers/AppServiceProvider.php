@@ -142,6 +142,17 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
+        // `php artisan test` bootstraps Laravel once before PHPUnit applies
+        // phpunit.xml environment variables. Do not enforce the production
+        // MySQL runtime-account policy during that bootstrap.
+        if (
+            app()->runningInConsole()
+            && isset($_SERVER['argv'])
+            && in_array('test', $_SERVER['argv'], true)
+        ) {
+            return;
+        }
+
         if (config('database.default') !== 'mysql') {
             return;
         }

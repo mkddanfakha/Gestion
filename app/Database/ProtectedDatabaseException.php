@@ -140,7 +140,7 @@ class ProtectedDatabaseException extends RuntimeException
             'Refusing MySQL root as Laravel runtime.',
             '',
             "Configured username: {$username}",
-            'Required runtime account: gestion_app',
+            'The configured runtime account is required for this operation.',
             '',
             'Root remains DBA/CLI only. --force does not bypass.',
         ]));
@@ -159,14 +159,36 @@ class ProtectedDatabaseException extends RuntimeException
         ]));
     }
 
-    public static function forRuntimeAccountMismatch(string $username, string $runtimeAccount): self
+    public static function forRuntimeAccountMismatch(
+        string $username,
+        string $runtimeAccount,
+        ?string $database = null,
+    ): self {
+        $databaseLabel = ($database === null || $database === '') ? '(empty)' : $database;
+
+        return new self(implode("\n", [
+            'DATABASE ACCOUNT SAFETY BLOCK',
+            'Laravel runtime MySQL database/username pair does not match policy.',
+            '',
+            "Configured database: {$databaseLabel}",
+            "Configured username: {$username}",
+            "Runtime account label: {$runtimeAccount}",
+            '',
+            'The configured database/username pair is not authorized by the runtime policy.',
+            'Username-only allow-lists are forbidden. --force does not bypass.',
+        ]));
+    }
+
+    public static function forMigrationPairMismatch(string $username, string $database): self
     {
         return new self(implode("\n", [
             'DATABASE ACCOUNT SAFETY BLOCK',
-            'Laravel runtime MySQL username does not match policy.',
+            'Refusing privileged operation: migration',
             '',
-            "Configured username: {$username}",
-            "Required runtime account: {$runtimeAccount}",
+            "Configured database: {$database}",
+            "Configured MySQL username: {$username}",
+            '','The configured database/username pair is not authorized for migrations.',
+            'Username-only allow-lists are forbidden. --force does not bypass.',
         ]));
     }
 
@@ -182,7 +204,7 @@ class ProtectedDatabaseException extends RuntimeException
             "Configured MySQL username: {$username}",
             "Required account: {$expectedAccount}",
             '',
-            'gestion_app (CRUD runtime) cannot perform backup / restore / migration DDL.',
+            'The runtime account cannot perform backup / restore / migration DDL.',
             'Create and wire the dedicated account only after explicit human approval.',
             '--force does not bypass.',
         ]));

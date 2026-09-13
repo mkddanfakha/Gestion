@@ -31,9 +31,17 @@ class PrivilegedCommandGuard
         }
 
         $operation = self::COMMAND_OPERATIONS[$command];
+        $username = null;
+        $database = null;
+
+        if ($command === 'migrate') {
+            $connection = self::migrateConnectionName($event);
+            $username = self::connectionString($connection, 'username');
+            $database = self::connectionString($connection, 'database');
+        }
 
         try {
-            DatabaseAccountGuard::assertAccountForOperation($operation);
+            DatabaseAccountGuard::assertAccountForOperation($operation, $username, $database);
         } catch (ProtectedDatabaseException $e) {
             if ($event->output !== null) {
                 $event->output->writeln('');
@@ -47,15 +55,28 @@ class PrivilegedCommandGuard
 
     private static function migrateUsesMysql(CommandStarting $event): bool
     {
-        $connection = null;
-        if ($event->input->hasOption('database')) {
-            $option = $event->input->getOption('database');
-            $connection = is_string($option) && $option !== '' ? $option : null;
-        }
-
-        $connection ??= (string) config('database.default', 'sqlite');
+        $connection = self::migrateConnectionName($event);
         $driver = config("database.connections.{$connection}.driver");
 
         return is_string($driver) && strcasecmp($driver, 'mysql') === 0;
+    }
+
+    private static function migrateConnectionName(CommandStarting $event): string
+    {
+        if ($event->input->hasOption('database')) {
+            $option = $event->input->getOption('database');
+            if (is_string($option) && $option !== '') {
+                return $option;
+            }
+        }
+
+        return (string) config('database.default', 'sqlite');
+    }
+
+    private static function connectionString(string $connection, string $key): string
+    {
+        $value = config("database.connections.{$connection}.{$key}");
+
+        return is_string($value) ? trim($value) : '';
     }
 }

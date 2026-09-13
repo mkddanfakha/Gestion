@@ -9,7 +9,24 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * PRE-PROD 9.3 — Account separation policy (no live MySQL account creation).
+ * PRE-PROD 9.5.2E — Runtime allow requires (database, username) pair; phpunit DB_DATABASE=:memory:
+ * must not be left on the mysql connection when asserting local runtime policy.
  */
+
+beforeEach(function () {
+    Config::set('database.connections.mysql.database', 'gestion');
+    Config::set('database.connections.mysql.username', 'gestion_app');
+    Config::set('database-accounts.env_cutover_executed', true);
+    Config::set('database-accounts.runtime_allowed_pairs', [
+    ['database' => 'gestion', 'username' => 'gestion_app'],
+    ['database' => 'mkdproqgestion', 'username' => 'mkdproqgestion'],
+]);
+
+Config::set('database-accounts.migration_allowed_pairs', [
+    ['database' => 'gestion', 'username' => 'gestion_app'],
+    ['database' => 'mkdproqgestion', 'username' => 'mkdproqgestion'],
+]);
+});
 
 afterEach(function () {
     Config::set('database.default', 'sqlite');
@@ -21,6 +38,7 @@ afterEach(function () {
 });
 
 test('runtime must not use root after cutover', function () {
+    Config::set('database.connections.mysql.database', 'gestion');
     Config::set('database.connections.mysql.username', 'root');
     expect(fn () => DatabaseAccountGuard::assertRuntimeUsernameAllowed())
         ->toThrow(ProtectedDatabaseException::class);
@@ -34,6 +52,7 @@ test('runtime must not use root after cutover', function () {
 
 test('runtime must not use backup restore or migration accounts', function () {
     foreach (['gestion_backup', 'gestion_restore', 'gestion_migration'] as $user) {
+        Config::set('database.connections.mysql.database', 'gestion');
         Config::set('database.connections.mysql.username', $user);
         expect(fn () => DatabaseAccountGuard::assertRuntimeUsernameAllowed())
             ->toThrow(ProtectedDatabaseException::class);
@@ -41,6 +60,7 @@ test('runtime must not use backup restore or migration accounts', function () {
 });
 
 test('runtime gestion_app is allowed', function () {
+    Config::set('database.connections.mysql.database', 'gestion');
     Config::set('database.connections.mysql.username', 'gestion_app');
     DatabaseAccountGuard::assertRuntimeUsernameAllowed();
     expect(DatabaseAccountGuard::isRuntimeUsername('gestion_app'))->toBeTrue();
@@ -52,21 +72,38 @@ test('backup:run refuses gestion_app account', function () {
         ->toThrow(ProtectedDatabaseException::class);
 });
 
-test('migrate on mysql refuses gestion_app account', function () {
+test('migrate on mysql allows gestion + gestion_app pair', function () {
     Config::set('database.default', 'mysql');
     Config::set('database.connections.mysql.username', 'gestion_app');
     Config::set('database.connections.mysql.database', 'gestion');
-    expect(fn () => Artisan::call('migrate', ['--force' => true]))
-        ->toThrow(ProtectedDatabaseException::class);
+    DatabaseAccountGuard::assertAccountForOperation(
+        DatabaseAccountGuard::OPERATION_MIGRATION,
+        'gestion_app',
+        'gestion',
+    );
+    expect(true)->toBeTrue();
+});
+
+test('migrate on mysql refuses mismatched database/username pairs', function () {
+    expect(fn () => DatabaseAccountGuard::assertAccountForOperation(
+        DatabaseAccountGuard::OPERATION_MIGRATION,
+        'mkdproqgestion',
+        'gestion',
+    ))->toThrow(ProtectedDatabaseException::class);
+
+    expect(fn () => DatabaseAccountGuard::assertAccountForOperation(
+        DatabaseAccountGuard::OPERATION_MIGRATION,
+        'gestion_app',
+        'mkdproqgestion',
+    ))->toThrow(ProtectedDatabaseException::class);
 });
 
 test('migrate on sqlite is not gated by mysql account policy', function () {
     Config::set('database.default', 'sqlite');
     Config::set('database.connections.sqlite.database', ':memory:');
     Config::set('database.connections.mysql.username', 'gestion_app');
-    // Direct assert still fails (policy), but PrivilegedCommandGuard skips non-mysql migrate.
-    expect(fn () => DatabaseAccountGuard::assertAccountForOperation('migration'))
-        ->toThrow(ProtectedDatabaseException::class);
+    Config::set('database.connections.mysql.database', 'gestion');
+    DatabaseAccountGuard::assertAccountForOperation('migration', 'gestion_app', 'gestion');
     expect(config('database.connections.sqlite.driver') ?? 'sqlite')->toBe('sqlite');
 });
 

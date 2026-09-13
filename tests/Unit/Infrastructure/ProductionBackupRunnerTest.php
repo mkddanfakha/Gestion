@@ -186,6 +186,7 @@ test('scheduler daily backup uses backup:production not backup:run', function ()
 
 test('runtime privileged accounts remain forbidden outside subprocess marker', function () {
     foreach (['gestion_backup', 'gestion_restore', 'gestion_migration', 'root'] as $user) {
+        Config::set('database.connections.mysql.database', 'gestion');
         Config::set('database.connections.mysql.username', $user);
 
         expect(fn () => DatabaseAccountGuard::assertRuntimeUsernameAllowed())
@@ -194,6 +195,8 @@ test('runtime privileged accounts remain forbidden outside subprocess marker', f
 });
 
 test('runtime gestion_app remains allowed', function () {
+    // Pair policy (9.5.2E): phpunit DB_DATABASE=:memory: must not be used as mysql database name.
+    Config::set('database.connections.mysql.database', 'gestion');
     Config::set('database.connections.mysql.username', 'gestion_app');
     DatabaseAccountGuard::assertRuntimeUsernameAllowed();
     expect(true)->toBeTrue();
