@@ -82,12 +82,14 @@ return [
     |--------------------------------------------------------------------------
     | Privileged accounts (policy only until human CREATE approval)
     |--------------------------------------------------------------------------
-    |
-    | Never wire these to Laravel DB_USERNAME. Credentials must stay out of Git.
+    | Normally, backup credentials must not be wired to Laravel DB_USERNAME.
+    | A single-account mode is allowed only when the hosting provider forces
+    |runtime and backup to use the same database account.
+    | Credentials must stay out of Git.
     |
     */
-
-    'backup_account' => 'gestion_backup',
+    'backup_account' => env('DB_BACKUP_USERNAME', 'gestion_backup'),
+    'single_account_mode' => env('DB_SINGLE_ACCOUNT_MODE', false),
     'backup_account_created' => true,
     'backup_hosts' => ['localhost', '127.0.0.1'],
     'backup_databases' => ['gestion'],

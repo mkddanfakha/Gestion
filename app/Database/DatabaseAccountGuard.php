@@ -210,6 +210,16 @@ class DatabaseAccountGuard
             && strcasecmp(trim($marker), PrivilegedProcessRunner::SUBPROCESS_OPERATION_RESTORE) === 0;
     }
 
+    private static function isAllowedSingleAccountMode(string $username): bool
+    {
+        if (config('database-accounts.single_account_mode', false) !== true) {
+            return false;
+        }
+
+        return strcasecmp($username, self::runtimeAccountName()) === 0
+            && strcasecmp($username, self::backupAccountName()) === 0;
+    }
+
     /**
      * Laravel mysql runtime must match an allowed (database, username) pair after cutover
      * (not root, not privileged). Pair policy is fail-closed.
@@ -223,7 +233,10 @@ class DatabaseAccountGuard
             throw ProtectedDatabaseException::forRuntimeRootAccount($username);
         }
 
-        if (self::isPrivilegedUsername($username)) {
+        if (
+            self::isPrivilegedUsername($username)
+            && ! self::isAllowedSingleAccountMode($username)
+        ) {
             throw ProtectedDatabaseException::forRuntimePrivilegedAccount(
                 $username,
                 self::runtimeAccountName(),

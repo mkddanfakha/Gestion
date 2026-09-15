@@ -163,3 +163,33 @@ test('status never exposes password and reports pair match', function () {
     expect($status['runtime_matches_policy'])->toBeTrue();
     expect($status['configured_mysql_database'])->toBe('gestion');
 });
+test('single account mode allows runtime account when it is also the backup account', function () {
+    Config::set('database-accounts.single_account_mode', true);
+    Config::set('database-accounts.runtime_account', 'tswxwzgfallou');
+    Config::set('database-accounts.backup_account', 'tswxwzgfallou');
+    Config::set('database-accounts.runtime_allowed_pairs', 'tswxwzgfallou:tswxwzgfallou');
+    Config::set('database-accounts.env_cutover_executed', true);
+
+    Config::set('database.connections.mysql.database', 'tswxwzgfallou');
+    Config::set('database.connections.mysql.username', 'tswxwzgfallou');
+
+    DatabaseAccountGuard::assertRuntimeUsernameAllowed();
+
+    expect(DatabaseAccountGuard::isAllowedRuntimePair(
+        'tswxwzgfallou',
+        'tswxwzgfallou'
+    ))->toBeTrue();
+});
+
+test('single account mode does not allow mismatched runtime and backup accounts', function () {
+    Config::set('database-accounts.single_account_mode', true);
+    Config::set('database-accounts.runtime_account', 'tswxwzgfallou');
+    Config::set('database-accounts.backup_account', 'gestion_backup');
+    Config::set('database-accounts.env_cutover_executed', true);
+
+    Config::set('database.connections.mysql.database', 'tswxwzgfallou');
+    Config::set('database.connections.mysql.username', 'tswxwzgfallou');
+
+    expect(fn () => DatabaseAccountGuard::assertRuntimeUsernameAllowed())
+        ->toThrow(ProtectedDatabaseException::class);
+});
