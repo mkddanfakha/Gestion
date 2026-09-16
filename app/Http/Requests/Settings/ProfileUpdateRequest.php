@@ -5,6 +5,7 @@ namespace App\Http\Requests\Settings;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class ProfileUpdateRequest extends FormRequest
 {
@@ -15,8 +16,7 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'name' => ['required', 'string', 'max:255'],
+        $rules = [
             'email' => [
                 'required',
                 'string',
@@ -26,6 +26,59 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
         ];
+
+        if ($this->user()?->isAdmin()) {
+            $rules['name'] = ['required', 'string', 'max:255'];
+        } else {
+            // Présence de name autorisée seulement si inchangée (sinon refus explicite).
+            $rules['name'] = ['sometimes', 'string', 'max:255'];
+        }
+
+        return $rules;
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $user = $this->user();
+
+            if (! $user || $user->isAdmin()) {
+                return;
+            }
+
+            if (! $this->exists('name')) {
+                return;
+            }
+
+            if ((string) $this->input('name') !== (string) $user->name) {
+                $validator->errors()->add(
+                    'name',
+                    'Seul un administrateur peut modifier le nom.',
+                );
+            }
+        });
+    }
+
+    /**
+     * Données validées : un non-admin ne peut jamais faire passer `name` dans le fill.
+     *
+     * @param  string|null  $key
+     * @param  mixed  $default
+     * @return ($key is null ? array<string, mixed> : mixed)
+     */
+    public function validated($key = null, $default = null): mixed
+    {
+        $validated = parent::validated($key, $default);
+
+        if ($key !== null) {
+            return $validated;
+        }
+
+        if (! $this->user()?->isAdmin()) {
+            unset($validated['name']);
+        }
+
+        return $validated;
     }
 
     /**

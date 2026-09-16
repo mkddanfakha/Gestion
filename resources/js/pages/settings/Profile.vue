@@ -53,7 +53,11 @@ const resendVerificationEmail = () => {
 
 // Schéma de validation VeeValidate
 const schema = yup.object({
-    name: yup.string().required('Le nom est requis').min(2, 'Le nom doit contenir au moins 2 caractères'),
+    name: yup.string().when([], {
+        is: () => isAdmin.value,
+        then: (s) => s.required('Le nom est requis').min(2, 'Le nom doit contenir au moins 2 caractères'),
+        otherwise: (s) => s.nullable(),
+    }),
     email: yup.string().required('L\'email est requis').email('L\'email doit être valide'),
 });
 
@@ -69,7 +73,11 @@ const [name, nameAttrs] = defineField('name');
 const [email, emailAttrs] = defineField('email');
 
 const onSubmit = handleSubmit((values) => {
-    router.patch(route('profile.update'), values, {
+    const payload = isAdmin.value
+        ? values
+        : { email: values.email };
+
+    router.patch(route('profile.update'), payload, {
         onSuccess: () => {
             success('Profil mis à jour avec succès.');
         },
@@ -101,7 +109,7 @@ const onSubmit = handleSubmit((values) => {
                 <div class="col-12">
                     <HeadingSmall
                         title="Informations du profil"
-                        description="Mettez à jour votre nom et votre adresse email"
+                        :description="isAdmin ? 'Mettez à jour votre nom et votre adresse email' : 'Mettez à jour votre adresse email'"
                     />
 
                     <form @submit="onSubmit">
@@ -117,10 +125,15 @@ const onSubmit = handleSubmit((values) => {
                                             type="text"
                                             class="form-control"
                                             :class="{ 'is-invalid': veeErrors.name }"
-                                            required
-                                            autofocus
+                                            :readonly="!isAdmin"
+                                            :disabled="!isAdmin"
+                                            :required="isAdmin"
+                                            :autofocus="isAdmin"
                                             autocomplete="name"
                                         />
+                                        <div v-if="!isAdmin" class="form-text">
+                                            Seul un administrateur peut modifier le nom.
+                                        </div>
                                         <div v-if="veeErrors.name" class="invalid-feedback d-block">
                                             {{ veeErrors.name }}
                                         </div>
