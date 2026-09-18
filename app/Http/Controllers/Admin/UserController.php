@@ -68,6 +68,7 @@ class UserController extends Controller
     {
         return Inertia::render('Admin/Users/Create', [
             'permissionsByResource' => AssignablePermissionResolver::adminGridByResource(),
+            'rolePresets' => self::rolePresetsPayload(),
         ]);
     }
 
@@ -164,8 +165,22 @@ class UserController extends Controller
             'user' => $user,
             'permissionsByResource' => AssignablePermissionResolver::adminGridByResource(),
             'userPermissionIds' => $userPermissionIds,
+            'rolePresets' => self::rolePresetsPayload(),
             'isLastActiveAdmin' => $this->adminProtection->isLastAdmin($user),
         ]);
+    }
+
+    /**
+     * Presets rôle → noms de permissions (source RolePresets PHP).
+     *
+     * @return array{vendeur: list<string>, gestionnaire: list<string>}
+     */
+    private static function rolePresetsPayload(): array
+    {
+        return [
+            User::ROLE_VENDEUR => RolePresets::permissionNames(User::ROLE_VENDEUR),
+            User::ROLE_GESTIONNAIRE => RolePresets::permissionNames(User::ROLE_GESTIONNAIRE),
+        ];
     }
 
     /**

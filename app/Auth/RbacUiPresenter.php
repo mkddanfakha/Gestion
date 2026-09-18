@@ -25,6 +25,7 @@ final class RbacUiPresenter
         'dashboard' => 'Tableau de bord',
         'inventory' => 'Inventaire',
         'backups' => 'Sauvegardes',
+        'user-activities' => 'Activité des utilisateurs',
     ];
 
     private const ROLE_META = [

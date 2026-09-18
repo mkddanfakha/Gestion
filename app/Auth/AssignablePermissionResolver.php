@@ -3,7 +3,6 @@
 namespace App\Auth;
 
 use App\Models\Permission;
-use Illuminate\Support\Collection;
 
 /**
  * Attribution admin : permissions canoniques uniquement (Phase N3 / N4).
@@ -60,39 +59,48 @@ final class AssignablePermissionResolver
     }
 
     /**
-     * Grille admin : uniquement permissions catalogue non-legacy.
+     * Grille admin : permissions catalogue non-legacy, enrichies avec libellés FR.
      *
-     * @return Collection<string, Collection<int, array{id: int, name: string, action: string, description: ?string}>>
+     * Source d’affichage = PermissionCatalog (comme « Rôles & permissions »).
+     * Les IDs viennent de la table permissions (requis pour l’attribution).
+     *
+     * @return array<string, list<array{id: int, name: string, action: string, label: string, description: ?string}>>
      */
-    public static function adminGridByResource(): Collection
+    public static function adminGridByResource(): array
     {
-        $all = Permission::query()
+        $dbByName = Permission::query()
             ->orderBy('resource')
             ->orderBy('action')
-            ->get();
+            ->get()
+            ->keyBy(static fn (Permission $permission): string => (string) $permission->name);
 
-        $assignable = $all->filter(function (Permission $permission): bool {
-            $name = (string) $permission->name;
+        $grid = [];
 
-            if (! PermissionCatalog::exists($name)) {
-                return false;
+        foreach (PermissionCatalog::all() as $definition) {
+            if ($definition['legacy']) {
+                continue;
             }
 
-            return ! PermissionCatalog::isLegacy($name);
-        });
+            $permission = $dbByName->get($definition['name']);
 
-        return $assignable
-            ->groupBy('resource')
-            ->map(static function (Collection $permissions): Collection {
-                return $permissions->map(static function (Permission $permission): array {
-                    return [
-                        'id' => (int) $permission->id,
-                        'name' => (string) $permission->name,
-                        'action' => (string) $permission->action,
-                        'description' => $permission->description,
-                    ];
-                })->values();
-            });
+            if ($permission === null) {
+                continue;
+            }
+
+            $module = $definition['module'];
+
+            $grid[$module][] = [
+                'id' => (int) $permission->id,
+                'name' => $definition['name'],
+                'action' => $definition['action'],
+                'label' => $definition['label'],
+                'description' => $definition['description'] !== ''
+                    ? $definition['description']
+                    : $permission->description,
+            ];
+        }
+
+        return $grid;
     }
 
     /**

@@ -139,7 +139,7 @@ test('update user avec pivot legacy le convertit en canonique', function () {
 });
 
 test('grille admin n expose aucune permission legacy', function () {
-    $names = AssignablePermissionResolver::adminGridByResource()
+    $names = collect(AssignablePermissionResolver::adminGridByResource())
         ->flatten(1)
         ->pluck('name')
         ->all();

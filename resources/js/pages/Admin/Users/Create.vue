@@ -132,23 +132,28 @@
             </div>
           </div>
 
-          <!-- Permissions (seulement pour les utilisateurs non-admin) -->
-          <div v-if="form.role !== 'admin'" class="card mb-4">
+          <!-- Permissions -->
+          <div class="card mb-4">
             <div class="card-header">
               <h5 class="card-title mb-0">
-                {{ form.role === 'user' ? 'Permissions personnalisées' : 'Permissions' }}
+                <template v-if="form.role === 'admin'">Permissions (accès complet)</template>
+                <template v-else-if="form.role === 'user'">Permissions personnalisées</template>
+                <template v-else>Permissions</template>
               </h5>
               <small class="text-muted">
-                <template v-if="form.role === 'user'">Sélectionnez les permissions personnalisées</template>
+                <template v-if="form.role === 'admin'">
+                  Les administrateurs ont un accès complet (bypass) — aperçu du catalogue.
+                </template>
+                <template v-else-if="form.role === 'user'">Sélectionnez les permissions personnalisées</template>
                 <template v-else>Aperçu du preset « {{ form.role }} » (appliqué à l’enregistrement côté serveur)</template>
               </small>
             </div>
             <div class="card-body">
               <RbacPermissionPicker
                 v-model="form.permissions"
-                :permissions="flatCanonicalPermissions"
+                :permissions="displayedPermissions"
                 :module-labels="moduleLabels"
-                :disabled="form.role === 'vendeur' || form.role === 'gestionnaire'"
+                :disabled="form.role !== 'user'"
               />
             </div>
           </div>
@@ -184,94 +189,25 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import RbacPermissionPicker from '@/components/rbac/RbacPermissionPicker.vue'
-import {
-  filterCanonicalPermissionGrid,
-  permissionActionLabel,
-} from '@/utils/rbacPermissions'
+import { filterCanonicalPermissionGrid } from '@/utils/rbacPermissions'
 import { DEFAULT_MODULE_LABELS, type RbacPermission } from '@/utils/rbacUi'
 
 const { success, error } = useSweetAlert()
-
-/** Aligné RolePresets PHP (vendeur) — aperçu UI uniquement. */
-const VENDEUR_PRESET_NAMES = [
-  'dashboard.view',
-  'sales.view',
-  'sales.create',
-  'sales.update',
-  'sales.delete',
-  'sales.invoice',
-  'quotes.view',
-  'quotes.create',
-  'quotes.update',
-  'quotes.delete',
-  'quotes.download',
-  'quotes.print',
-  'products.view',
-  'customers.view',
-  'customers.create',
-  'customers.update',
-]
-
-/** Aligné RolePresets PHP (gestionnaire) — pas de sales.*. */
-const GESTIONNAIRE_PRESET_NAMES = [
-  'dashboard.view',
-  'products.view',
-  'products.create',
-  'products.update',
-  'products.delete',
-  'categories.view',
-  'categories.create',
-  'categories.update',
-  'categories.delete',
-  'quotes.view',
-  'quotes.create',
-  'quotes.update',
-  'quotes.delete',
-  'quotes.download',
-  'quotes.print',
-  'expenses.view',
-  'expenses.create',
-  'expenses.update',
-  'expenses.delete',
-  'suppliers.view',
-  'suppliers.create',
-  'suppliers.update',
-  'suppliers.delete',
-  'suppliers.export',
-  'purchase-orders.view',
-  'purchase-orders.create',
-  'purchase-orders.update',
-  'purchase-orders.delete',
-  'purchase-orders.download',
-  'purchase-orders.print',
-  'delivery-notes.view',
-  'delivery-notes.create',
-  'delivery-notes.update',
-  'delivery-notes.delete',
-  'delivery-notes.validate',
-  'delivery-notes.download',
-  'delivery-notes.print',
-  'inventory.view',
-  'inventory.create',
-  'inventory.count',
-  'inventory.submit',
-  'inventory.reopen',
-  'inventory.validate',
-  'inventory.apply',
-  'inventory.cancel',
-  'inventory.close',
-  'inventory.export',
-]
 
 interface Permission {
   id: number
   name: string
   action: string
-  description: string
+  label?: string
+  description: string | null
 }
 
 interface Props {
   permissionsByResource: Record<string, Permission[]>
+  rolePresets: {
+    vendeur: string[]
+    gestionnaire: string[]
+  }
 }
 
 const props = defineProps<Props>()
@@ -291,12 +227,25 @@ const flatCanonicalPermissions = computed<RbacPermission[]>(() => {
         name: permission.name,
         module,
         action: permission.action,
-        label: permissionActionLabel(permission.action),
+        label: permission.label || permission.action,
         description: permission.description ?? undefined,
       })
     }
   }
   return items
+})
+
+const displayedPermissions = computed<RbacPermission[]>(() => {
+  if (form.role === 'admin') {
+    return flatCanonicalPermissions.value
+  }
+
+  if (form.role === 'vendeur' || form.role === 'gestionnaire') {
+    const names = new Set(props.rolePresets[form.role] ?? [])
+    return flatCanonicalPermissions.value.filter((permission) => names.has(permission.name))
+  }
+
+  return flatCanonicalPermissions.value
 })
 
 const clientErrors = ref<Record<string, string>>({})
@@ -351,11 +300,13 @@ const idsForNames = (names: string[]): number[] => {
 
 const onRoleChange = () => {
   if (form.role === 'admin') {
-    form.permissions = []
+    form.permissions = flatCanonicalPermissions.value
+      .map((permission) => permission.id)
+      .filter((id): id is number => typeof id === 'number')
   } else if (form.role === 'vendeur') {
-    form.permissions = idsForNames(VENDEUR_PRESET_NAMES)
+    form.permissions = idsForNames(props.rolePresets.vendeur ?? [])
   } else if (form.role === 'gestionnaire') {
-    form.permissions = idsForNames(GESTIONNAIRE_PRESET_NAMES)
+    form.permissions = idsForNames(props.rolePresets.gestionnaire ?? [])
   } else {
     form.permissions = []
   }

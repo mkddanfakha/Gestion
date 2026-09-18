@@ -46,6 +46,7 @@ export type PermissionGridItem = {
   id: number
   name: string
   action: string
+  label?: string
   description?: string | null
 }
 

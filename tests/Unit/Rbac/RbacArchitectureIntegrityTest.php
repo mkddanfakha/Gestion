@@ -31,7 +31,7 @@ test('tous les presets referent des permissions catalogue non legacy', function 
 });
 
 test('grille assignable uniquement writable', function () {
-    $names = AssignablePermissionResolver::adminGridByResource()
+    $names = collect(AssignablePermissionResolver::adminGridByResource())
         ->flatten(1)
         ->pluck('name')
         ->all();

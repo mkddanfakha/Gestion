@@ -142,7 +142,7 @@ test('presets et grille admin ne proposent pas edit ni review', function () {
         }
     }
 
-    $gridNames = AssignablePermissionResolver::adminGridByResource()
+    $gridNames = collect(AssignablePermissionResolver::adminGridByResource())
         ->flatten(1)
         ->pluck('name')
         ->all();

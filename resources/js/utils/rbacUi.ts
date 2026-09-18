@@ -51,6 +51,7 @@ export const DEFAULT_MODULE_LABELS: Record<string, string> = {
   dashboard: 'Tableau de bord',
   inventory: 'Inventaire',
   backups: 'Sauvegardes',
+  'user-activities': 'Activité des utilisateurs',
 }
 
 /** Classification UI sensible (documentée) — indépendante du backend. */
