@@ -2,8 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Auth\PermissionCatalog;
-use App\Models\Permission;
+use App\Auth\PermissionCatalogSynchronizer;
 use Illuminate\Database\Seeder;
 
 class PermissionSeeder extends Seeder
@@ -13,17 +12,6 @@ class PermissionSeeder extends Seeder
      */
     public function run(): void
     {
-        foreach (PermissionCatalog::all() as $definition) {
-            Permission::firstOrCreate(
-                [
-                    'resource' => $definition['module'],
-                    'action' => $definition['action'],
-                ],
-                [
-                    'name' => $definition['name'],
-                    'description' => $definition['description'],
-                ],
-            );
-        }
+        app(PermissionCatalogSynchronizer::class)->sync();
     }
 }
