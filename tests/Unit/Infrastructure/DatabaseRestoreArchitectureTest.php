@@ -4,6 +4,7 @@ use App\Database\BackupConcurrencyGuard;
 use App\Database\DatabaseSafetyGuard;
 use App\Database\ProtectedDatabaseException;
 use App\Services\Restore\ApplicationFilesRestoreService;
+use App\Services\Restore\BackupRestoreRejectedException;
 use App\Services\Restore\DatabaseRestoreService;
 use App\Services\Restore\SqlDumpImporter;
 use Illuminate\Support\Facades\Artisan;
@@ -162,7 +163,7 @@ test('TEST 12 restore lock blocks a second restore', function () {
 
 test('TEST 13 invalid backup is blocked', function () {
     expect(fn () => app(DatabaseRestoreService::class)->restore('missing-file.zip', 'gestion_recovery', 'RESTORE'))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(BackupRestoreRejectedException::class);
 });
 
 test('TEST 14 corrupted SQL dump is blocked', function () {

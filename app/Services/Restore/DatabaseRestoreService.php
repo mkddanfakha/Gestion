@@ -72,19 +72,26 @@ class DatabaseRestoreService
         string $confirmationPhrase,
         float $started,
     ): array {
-        $result = $this->privilegedRestoreRunner->runRestore(
-            $backupFileName,
-            $target,
-            $confirmationPhrase,
-        );
+        try {
+            $result = $this->privilegedRestoreRunner->runRestore(
+                $backupFileName,
+                $target,
+                $confirmationPhrase,
+            );
+        } catch (RuntimeException $e) {
+            throw $this->mapCredentialRuntimeException($e);
+        }
 
         if (! $result->successful()) {
-            $message = trim($result->combinedOutput());
+            $message = trim(app(RestoreJobOutputSanitizer::class)->sanitize($result->combinedOutput()));
             if ($message === '') {
                 $message = 'Privileged restore subprocess failed.';
             }
 
-            throw new RuntimeException($message);
+            throw new BackupRestoreRejectedException(
+                BackupRestoreRejectedException::PROCESS_FAILED,
+                $message,
+            );
         }
 
         $report = $this->parseSubprocessReport($result->output);
@@ -120,12 +127,18 @@ class DatabaseRestoreService
 
             if (! ($inspection['readable'] ?? false)) {
                 RestoreAuditLogger::log('rejected', ['reason' => 'unreadable_archive', 'target' => $target, 'backup' => $backupFileName]);
-                throw new RuntimeException('Backup archive is unreadable.');
+                throw new BackupRestoreRejectedException(
+                    BackupRestoreRejectedException::BACKUP_INVALID,
+                    'Backup archive is unreadable.',
+                );
             }
 
             if (! ($inspection['sql']['present'] ?? false)) {
                 RestoreAuditLogger::log('rejected', ['reason' => 'no_sql', 'target' => $target, 'backup' => $backupFileName]);
-                throw new RuntimeException('Backup has no SQL dump.');
+                throw new BackupRestoreRejectedException(
+                    BackupRestoreRejectedException::SQL_NOT_FOUND,
+                    'Backup has no SQL dump.',
+                );
             }
 
             $sqlPath = $this->extractSqlOnly($zipPath);
@@ -165,21 +178,38 @@ class DatabaseRestoreService
 
     private function assertBackupReadyForPrivilegedRestore(string $backupFileName): void
     {
-        $zipPath = BackupPathGuard::resolveExistingBackupPath($backupFileName);
+        try {
+            $zipPath = BackupPathGuard::resolveExistingBackupPath($backupFileName);
+        } catch (RuntimeException $e) {
+            throw new BackupRestoreRejectedException(
+                BackupRestoreRejectedException::BACKUP_NOT_FOUND,
+                $e->getMessage(),
+                $e,
+            );
+        }
         $inspection = BackupArchiveInspector::inspect($zipPath);
 
         if (! ($inspection['readable'] ?? false)) {
-            throw new RuntimeException('Backup archive is unreadable.');
+            throw new BackupRestoreRejectedException(
+                BackupRestoreRejectedException::BACKUP_INVALID,
+                'Backup archive is unreadable.',
+            );
         }
 
         if (! ($inspection['sql']['present'] ?? false)) {
-            throw new RuntimeException('Backup has no SQL dump.');
+            throw new BackupRestoreRejectedException(
+                BackupRestoreRejectedException::SQL_NOT_FOUND,
+                'Backup has no SQL dump.',
+            );
         }
 
         $integrity = app(BackupManifestService::class)->verifyIntegrity(basename($zipPath));
 
         if (($integrity['result'] ?? null) === BackupManifest::INTEGRITY_INVALID) {
-            throw new RuntimeException($integrity['message'] ?? 'Backup integrity check failed.');
+            throw new BackupRestoreRejectedException(
+                BackupRestoreRejectedException::INTEGRITY_FAILED,
+                $integrity['message'] ?? 'Backup integrity check failed.',
+            );
         }
     }
 
@@ -206,48 +236,45 @@ class DatabaseRestoreService
 
     private function resolveBackupPath(string $backupFileName): string
     {
-        $backupFileName = basename(str_replace(['\\', '..'], '', $backupFileName));
-        $disk = config('backup.backup.destination.disks')[0] ?? 'local';
-        $folder = config('backup.backup.name', 'laravel-backup');
-        $relative = $folder.'/'.$backupFileName;
-
-        $diskRoot = config("filesystems.disks.{$disk}.root");
-        if (is_string($diskRoot) && $diskRoot !== '') {
-            $path = $diskRoot.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
-            if (is_file($path)) {
-                return $path;
-            }
+        try {
+            return BackupPathGuard::resolveExistingBackupPath($backupFileName);
+        } catch (RuntimeException $e) {
+            throw new BackupRestoreRejectedException(
+                BackupRestoreRejectedException::BACKUP_NOT_FOUND,
+                $e->getMessage(),
+                $e,
+            );
         }
-
-        throw new RuntimeException("Backup not found: {$backupFileName}");
     }
 
     private function extractSqlOnly(string $zipPath): string
     {
         $zip = new ZipArchive();
         if ($zip->open($zipPath) !== true) {
-            throw new RuntimeException('Unable to open backup ZIP.');
+            throw new BackupRestoreRejectedException(
+                BackupRestoreRejectedException::BACKUP_INVALID,
+                'Unable to open backup ZIP.',
+            );
         }
 
-        $sqlName = null;
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $name = (string) $zip->getNameIndex($i);
-            if (str_ends_with(strtolower($name), '.sql')) {
-                $sqlName = $name;
-                break;
-            }
-        }
+        $sqlName = $this->selectSqlEntryName($zip);
 
         if ($sqlName === null) {
             $zip->close();
-            throw new RuntimeException('No SQL file inside archive.');
+            throw new BackupRestoreRejectedException(
+                BackupRestoreRejectedException::SQL_NOT_FOUND,
+                'No SQL file inside archive.',
+            );
         }
 
         $contents = $zip->getFromName($sqlName);
         $zip->close();
 
         if (! is_string($contents) || $contents === '') {
-            throw new RuntimeException('SQL dump is empty or corrupted.');
+            throw new BackupRestoreRejectedException(
+                BackupRestoreRejectedException::SQL_INVALID,
+                'SQL dump is empty or corrupted.',
+            );
         }
 
         $tempDir = storage_path('app/restore-temp');
@@ -259,5 +286,61 @@ class DatabaseRestoreService
         file_put_contents($sqlPath, $contents);
 
         return $sqlPath;
+    }
+
+    /**
+     * Prefer Spatie db-dumps/*.sql; otherwise largest .sql entry in the archive.
+     */
+    private function selectSqlEntryName(ZipArchive $zip): ?string
+    {
+        $candidates = [];
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = (string) $zip->getNameIndex($i);
+            if (! str_ends_with(strtolower($name), '.sql')) {
+                continue;
+            }
+
+            $stat = $zip->statIndex($i);
+            $size = is_array($stat) ? (int) ($stat['size'] ?? 0) : 0;
+            $candidates[] = ['name' => $name, 'size' => $size];
+        }
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, function (array $a, array $b): int {
+            $aDb = str_contains(strtolower($a['name']), 'db-dumps/');
+            $bDb = str_contains(strtolower($b['name']), 'db-dumps/');
+            if ($aDb !== $bDb) {
+                return $bDb <=> $aDb;
+            }
+
+            return $b['size'] <=> $a['size'];
+        });
+
+        return $candidates[0]['name'];
+    }
+
+    private function mapCredentialRuntimeException(RuntimeException $e): BackupRestoreRejectedException|RuntimeException
+    {
+        $message = $e->getMessage();
+
+        if (str_contains($message, 'restore credential file is missing')) {
+            return BackupRestoreRejectedException::fromRuntime(
+                BackupRestoreRejectedException::CREDENTIALS_MISSING,
+                $e,
+            );
+        }
+
+        if (str_contains($message, 'restore credential file must define')) {
+            return BackupRestoreRejectedException::fromRuntime(
+                BackupRestoreRejectedException::CREDENTIALS_INVALID,
+                $e,
+            );
+        }
+
+        return $e;
     }
 }

@@ -10,6 +10,7 @@ use App\Database\ProtectedDatabaseException;
 use App\Services\Backup\BackupManifestService;
 use App\Services\Backup\BackupMetadataService;
 use App\Services\Backup\BackupPathGuard;
+use App\Services\Restore\BackupRestoreRejectedException;
 use App\Services\Restore\DatabaseRestoreService;
 use App\Services\Restore\SqlDumpImporter;
 use Illuminate\Support\Facades\Config;
@@ -213,7 +214,7 @@ test('DatabaseRestoreService runtime does not start subprocess when backup missi
     app()->instance(PrivilegedRestoreProcessRunner::class, $recording);
 
     expect(fn () => app(DatabaseRestoreService::class)->restore('missing.zip', 'gestion_recovery', 'RESTORE'))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(BackupRestoreRejectedException::class);
 
     expect($recording->runCount)->toBe(0);
 });
@@ -237,7 +238,7 @@ test('DatabaseRestoreService subprocess failure surfaces error without success',
     $zip->close();
 
     expect(fn () => app(DatabaseRestoreService::class)->restore('fail-test.zip', 'gestion_recovery', 'RESTORE'))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(BackupRestoreRejectedException::class);
 });
 
 test('DatabaseAccountGuard still refuses gestion_app for restore operation', function () {
@@ -312,7 +313,7 @@ test('DatabaseRestoreService does not start subprocess when SHA integrity fails'
     Config::set('database.connections.mysql.username', 'gestion_app');
 
     expect(fn () => app(DatabaseRestoreService::class)->restore($name, 'gestion_recovery', 'RESTORE'))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(BackupRestoreRejectedException::class);
 
     expect($recording->runCount)->toBe(0);
 });

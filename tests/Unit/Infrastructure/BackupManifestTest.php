@@ -62,6 +62,26 @@ function makeManifestTestZip(string $absolutePath, bool $withFiles = false): voi
     $zip->close();
 }
 
+test('attachment service rejects empty zip and writes manifest after validation', function () {
+    $name = 'attach-service.zip';
+    $path = BackupPathGuard::resolveNewBackupPath($name);
+    makeManifestTestZip($path);
+
+    $started = time() - 10;
+    $meta = app(\App\Services\Backup\BackupManifestAttachmentService::class)->attachNewestArchiveSince(
+        $started,
+        true,
+        BackupMetadataService::SOURCE_SCHEDULER,
+        null,
+    );
+
+    expect($meta)->not->toBeNull();
+    expect($meta['source'] ?? null)->toBe(BackupMetadataService::SOURCE_SCHEDULER);
+
+    $verify = app(BackupManifestService::class)->verifyIntegrity($name);
+    expect($verify['result'])->toBe(BackupManifest::INTEGRITY_VALID);
+});
+
 test('manifest is created for new backup with version type source sha256 and size', function () {
     $name = 'manifest-db.zip';
     $path = BackupPathGuard::resolveNewBackupPath($name);

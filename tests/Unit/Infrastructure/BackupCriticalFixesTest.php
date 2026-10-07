@@ -2,7 +2,10 @@
 
 use App\Database\BackupConcurrencyGuard;
 use App\Jobs\CreateBackupJob;
+use App\Services\Backup\BackupImportRejectedException;
 use App\Services\Backup\BackupImportService;
+use App\Services\Backup\BackupManifest;
+use App\Services\Backup\BackupManifestService;
 use App\Services\Backup\BackupMetadataService;
 use App\Services\Backup\BackupPathGuard;
 use Illuminate\Http\UploadedFile;
@@ -138,6 +141,9 @@ test('import service accepts valid zip and does not restore', function () {
     expect($result['status'] ?? null)->toBe(BackupMetadataService::STATUS_IMPORTED);
     expect($result['type'] ?? null)->toBe(BackupMetadataService::TYPE_DATABASE);
 
+    $verify = app(BackupManifestService::class)->verifyIntegrity($result['filename']);
+    expect($verify['result'])->toBe(BackupManifest::INTEGRITY_VALID);
+
     $meta = BackupMetadataService::readForZip($result['filename']);
     expect($meta)->not->toBeNull();
     expect($meta['source'] ?? null)->toBe(BackupMetadataService::SOURCE_IMPORT);
@@ -202,8 +208,12 @@ test('import service rejects corrupted zip', function () {
     file_put_contents($tmp, 'not-a-zip');
     $upload = new UploadedFile($tmp, 'bad.zip', 'application/zip', null, true);
 
-    expect(fn () => (new BackupImportService)->import($upload))
-        ->toThrow(RuntimeException::class);
+    try {
+        (new BackupImportService)->import($upload);
+        expect(false)->toBeTrue('Expected BackupImportRejectedException');
+    } catch (BackupImportRejectedException $e) {
+        expect($e->errorCode)->toBe(BackupImportRejectedException::INVALID_ZIP);
+    }
 
     @unlink($tmp);
 });
@@ -271,10 +281,88 @@ test('import service rejects non-zip extension', function () {
     file_put_contents($tmp, 'data');
     $upload = new UploadedFile($tmp, 'file.txt', 'text/plain', null, true);
 
-    expect(fn () => (new BackupImportService)->import($upload))
-        ->toThrow(RuntimeException::class);
+    try {
+        (new BackupImportService)->import($upload);
+        expect(false)->toBeTrue('Expected BackupImportRejectedException');
+    } catch (BackupImportRejectedException $e) {
+        expect($e->errorCode)->toBe(BackupImportRejectedException::INVALID_EXTENSION);
+    }
 
     @unlink($tmp);
+});
+
+test('import service rejects duplicate backup filename without overwrite', function () {
+    $name = 'duplicate-import.zip';
+    $path = BackupPathGuard::resolveNewBackupPath($name);
+    makeMinimalValidBackupZip($path);
+
+    $tmp = tempnam(sys_get_temp_dir(), 'bkdup');
+    @unlink($tmp);
+    $tmpZip = $tmp.'.zip';
+    makeMinimalValidBackupZip($tmpZip);
+
+    $upload = new UploadedFile($tmpZip, $name, 'application/zip', null, true);
+
+    try {
+        (new BackupImportService)->import($upload);
+        expect(false)->toBeTrue('Expected duplicate rejection');
+    } catch (BackupImportRejectedException $e) {
+        expect($e->errorCode)->toBe(BackupImportRejectedException::DUPLICATE_BACKUP);
+    }
+
+    expect(is_file($path))->toBeTrue();
+    expect(BackupMetadataService::readForZip($name))->toBeNull();
+
+    @unlink($tmpZip);
+});
+
+test('import service rejects zip with Windows absolute path entry', function () {
+    $tmp = tempnam(sys_get_temp_dir(), 'bkwin');
+    @unlink($tmp);
+    $tmpZip = $tmp.'.zip';
+    $zip = new ZipArchive();
+    $zip->open($tmpZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $zip->addFromString('C:/temp/evil.sql', 'CREATE TABLE x (id int);');
+    $zip->close();
+
+    $upload = new UploadedFile($tmpZip, 'win-abs.zip', 'application/zip', null, true);
+
+    try {
+        (new BackupImportService)->import($upload);
+        expect(false)->toBeTrue('Expected ZIP_SECURITY');
+    } catch (BackupImportRejectedException $e) {
+        expect($e->errorCode)->toBe(BackupImportRejectedException::ZIP_SECURITY);
+    }
+
+    @unlink($tmpZip);
+});
+
+test('import rolls back promoted zip when manifest creation fails', function () {
+    $tmp = tempnam(sys_get_temp_dir(), 'bkmanfail');
+    @unlink($tmp);
+    $tmpZip = $tmp.'.zip';
+    makeMinimalValidBackupZip($tmpZip);
+
+    $upload = new UploadedFile($tmpZip, 'manifest-fail.zip', 'application/zip', null, true);
+
+    $manifestPartial = Mockery::mock(app(BackupManifestService::class))->makePartial();
+    $manifestPartial->shouldReceive('createAndWriteForExistingZip')
+        ->once()
+        ->andThrow(new RuntimeException('simulated manifest write failure'));
+    app()->instance(BackupManifestService::class, $manifestPartial);
+
+    try {
+        (new BackupImportService)->import($upload);
+        expect(false)->toBeTrue('Expected MANIFEST_FAILED');
+    } catch (BackupImportRejectedException $e) {
+        expect($e->errorCode)->toBe(BackupImportRejectedException::MANIFEST_FAILED);
+    }
+
+    expect(fn () => BackupPathGuard::resolveExistingBackupPath('manifest-fail.zip'))
+        ->toThrow(RuntimeException::class);
+    expect(BackupMetadataService::readForZip('manifest-fail.zip'))->toBeNull();
+
+    @unlink($tmpZip);
 });
 
 test('controller store does not nest BackupConcurrencyGuard around backup:production', function () {
@@ -291,6 +379,8 @@ test('CreateBackupJob does not acquire concurrency lock itself', function () {
     expect($source)->not->toContain('BackupConcurrencyGuard::');
     expect($source)->not->toContain('runBackup(');
     expect($source)->toContain("Artisan::call('backup:production'");
+    expect($source)->toContain("'--defer-manifest' => true");
+    expect($source)->toContain('public int $tries = 1');
 });
 
 test('creation service dispatches CreateBackupJob with progress key', function () {
@@ -318,6 +408,32 @@ test('creation service dispatches CreateBackupJob with progress key', function (
     expect($progress['user_id'] ?? null)->toBe(42);
 });
 
+test('CreateBackupJob marks failed when backup production exits non zero', function () {
+    $fakeRunner = new class extends \App\Database\PrivilegedProcessRunner
+    {
+        public function __construct() {}
+
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): \App\Database\PrivilegedProcessResult
+        {
+            return new \App\Database\PrivilegedProcessResult(1, '', 'simulated subprocess failure');
+        }
+    };
+
+    app()->instance(\App\Database\PrivilegedProcessRunner::class, $fakeRunner);
+
+    $jobId = 'test-job-fail-'.uniqid();
+    $job = new CreateBackupJob(true, 3, $jobId);
+
+    expect(fn () => $job->handle(
+        app(App\Services\Backup\BackupCreationService::class),
+        app(App\Services\Backup\BackupJobOutputSanitizer::class),
+    ))->toThrow(RuntimeException::class);
+
+    $progress = App\Services\Backup\BackupCreationProgress::get($jobId);
+    expect($progress['status'] ?? null)->toBe('failed');
+    expect($progress['failure_reason'] ?? null)->toBe('subprocess_exit_1');
+});
+
 test('CreateBackupJob writes manual sidecar after successful backup:production', function () {
     $acquisitions = 0;
 
@@ -341,7 +457,10 @@ test('CreateBackupJob writes manual sidecar after successful backup:production',
 
     $jobId = 'test-job-'.uniqid();
     $job = new CreateBackupJob(true, 7, $jobId);
-    $job->handle(app(App\Services\Backup\BackupCreationService::class));
+    $job->handle(
+        app(App\Services\Backup\BackupCreationService::class),
+        app(App\Services\Backup\BackupJobOutputSanitizer::class),
+    );
 
     expect($acquisitions)->toBe(1);
 

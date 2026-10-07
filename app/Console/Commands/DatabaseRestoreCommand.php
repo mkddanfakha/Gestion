@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Database\ProtectedDatabaseException;
+use App\Services\Restore\BackupRestoreRejectedException;
 use App\Services\Restore\DatabaseRestoreService;
 use Illuminate\Console\Command;
 use RuntimeException;
@@ -35,7 +36,7 @@ class DatabaseRestoreCommand extends Command
 
         try {
             $report = $restore->restore($backup, $target, $confirmation, $force);
-        } catch (ProtectedDatabaseException|RuntimeException $e) {
+        } catch (ProtectedDatabaseException|BackupRestoreRejectedException|RuntimeException $e) {
             $this->error($e->getMessage());
 
             return self::FAILURE;

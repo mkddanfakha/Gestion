@@ -10,11 +10,13 @@ use App\Http\Controllers\Controller;
 use App\Services\Backup\BackupAuditService;
 use App\Services\Backup\BackupCreationProgress;
 use App\Services\Backup\BackupCreationService;
+use App\Services\Backup\BackupImportRejectedException;
 use App\Services\Backup\BackupImportService;
 use App\Services\Backup\BackupManifestService;
 use App\Services\Backup\BackupMetadataService;
 use App\Services\Backup\BackupPathGuard;
 use App\Services\Restore\ApplicationFilesRestoreService;
+use App\Services\Restore\BackupRestoreRejectedException;
 use App\Services\Restore\DatabaseRestoreService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -136,6 +138,13 @@ class BackupController extends Controller
             'only_db' => (bool) ($progress['only_db'] ?? false),
             'filename' => $progress['filename'] ?? null,
             'updated_at' => $progress['updated_at'] ?? null,
+            'requires_worker' => (bool) ($progress['requires_worker'] ?? false),
+            'failure_reason' => isset($progress['failure_reason']) && is_string($progress['failure_reason'])
+                ? $progress['failure_reason']
+                : null,
+            'log_hint' => isset($progress['log_hint']) && is_string($progress['log_hint'])
+                ? $progress['log_hint']
+                : null,
         ]);
     }
 
@@ -221,6 +230,11 @@ class BackupController extends Controller
             return redirect()->route('admin.backups.index')
                 ->with('success', 'Sauvegarde importée avec succès. Aucune restauration n\'a été effectuée.')
                 ->with('import_preview', $preview);
+        } catch (BackupImportRejectedException $e) {
+            BackupAuditService::importRejected($e->errorCode, $originalName);
+
+            return redirect()->route('admin.backups.index')
+                ->with('error', $this->friendlyImportMessageForCode($e->errorCode, $e->getMessage()));
         } catch (RuntimeException $e) {
             Log::warning('backup.import.rejected', [
                 'message' => $e->getMessage(),
@@ -380,7 +394,10 @@ class BackupController extends Controller
                 ]);
 
                 $started = time();
-                $exitCode = Artisan::call('backup:production', ['--only-db' => true]);
+                $exitCode = Artisan::call('backup:production', [
+                    '--only-db' => true,
+                    '--defer-manifest' => true,
+                ]);
                 if ($exitCode !== 0) {
                     BackupAuditService::restoreFailed('safety_backup_failed', $safeName, $target);
 
@@ -417,11 +434,23 @@ class BackupController extends Controller
         } catch (ProtectedDatabaseException $e) {
             BackupAuditService::restoreFailed($e->getMessage(), $safeName, $target);
             abort(403, $e->getMessage());
+        } catch (BackupRestoreRejectedException $e) {
+            BackupAuditService::restoreFailed($e->errorCode.': '.$e->getMessage(), $safeName, $target);
+
+            if ($e->errorCode === BackupRestoreRejectedException::LOCKED) {
+                abort(409, $this->friendlyRestoreMessageForCode($e->errorCode, $e->getMessage()));
+            }
+
+            return redirect()->route('admin.backups.index')
+                ->with('error', $this->friendlyRestoreMessageForCode($e->errorCode, $e->getMessage()));
         } catch (RuntimeException $e) {
             BackupAuditService::restoreFailed($e->getMessage(), $safeName, $target);
 
             if (str_contains($e->getMessage(), 'already in progress')) {
-                abort(409, $e->getMessage());
+                abort(409, $this->friendlyRestoreMessageForCode(
+                    BackupRestoreRejectedException::LOCKED,
+                    $e->getMessage(),
+                ));
             }
 
             return redirect()->route('admin.backups.index')
@@ -610,6 +639,26 @@ class BackupController extends Controller
         ];
     }
 
+    private function friendlyImportMessageForCode(string $errorCode, string $technical): string
+    {
+        return match ($errorCode) {
+            BackupImportRejectedException::INVALID_EXTENSION => 'Le fichier doit être une archive .zip.',
+            BackupImportRejectedException::UPLOAD_TOO_LARGE => 'Le fichier est trop volumineux (maximum 10 Go).',
+            BackupImportRejectedException::UPLOAD_EMPTY,
+            BackupImportRejectedException::UPLOAD_FAILED => 'Le téléversement a échoué. Veuillez réessayer.',
+            BackupImportRejectedException::INVALID_ZIP,
+            BackupImportRejectedException::INVALID_ARCHIVE => 'Le fichier n\'est pas une sauvegarde ZIP valide.',
+            BackupImportRejectedException::INVALID_NO_SQL => 'La sauvegarde ne contient aucun fichier SQL.',
+            BackupImportRejectedException::INVALID_TOO_SMALL => 'Cette archive est trop petite pour être une sauvegarde valide.',
+            BackupImportRejectedException::ZIP_SECURITY => 'Cette archive a été refusée pour des raisons de sécurité.',
+            BackupImportRejectedException::DUPLICATE_BACKUP => 'Cette sauvegarde existe déjà. Renommez le fichier ou supprimez l\'archive existante.',
+            BackupImportRejectedException::QUARANTINE_FAILED => 'Impossible de préparer le fichier importé. Vérifiez les permissions de stockage.',
+            BackupImportRejectedException::PROMOTION_FAILED => 'Impossible d\'enregistrer la sauvegarde importée.',
+            BackupImportRejectedException::MANIFEST_FAILED => 'Impossible de créer le manifeste de la sauvegarde importée.',
+            default => $this->friendlyImportErrorMessage($technical),
+        };
+    }
+
     private function friendlyImportErrorMessage(string $technical): string
     {
         $map = [
@@ -622,6 +671,7 @@ class BackupController extends Controller
             'path traversal' => 'Cette archive a été refusée pour des raisons de sécurité.',
             'symlink' => 'Cette archive a été refusée pour des raisons de sécurité.',
             'absolute path' => 'Cette archive a été refusée pour des raisons de sécurité.',
+            'already exists' => 'Cette sauvegarde existe déjà.',
         ];
 
         foreach ($map as $needle => $friendly) {
@@ -633,8 +683,39 @@ class BackupController extends Controller
         return 'L\'import de la sauvegarde a échoué. Veuillez vérifier le fichier et réessayer.';
     }
 
+    private function friendlyRestoreMessageForCode(string $errorCode, string $technical): string
+    {
+        $map = [
+            BackupRestoreRejectedException::CREDENTIALS_MISSING => 'Les identifiants de restauration sont absents ou illisibles. Contactez l\'administrateur.',
+            BackupRestoreRejectedException::CREDENTIALS_INVALID => 'Les identifiants de restauration sont incomplets ou invalides.',
+            BackupRestoreRejectedException::DATABASE_NOT_ALLOWED => 'La base cible n\'est pas autorisée pour la restauration.',
+            BackupRestoreRejectedException::BACKUP_NOT_FOUND => 'Sauvegarde introuvable.',
+            BackupRestoreRejectedException::BACKUP_INVALID => 'Cette archive est illisible et ne peut pas être restaurée.',
+            BackupRestoreRejectedException::SQL_NOT_FOUND => 'Cette archive ne contient pas de dump de base de données.',
+            BackupRestoreRejectedException::SQL_INVALID => 'Le dump SQL est vide ou invalide.',
+            BackupRestoreRejectedException::INTEGRITY_FAILED => 'L\'intégrité de la sauvegarde est invalide (manifeste ou empreinte).',
+            BackupRestoreRejectedException::PROCESS_FAILED => 'Le processus de restauration a échoué. Consultez les logs serveur.',
+            BackupRestoreRejectedException::LOCKED => 'Une restauration est déjà en cours. Veuillez patienter.',
+            BackupRestoreRejectedException::CONFIRMATION_FAILED => 'La phrase de confirmation est incorrecte.',
+        ];
+
+        if (isset($map[$errorCode])) {
+            return $map[$errorCode];
+        }
+
+        return $this->friendlyRestoreErrorMessage($technical);
+    }
+
     private function friendlyRestoreErrorMessage(string $technical): string
     {
+        if (str_contains($technical, 'restore credential file is missing')) {
+            return 'Les identifiants de restauration sont absents ou illisibles. Contactez l\'administrateur.';
+        }
+
+        if (str_contains($technical, 'restore credential file must define')) {
+            return 'Les identifiants de restauration sont incomplets ou invalides.';
+        }
+
         $map = [
             'unreadable' => 'Cette archive est illisible et ne peut pas être restaurée.',
             'no SQL' => 'Cette archive ne contient pas de dump de base de données.',
@@ -643,6 +724,7 @@ class BackupController extends Controller
             'confirmation phrase' => 'La phrase de confirmation est incorrecte.',
             'not allow-listed' => 'La base cible n\'est pas autorisée.',
             'DATABASE SAFETY BLOCK' => 'La base cible n\'est pas autorisée pour la restauration.',
+            'integrity check failed' => 'L\'intégrité de la sauvegarde est invalide (manifeste ou empreinte).',
         ];
 
         foreach ($map as $needle => $friendly) {

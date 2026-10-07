@@ -116,6 +116,87 @@ test('backup:production command exists', function () {
     expect(class_exists(RunProductionBackupCommand::class))->toBeTrue();
 });
 
+test('backup:production writes scheduler manifest after successful subprocess zip', function () {
+    Config::set('backup.backup.name', 'mkdpro-scheduler-manifest-test');
+    Config::set('backup.backup.destination.disks', ['local']);
+    Config::set('filesystems.disks.local.root', storage_path('app/private'));
+
+    $fakeRunner = new class extends PrivilegedProcessRunner
+    {
+        public function __construct() {}
+
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): PrivilegedProcessResult
+        {
+            $path = \App\Services\Backup\BackupPathGuard::resolveNewBackupPath(
+                'cron-'.uniqid('', true).'.zip',
+            );
+            $zip = new ZipArchive();
+            expect($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE))->toBeTrue();
+            $zip->addFromString('db-dumps/mysql-gestion.sql', "CREATE TABLE t (id int);\n");
+            $zip->close();
+
+            return new PrivilegedProcessResult(0, 'simulated-backup-success', '');
+        }
+    };
+
+    app()->instance(PrivilegedProcessRunner::class, $fakeRunner);
+
+    expect(Artisan::call('backup:production', ['--only-db' => true]))->toBe(0);
+
+    $dir = \App\Services\Backup\BackupPathGuard::backupDirectoryAbsolutePath();
+    $zips = glob($dir.DIRECTORY_SEPARATOR.'cron-*.zip') ?: [];
+    expect($zips)->not->toBeEmpty();
+
+    $filename = basename($zips[0]);
+    $meta = \App\Services\Backup\BackupMetadataService::readForZip($filename);
+    expect($meta)->not->toBeNull();
+    expect($meta['source'] ?? null)->toBe(\App\Services\Backup\BackupMetadataService::SOURCE_SCHEDULER);
+    expect($meta['archive']['sha256'] ?? $meta['sha256'] ?? null)->not->toBeEmpty();
+
+    foreach ($zips as $file) {
+        @unlink($file);
+        @unlink($dir.DIRECTORY_SEPARATOR.'meta'.DIRECTORY_SEPARATOR.basename($file).'.json');
+    }
+});
+
+test('backup:production defer-manifest skips scheduler sidecar', function () {
+    Config::set('backup.backup.name', 'mkdpro-defer-manifest-test');
+    Config::set('backup.backup.destination.disks', ['local']);
+    Config::set('filesystems.disks.local.root', storage_path('app/private'));
+
+    $fakeRunner = new class extends PrivilegedProcessRunner
+    {
+        public function __construct() {}
+
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): PrivilegedProcessResult
+        {
+            $path = \App\Services\Backup\BackupPathGuard::resolveNewBackupPath(
+                'defer-'.uniqid('', true).'.zip',
+            );
+            $zip = new ZipArchive();
+            $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+            $zip->addFromString('db-dumps/mysql-gestion.sql', "CREATE TABLE t (id int);\n");
+            $zip->close();
+
+            return new PrivilegedProcessResult(0, 'ok', '');
+        }
+    };
+
+    app()->instance(PrivilegedProcessRunner::class, $fakeRunner);
+
+    Artisan::call('backup:production', ['--only-db' => true, '--defer-manifest' => true]);
+
+    $dir = \App\Services\Backup\BackupPathGuard::backupDirectoryAbsolutePath();
+    $zips = glob($dir.DIRECTORY_SEPARATOR.'defer-*.zip') ?: [];
+    expect($zips)->not->toBeEmpty();
+    $filename = basename($zips[0]);
+    expect(\App\Services\Backup\BackupMetadataService::readForZip($filename))->toBeNull();
+
+    foreach ($zips as $file) {
+        @unlink($file);
+    }
+});
+
 test('backup:production delegates to isolated runner without real backup', function () {
     $fakeRunner = new class extends PrivilegedProcessRunner
     {
@@ -160,6 +241,20 @@ test('backup:production surfaces subprocess failure without secrets', function (
     expect($exitCode)->toBe(1);
     expect($output)->not->toContain($secret);
     expect($output)->toContain('[REDACTED]');
+});
+
+test('scheduler registers backup production daily at 02:00', function () {
+    /** @var Schedule $schedule */
+    $schedule = app(Schedule::class);
+
+    $atTwo = collect($schedule->events())->first(function (Event $event) {
+        $command = (string) ($event->command ?? $event->description ?? '');
+
+        return str_contains($command, 'backup:production')
+            && ($event->expression === '0 2 * * *' || str_contains($command, '02:00'));
+    });
+
+    expect($atTwo)->not->toBeNull();
 });
 
 test('scheduler daily backup uses backup:production not backup:run', function () {

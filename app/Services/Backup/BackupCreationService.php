@@ -24,10 +24,15 @@ final class BackupCreationService
 
         $jobId = (string) Str::uuid();
 
+        $requiresWorker = config('queue.default') !== 'sync';
+
         BackupCreationProgress::put($jobId, [
             'status' => 'queued',
             'percentage' => 5,
-            'message' => 'Création de sauvegarde en file d\'attente…',
+            'message' => $requiresWorker
+                ? 'Création de sauvegarde en file d\'attente… Un worker queue doit traiter la demande (php artisan queue:work).'
+                : 'Création de sauvegarde en file d\'attente…',
+            'requires_worker' => $requiresWorker,
             'user_id' => $user->id,
             'only_db' => $onlyDb,
             'started_at' => now()->toIso8601String(),
@@ -49,54 +54,11 @@ final class BackupCreationService
      */
     public function attachManualMetadata(bool $onlyDb, ?int $userId, int $notBeforeTimestamp): ?array
     {
-        try {
-            $directory = BackupPathGuard::backupDirectoryAbsolutePath();
-        } catch (RuntimeException) {
-            return null;
-        }
-
-        $newest = null;
-        $newestMtime = 0;
-
-        try {
-            $iterator = new \DirectoryIterator($directory);
-            foreach ($iterator as $fileInfo) {
-                if ($fileInfo->isDot() || ! $fileInfo->isFile()) {
-                    continue;
-                }
-                if (strtolower($fileInfo->getExtension()) !== 'zip') {
-                    continue;
-                }
-
-                $mtime = (int) $fileInfo->getMTime();
-                if ($mtime < $notBeforeTimestamp - 5) {
-                    continue;
-                }
-
-                if ($mtime >= $newestMtime) {
-                    $newestMtime = $mtime;
-                    $newest = $fileInfo->getPathname();
-                }
-            }
-        } catch (\Throwable) {
-            return null;
-        }
-
-        if ($newest === null || ! is_file($newest)) {
-            return null;
-        }
-
-        $filename = basename($newest);
-
-        return app(BackupManifestService::class)->createAndWriteForExistingZip($filename, [
-            'type' => $onlyDb
-                ? BackupMetadataService::TYPE_DATABASE
-                : BackupMetadataService::TYPE_FULL,
-            'source' => BackupMetadataService::SOURCE_MANUAL,
-            'user_id' => $userId,
-            'status' => BackupMetadataService::STATUS_VALID,
-            'files_included' => ! $onlyDb,
-            'database_included' => true,
-        ]);
+        return app(BackupManifestAttachmentService::class)->attachNewestArchiveSince(
+            $notBeforeTimestamp,
+            $onlyDb,
+            BackupMetadataService::SOURCE_MANUAL,
+            $userId,
+        );
     }
 }
