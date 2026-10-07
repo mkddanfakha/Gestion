@@ -70,6 +70,7 @@ class CreateBackupJob implements ShouldQueue
 
             $params = [
                 '--defer-manifest' => true,
+                '--only-to-disk' => 'local',
             ];
             if ($this->onlyDb) {
                 $params['--only-db'] = true;

@@ -24,11 +24,21 @@ class PrivilegedProcessRunner
     /**
      * Spawn subprocess: php artisan backup:run [--only-db]
      */
-    public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): PrivilegedProcessResult
+    public function runBackupRun(
+        bool $onlyDb = false,
+        ?array $credentials = null,
+        ?string $onlyToDisk = null,
+    ): PrivilegedProcessResult
     {
         $credentials ??= $this->credentialLoader->loadBackupCredentials();
 
-        $command = $this->buildArtisanCommand('backup:run', $onlyDb ? ['--only-db' => true] : []);
+        $options = $onlyDb ? ['--only-db' => true] : [];
+
+        if ($onlyToDisk !== null && $onlyToDisk !== '') {
+            $options['--only-to-disk'] = $onlyToDisk;
+        }
+
+        $command = $this->buildArtisanCommand('backup:run', $options);
         $environment = $this->buildBackupSubprocessEnvironment($credentials);
 
         $this->assertCommandLineContainsNoSecret($command, $credentials['password']);

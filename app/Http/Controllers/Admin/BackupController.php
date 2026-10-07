@@ -396,6 +396,7 @@ class BackupController extends Controller
                 $started = time();
                 $exitCode = Artisan::call('backup:production', [
                     '--only-db' => true,
+                    '--only-to-disk' => 'local',
                     '--defer-manifest' => true,
                 ]);
                 if ($exitCode !== 0) {
