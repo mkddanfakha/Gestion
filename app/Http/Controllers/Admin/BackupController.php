@@ -160,7 +160,46 @@ class BackupController extends Controller
             $relative = BackupPathGuard::relativePathFromAbsolute($absolute);
             $disk = BackupPathGuard::backupDiskName();
 
-            return Storage::disk($disk)->download($relative, basename($absolute));
+            $stream = Storage::disk($disk)->readStream($relative);
+
+            if (! is_resource($stream)) {
+                throw new RuntimeException('Impossible d’ouvrir la sauvegarde pour téléchargement.');
+            }
+
+            $fileName = basename($absolute);
+            $fileSize = filesize($absolute);
+
+            return response()->streamDownload(
+                function () use ($stream): void {
+                    try {
+                        while (! feof($stream)) {
+                            $chunk = fread($stream, 1024 * 1024);
+
+                            if ($chunk === false) {
+                                throw new RuntimeException('Erreur pendant la lecture de la sauvegarde.');
+                            }
+
+                            if ($chunk !== '') {
+                                echo $chunk;
+                            }
+
+                            if (function_exists('ob_flush')) {
+                                @ob_flush();
+                            }
+
+                            flush();
+                        }
+                    } finally {
+                        fclose($stream);
+                    }
+                },
+                $fileName,
+                [
+                    'Content-Type' => 'application/zip',
+                    'Content-Length' => $fileSize !== false ? (string) $fileSize : null,
+                    'Cache-Control' => 'no-store, no-cache, must-revalidate',
+                ]
+            );
         } catch (RuntimeException $e) {
             return redirect()->route('admin.backups.index')
                 ->with('error', $e->getMessage());
