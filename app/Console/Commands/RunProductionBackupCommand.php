@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Database\BackupConcurrencyGuard;
 use App\Database\PrivilegedProcessRunner;
+use App\Services\Backup\BackupInstallationKey;
 use App\Services\Backup\BackupManifestAttachmentService;
 use App\Services\Backup\BackupMetadataService;
 use Illuminate\Console\Command;
@@ -28,6 +29,14 @@ class RunProductionBackupCommand extends Command
         }
         $deferManifest = (bool) $this->option('defer-manifest');
         $startedAt = time();
+
+        try {
+            BackupInstallationKey::assertReadyForBackupOperation();
+        } catch (RuntimeException $e) {
+            $this->error($e->getMessage());
+
+            return self::FAILURE;
+        }
 
         $this->info('Starting production backup via isolated subprocess (gestion_backup, CACHE_STORE=file)...');
 

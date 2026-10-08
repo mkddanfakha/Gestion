@@ -2,6 +2,7 @@
 
 namespace App\Database;
 
+use App\Services\Backup\BackupInstallationKey;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -24,7 +25,7 @@ final class BackupOperationalStatus
             static fn ($d): string => trim((string) $d),
             config('backup.backup.destination.disks', ['local']) ?: ['local'],
         )));
-        $folder = (string) config('backup.backup.name', 'laravel-backup');
+        $folder = (string) config('backup.backup.name', BackupInstallationKey::resolveBackupNameFromEnvironment());
         $s3InDest = in_array('s3', $disks, true);
         $bucket = trim((string) config('filesystems.disks.s3.bucket', ''));
         $endpoint = trim((string) config('filesystems.disks.s3.endpoint', ''));

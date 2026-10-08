@@ -55,7 +55,41 @@ final class BackupPathGuard
 
     public static function backupFolderName(): string
     {
-        return (string) config('backup.backup.name', 'laravel-backup');
+        $name = (string) config('backup.backup.name', '');
+
+        if ($name === '') {
+            throw new RuntimeException('Backup storage name is not configured.');
+        }
+
+        self::assertSafeBackupStorageFolder($name);
+
+        return $name;
+    }
+
+    /**
+     * Reject traversal or unexpected segments in Spatie backup.name (e.g. gestion/niane).
+     *
+     * @throws RuntimeException
+     */
+    public static function assertSafeBackupStorageFolder(string $folder): void
+    {
+        $normalized = trim(str_replace('\\', '/', $folder), '/');
+
+        if ($normalized === '' || str_contains($normalized, '..')) {
+            throw new RuntimeException('Invalid backup storage folder.');
+        }
+
+        if (! str_starts_with($normalized, BackupInstallationKey::STORAGE_PREFIX.'/')) {
+            throw new RuntimeException('Backup storage folder must start with gestion/.');
+        }
+
+        $suffix = substr($normalized, strlen(BackupInstallationKey::STORAGE_PREFIX) + 1);
+
+        if ($suffix === '' || ! BackupInstallationKey::isValidKeyFormat($suffix)) {
+            if ($suffix !== 'local-dev' && $suffix !== '__missing_installation_key__') {
+                throw new RuntimeException('Invalid installation segment in backup storage folder.');
+            }
+        }
     }
 
     /**

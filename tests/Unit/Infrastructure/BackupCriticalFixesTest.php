@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 
 beforeEach(function () {
-    Config::set('backup.backup.name', 'mkdpro-test-backups');
+    Config::set('backup.backup.name', 'gestion/test-backups');
     Config::set('backup.backup.destination.disks', ['local']);
     Config::set('filesystems.disks.local.root', storage_path('app/private'));
     Config::set('backup.lock_cache_store', 'array');
@@ -413,7 +413,7 @@ test('CreateBackupJob marks failed when backup production exits non zero', funct
     {
         public function __construct() {}
 
-        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): \App\Database\PrivilegedProcessResult
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null, ?string $onlyToDisk = null): \App\Database\PrivilegedProcessResult
         {
             return new \App\Database\PrivilegedProcessResult(1, '', 'simulated subprocess failure');
         }
@@ -441,7 +441,7 @@ test('CreateBackupJob writes manual sidecar after successful backup:production',
     {
         public function __construct(private int &$acquisitions) {}
 
-        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): \App\Database\PrivilegedProcessResult
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null, ?string $onlyToDisk = null): \App\Database\PrivilegedProcessResult
         {
             expect(BackupConcurrencyGuard::isBackupLocked())->toBeTrue();
             $this->acquisitions++;
@@ -507,7 +507,7 @@ test('ui creation path acquires lock only once via backup:production', function 
     {
         public function __construct(private int &$acquisitions) {}
 
-        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): \App\Database\PrivilegedProcessResult
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null, ?string $onlyToDisk = null): \App\Database\PrivilegedProcessResult
         {
             expect(BackupConcurrencyGuard::isBackupLocked())->toBeTrue();
             $this->acquisitions++;
@@ -539,7 +539,7 @@ test('concurrent second backup:production fails while lock held then succeeds af
     {
         public function __construct() {}
 
-        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): \App\Database\PrivilegedProcessResult
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null, ?string $onlyToDisk = null): \App\Database\PrivilegedProcessResult
         {
             return new \App\Database\PrivilegedProcessResult(0, 'second-ok', '');
         }
@@ -555,7 +555,7 @@ test('backup:production releases lock after simulated failure', function () {
     {
         public function __construct() {}
 
-        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): \App\Database\PrivilegedProcessResult
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null, ?string $onlyToDisk = null): \App\Database\PrivilegedProcessResult
         {
             return new \App\Database\PrivilegedProcessResult(1, '', 'failed');
         }

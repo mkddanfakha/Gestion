@@ -9,7 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 beforeEach(function () {
     $this->withoutVite();
-    Config::set('backup.backup.name', 'mkdpro-feature-import');
+    Config::set('backup.backup.name', 'gestion/feature-import');
     Config::set('backup.backup.destination.disks', ['local']);
     Config::set('filesystems.disks.local.root', storage_path('app/private'));
 });

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Config;
 
 beforeEach(function () {
     $this->withoutVite();
-    Config::set('backup.backup.name', 'mkdpro-feature-restore');
+    Config::set('backup.backup.name', 'gestion/feature-restore');
     Config::set('backup.backup.destination.disks', ['local']);
     Config::set('filesystems.disks.local.root', storage_path('app/private'));
     Config::set('database-safety.restore_allowed_databases', ['gestion_recovery', 'gestion_test']);

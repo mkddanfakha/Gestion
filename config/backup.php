@@ -1,5 +1,9 @@
 <?php
 
+use App\Services\Backup\BackupInstallationKey;
+
+$mkdBackupStorageName = BackupInstallationKey::resolveBackupNameFromEnvironment();
+
 return [
 
     /*
@@ -15,10 +19,10 @@ return [
 
     'backup' => [
         /*
-         * The name of this application. You can use this name to monitor
-         * the backups.
+         * Spatie prefix on each backup disk (local + s3). Not APP_NAME.
+         * gestion/{MKD_PRO_INSTALLATION_KEY} — see BackupInstallationKey.
          */
-        'name' => env('APP_NAME', 'laravel-backup'),
+        'name' => $mkdBackupStorageName,
 
         'source' => [
             'files' => [
@@ -44,7 +48,7 @@ return [
                     base_path('storage/app/backup-temp'),
                     storage_path('app/backup-temp'),
                     storage_path('app/restore-temp'),
-                    storage_path('app/private/' . config('backup.backup.name')),
+                    storage_path('app/private/'.$mkdBackupStorageName),
                     storage_path('logs'),
                     storage_path('framework/cache'),
                     storage_path('framework/sessions'),
@@ -294,7 +298,7 @@ return [
      */
     'monitor_backups' => [
         [
-            'name' => env('APP_NAME', 'laravel-backup'),
+            'name' => $mkdBackupStorageName,
             'disks' => array_values(array_filter(array_map(
                 static fn (string $disk): string => trim($disk),
                 explode(',', (string) env('BACKUP_DISKS', 'local')),
@@ -331,7 +335,9 @@ return [
 
         'default_strategy' => [
             /*
-             * The number of days for which backups must be kept.
+             * R2 target policy (once local/R2 cleanup is split): keep_all 7, daily 0, weekly 4,
+             * monthly/yearly 0, delete_oldest null. Not applied globally yet — local disk also
+             * holds manual/safety/import archives; see Task 9 report.
              */
             'keep_all_backups_for_days' => 30,
 
@@ -366,7 +372,19 @@ return [
              * this amount of megabytes has been reached.
              * Set null for unlimited size.
              */
-            'delete_oldest_backups_when_using_more_megabytes_than' => 5000,
+            'delete_oldest_backups_when_using_more_megabytes_than' => null,
+        ],
+
+        /*
+         * Planned offsite (R2-only) retention — for a future per-disk cleanup step.
+         */
+        'offsite_target_strategy' => [
+            'keep_all_backups_for_days' => 7,
+            'keep_daily_backups_for_days' => 0,
+            'keep_weekly_backups_for_weeks' => 4,
+            'keep_monthly_backups_for_months' => 0,
+            'keep_yearly_backups_for_years' => 0,
+            'delete_oldest_backups_when_using_more_megabytes_than' => null,
         ],
 
         /*

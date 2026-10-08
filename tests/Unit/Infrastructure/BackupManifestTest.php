@@ -9,7 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 
 beforeEach(function () {
-    Config::set('backup.backup.name', 'mkdpro-test-backups');
+    Config::set('backup.backup.name', 'gestion/test-backups');
     Config::set('backup.backup.destination.disks', ['local']);
     Config::set('filesystems.disks.local.root', storage_path('app/private'));
 

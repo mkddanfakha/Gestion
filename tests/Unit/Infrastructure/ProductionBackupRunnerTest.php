@@ -117,7 +117,7 @@ test('backup:production command exists', function () {
 });
 
 test('backup:production writes scheduler manifest after successful subprocess zip', function () {
-    Config::set('backup.backup.name', 'mkdpro-scheduler-manifest-test');
+    Config::set('backup.backup.name', 'gestion/scheduler-manifest-test');
     Config::set('backup.backup.destination.disks', ['local']);
     Config::set('filesystems.disks.local.root', storage_path('app/private'));
 
@@ -125,7 +125,7 @@ test('backup:production writes scheduler manifest after successful subprocess zi
     {
         public function __construct() {}
 
-        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): PrivilegedProcessResult
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null, ?string $onlyToDisk = null): PrivilegedProcessResult
         {
             $path = \App\Services\Backup\BackupPathGuard::resolveNewBackupPath(
                 'cron-'.uniqid('', true).'.zip',
@@ -160,7 +160,7 @@ test('backup:production writes scheduler manifest after successful subprocess zi
 });
 
 test('backup:production defer-manifest skips scheduler sidecar', function () {
-    Config::set('backup.backup.name', 'mkdpro-defer-manifest-test');
+    Config::set('backup.backup.name', 'gestion/defer-manifest-test');
     Config::set('backup.backup.destination.disks', ['local']);
     Config::set('filesystems.disks.local.root', storage_path('app/private'));
 
@@ -168,7 +168,7 @@ test('backup:production defer-manifest skips scheduler sidecar', function () {
     {
         public function __construct() {}
 
-        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): PrivilegedProcessResult
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null, ?string $onlyToDisk = null): PrivilegedProcessResult
         {
             $path = \App\Services\Backup\BackupPathGuard::resolveNewBackupPath(
                 'defer-'.uniqid('', true).'.zip',
@@ -202,7 +202,7 @@ test('backup:production delegates to isolated runner without real backup', funct
     {
         public function __construct() {}
 
-        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): PrivilegedProcessResult
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null, ?string $onlyToDisk = null): PrivilegedProcessResult
         {
             return new PrivilegedProcessResult(0, 'simulated-backup-success', '');
         }
@@ -223,7 +223,7 @@ test('backup:production surfaces subprocess failure without secrets', function (
     {
         public function __construct(private string $secret) {}
 
-        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null): PrivilegedProcessResult
+        public function runBackupRun(bool $onlyDb = false, ?array $credentials = null, ?string $onlyToDisk = null): PrivilegedProcessResult
         {
             return new PrivilegedProcessResult(
                 1,

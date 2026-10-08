@@ -129,8 +129,17 @@ test('restore to gestion remains blocked independently of backup locks', functio
 });
 
 test('backup:status is read-only and reports offsite not configured', function () {
+    Config::set('backup.backup.name', 'gestion/test-backups');
     Config::set('backup.backup.destination.disks', ['local']);
     Config::set('filesystems.disks.s3.bucket', '');
+    Config::set('filesystems.disks.local.root', storage_path('app/private'));
+
+    $dir = \App\Services\Backup\BackupPathGuard::backupDirectoryAbsolutePath();
+    $zip = $dir.DIRECTORY_SEPARATOR.now()->format('Y-m-d-H-i-s').'.zip';
+    $archive = new ZipArchive();
+    $archive->open($zip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $archive->addFromString('db-dumps/mysql-gestion.sql', "CREATE TABLE t (id int);\n");
+    $archive->close();
 
     $exit = Artisan::call('backup:status', ['--json' => true]);
     expect($exit)->toBe(0);
@@ -146,9 +155,18 @@ test('backup:status is read-only and reports offsite not configured', function (
 });
 
 test('operational status marks local-only with missing offsite as DEGRADED when s3 wired', function () {
+    Config::set('backup.backup.name', 'gestion/test-backups');
     Config::set('backup.backup.destination.disks', ['local', 's3']);
     Config::set('filesystems.disks.s3.bucket', 'test-bucket');
     Config::set('filesystems.disks.s3.endpoint', 'https://example.invalid');
+    Config::set('filesystems.disks.local.root', storage_path('app/private'));
+
+    $dir = \App\Services\Backup\BackupPathGuard::backupDirectoryAbsolutePath();
+    $zip = $dir.DIRECTORY_SEPARATOR.now()->format('Y-m-d-H-i-s').'.zip';
+    $archive = new ZipArchive();
+    $archive->open($zip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $archive->addFromString('db-dumps/mysql-gestion.sql', "CREATE TABLE t (id int);\n");
+    $archive->close();
 
     // Storage::disk('s3') will fail reachability → FAILED/MISSING offsite
     $ops = \App\Database\BackupOperationalStatus::evaluate();
