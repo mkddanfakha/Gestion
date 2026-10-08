@@ -331,7 +331,7 @@ return [
          * No matter how you configure it the default strategy will never
          * delete the newest backup.
          */
-        'strategy' => \Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy::class,
+        'strategy' => \App\Services\Backup\Cleanup\DiskAwareCleanupStrategy::class,
 
         'default_strategy' => [
             /*
@@ -376,7 +376,8 @@ return [
         ],
 
         /*
-         * Planned offsite (R2-only) retention — for a future per-disk cleanup step.
+         * Offsite (s3/R2) retention — applied only by DiskAwareCleanupStrategy on disk "s3".
+         * Seven full days of all recent backups, then one backup per week for four weeks.
          */
         'offsite_target_strategy' => [
             'keep_all_backups_for_days' => 7,

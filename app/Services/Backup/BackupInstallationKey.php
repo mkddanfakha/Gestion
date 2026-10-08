@@ -43,6 +43,39 @@ final class BackupInstallationKey
     /**
      * @throws RuntimeException when backup operations must not run
      */
+    public const MISSING_INSTALLATION_SUFFIX = '__missing_installation_key__';
+
+    /**
+     * Block destructive offsite cleanup unless the installation prefix is explicit and valid.
+     *
+     * Local cleanup is not gated by this method.
+     *
+     * @throws RuntimeException
+     */
+    public static function assertReadyForOffsiteCleanup(): void
+    {
+        $configured = (string) config('backup.backup.name', '');
+
+        if ($configured === self::STORAGE_PREFIX.'/'.self::MISSING_INSTALLATION_SUFFIX) {
+            throw new RuntimeException(
+                'DATABASE SAFETY / BACKUP: offsite cleanup refused — '
+                .self::ENV_VARIABLE.' is missing or invalid (unsafe backup prefix).',
+            );
+        }
+
+        if (! self::isValidConfiguredBackupName($configured) && $configured !== self::backupNameForKey('local-dev')) {
+            throw new RuntimeException(
+                'DATABASE SAFETY / BACKUP: offsite cleanup refused — backup prefix is not a valid installation path.',
+            );
+        }
+
+        if (self::shouldSkipStrictInstallationKeyCheck()) {
+            return;
+        }
+
+        self::assertReadyForBackupOperation();
+    }
+
     public static function assertReadyForBackupOperation(): void
     {
         if (self::shouldSkipStrictInstallationKeyCheck()) {
