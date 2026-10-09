@@ -37,6 +37,21 @@ function featureDownloadZip(string $filename): string
     return $path;
 }
 
+/**
+ * @return list<string>
+ */
+function featureDownloadCacheControlDirectives(\Illuminate\Testing\TestResponse $response): array
+{
+    $header = $response->headers->get('Cache-Control');
+
+    expect($header)->toBeString();
+
+    return array_values(array_filter(array_map(
+        static fn (string $part): string => strtolower(trim($part)),
+        explode(',', (string) $header),
+    )));
+}
+
 test('GET admin backups download requires authentication', function () {
     $name = 'feat-download-auth.zip';
     featureDownloadZip($name);
@@ -69,7 +84,11 @@ test('GET admin backups download streams the backup without loading it into memo
 
     $response->assertHeader('Content-Type', 'application/zip');
     $response->assertHeader('Content-Length', (string) $expectedSize);
-    $response->assertHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+    $cacheDirectives = featureDownloadCacheControlDirectives($response);
+    expect($cacheDirectives)->toContain('no-store');
+    expect($cacheDirectives)->toContain('no-cache');
+    expect($cacheDirectives)->toContain('must-revalidate');
 
     expect($response->streamedContent())->toBe($expectedContent);
 
