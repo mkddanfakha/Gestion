@@ -26,6 +26,15 @@ class PrivilegedCredentialLoader
         'DB_DATABASE',
     ];
 
+    /** @var list<string> */
+    private const RESTORE_FILE_EXTRA_KEYS = [
+        'DB_RESTORE_USERNAME',
+        'DB_RESTORE_PASSWORD',
+        'DB_RESTORE_HOST',
+        'DB_RESTORE_PORT',
+        'DB_RESTORE_DATABASE',
+    ];
+
     /**
      * @return array{username: string, password: string, host: string, port: ?string, database: string, source: string}
      */
@@ -96,7 +105,7 @@ class PrivilegedCredentialLoader
             );
         }
 
-        $parsed = $this->parseCredentialFile($path);
+        $parsed = $this->parseRestoreCredentialFile($path);
 
         $username = trim($parsed['DB_USERNAME'] ?? $parsed['DB_RESTORE_USERNAME'] ?? '');
         $password = $parsed['DB_PASSWORD'] ?? $parsed['DB_RESTORE_PASSWORD'] ?? '';
@@ -169,6 +178,26 @@ class PrivilegedCredentialLoader
      */
     public function parseCredentialFile(string $path): array
     {
+        return $this->parseCredentialFileWithAllowedKeys($path, self::ALLOWED_KEYS);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function parseRestoreCredentialFile(string $path): array
+    {
+        return $this->parseCredentialFileWithAllowedKeys(
+            $path,
+            array_merge(self::ALLOWED_KEYS, self::RESTORE_FILE_EXTRA_KEYS),
+        );
+    }
+
+    /**
+     * @param  list<string>  $allowedKeys
+     * @return array<string, string>
+     */
+    private function parseCredentialFileWithAllowedKeys(string $path, array $allowedKeys): array
+    {
         $lines = file($path, FILE_IGNORE_NEW_LINES);
 
         if ($lines === false) {
@@ -199,7 +228,7 @@ class PrivilegedCredentialLoader
                 $value = substr($value, 1, -1);
             }
 
-            if (! in_array($key, self::ALLOWED_KEYS, true)) {
+            if (! in_array($key, $allowedKeys, true)) {
                 continue;
             }
 

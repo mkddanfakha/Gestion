@@ -85,8 +85,8 @@ final class ControlledRestoreVerificationService
         $checks[] = $this->checkPrivilegedArchitecture();
         $checks[] = $this->checkSafetyBackupArchitecture();
 
-        $gestionSnapshot = $this->snapshotCollector->collectDatabaseSnapshot('gestion');
-        $targetSnapshot = $this->snapshotCollector->collectDatabaseSnapshot($target);
+        $gestionSnapshot = $this->snapshotCollector->collectApplicationDatabaseSnapshot();
+        $targetSnapshot = $this->snapshotCollector->collectRestoreTargetDatabaseSnapshot($target);
 
         $checks[] = $this->makeCheck(
             'snapshot_gestion',
@@ -154,8 +154,8 @@ final class ControlledRestoreVerificationService
         $gestionBefore = $beforeReport['snapshots']['gestion'] ?? [];
         $targetBefore = $beforeReport['snapshots']['target'] ?? [];
 
-        $gestionAfter = $this->snapshotCollector->collectDatabaseSnapshot('gestion');
-        $targetAfter = $this->snapshotCollector->collectDatabaseSnapshot($target);
+        $gestionAfter = $this->snapshotCollector->collectApplicationDatabaseSnapshot();
+        $targetAfter = $this->snapshotCollector->collectRestoreTargetDatabaseSnapshot($target);
 
         $gestionComparison = $this->snapshotCollector->compareSnapshots($gestionBefore, $gestionAfter);
         $targetComparison = $this->snapshotCollector->compareSnapshots($targetBefore, $targetAfter);

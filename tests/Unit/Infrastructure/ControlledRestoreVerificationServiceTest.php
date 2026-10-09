@@ -39,6 +39,10 @@ beforeEach(function () {
     Config::set('database.connections.mysql.port', '3306');
     Config::set('database-safety.protected_databases', ['gestion']);
     Config::set('database-safety.restore_allowed_databases', ['gestion_recovery', 'gestion_test']);
+    Config::set('database-safety.restore_database_map', [
+        'gestion_recovery' => 'gestion_recovery',
+        'gestion_test' => 'gestion_test',
+    ]);
 });
 
 test('ControlledRestoreVerificationService blocks gestion target with FAIL', function () {

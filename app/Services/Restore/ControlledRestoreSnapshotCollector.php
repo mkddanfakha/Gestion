@@ -2,12 +2,17 @@
 
 namespace App\Services\Restore;
 
+use App\Database\DatabaseSafetyGuard;
+use App\Database\PrivilegedCredentialLoader;
+use App\Database\RestoreDatabaseTargetResolver;
 use Illuminate\Support\Facades\DB;
+use PDO;
+use RuntimeException;
 
 /**
  * Read-only database snapshots for controlled restore protocol (no writes).
  */
-final class ControlledRestoreSnapshotCollector
+class ControlledRestoreSnapshotCollector
 {
     /**
      * @var list<string>
@@ -61,15 +66,115 @@ final class ControlledRestoreSnapshotCollector
         ['table' => 'delivery_note_items', 'column' => 'product_id', 'ref_table' => 'products', 'ref_column' => 'id'],
     ];
 
+    public function __construct(
+        private RestoreDatabaseTargetResolver $targetResolver = new RestoreDatabaseTargetResolver,
+        private PrivilegedCredentialLoader $credentialLoader = new PrivilegedCredentialLoader,
+    ) {}
+
+    /**
+     * Snapshot of the active application database via the Laravel mysql runtime connection (read-only).
+     *
+     * @return array<string, mixed>
+     */
+    public function collectApplicationDatabaseSnapshot(): array
+    {
+        $physicalDatabase = DatabaseSafetyGuard::resolveDatabaseName('mysql');
+        $logicalDatabase = $this->applicationLogicalDatabaseName();
+
+        if ($physicalDatabase === '') {
+            return $this->failedSnapshot(
+                $logicalDatabase,
+                null,
+                'application',
+                'Application database name could not be resolved from mysql connection config.',
+            );
+        }
+
+        if (config('database.connections.mysql.driver') !== 'mysql') {
+            return $this->failedSnapshot(
+                $logicalDatabase,
+                $physicalDatabase,
+                'application',
+                'MySQL connection unavailable (read-only snapshot skipped).',
+                'WARNING',
+            );
+        }
+
+        try {
+            $pdo = DB::connection('mysql')->getPdo();
+        } catch (\Throwable $e) {
+            return $this->failedSnapshot(
+                $logicalDatabase,
+                $physicalDatabase,
+                'application',
+                $this->sanitizeMessage($e->getMessage()),
+                'WARNING',
+            );
+        }
+
+        if (! $pdo instanceof PDO) {
+            return $this->failedSnapshot(
+                $logicalDatabase,
+                $physicalDatabase,
+                'application',
+                'Application mysql connection did not yield a PDO instance.',
+            );
+        }
+
+        return $this->collectReadOnlySnapshot(
+            $logicalDatabase,
+            $physicalDatabase,
+            'application',
+            $pdo,
+        );
+    }
+
+    /**
+     * Snapshot of an allow-listed restore target via the dedicated restore account (read-only).
+     *
+     * @return array<string, mixed>
+     */
+    public function collectRestoreTargetDatabaseSnapshot(string $logicalTarget): array
+    {
+        $logical = DatabaseSafetyGuard::normalizeExplicitTarget($logicalTarget);
+
+        try {
+            DatabaseSafetyGuard::assertExplicitRestoreTarget($logical);
+            $physicalDatabase = $this->targetResolver->resolvePhysicalName($logical);
+            $pdo = $this->openRestoreReadOnlyPdo();
+        } catch (\Throwable $e) {
+            return $this->failedSnapshot(
+                $logical,
+                null,
+                'restore',
+                $this->sanitizeMessage($e->getMessage()),
+            );
+        }
+
+        return $this->collectReadOnlySnapshot(
+            $logical,
+            $physicalDatabase,
+            'restore',
+            $pdo,
+        );
+    }
+
     /**
      * @return array<string, mixed>
      */
-    public function collectDatabaseSnapshot(string $database): array
-    {
+    private function collectReadOnlySnapshot(
+        string $logicalDatabase,
+        string $physicalDatabase,
+        string $connectionMode,
+        PDO $pdo,
+    ): array {
         $snapshot = [
-            'database' => $database,
+            'database' => $logicalDatabase,
+            'logical_database' => $logicalDatabase,
+            'physical_database' => $physicalDatabase,
+            'connection_mode' => $connectionMode,
             'collected_at' => now()->toIso8601String(),
-            'connection_available' => false,
+            'connection_available' => true,
             'tables' => [],
             'row_counts' => [],
             'schema_fingerprint' => null,
@@ -78,31 +183,77 @@ final class ControlledRestoreSnapshotCollector
             'detail' => '',
         ];
 
-        if (! $this->mysqlConnectionAvailable()) {
-            $snapshot['detail'] = 'MySQL connection unavailable (read-only snapshot skipped).';
-
-            return $snapshot;
-        }
-
         try {
-            $snapshot['connection_available'] = true;
-            $snapshot['tables'] = $this->listTables($database);
-            $snapshot['schema_fingerprint'] = $this->buildSchemaFingerprint($database);
-            $snapshot['row_counts'] = $this->collectRowCounts($database, array_merge(
+            $snapshot['tables'] = $this->listTables($pdo, $physicalDatabase);
+            $snapshot['schema_fingerprint'] = $this->buildSchemaFingerprint($pdo, $physicalDatabase);
+            $snapshot['row_counts'] = $this->collectRowCounts($pdo, $physicalDatabase, array_merge(
                 self::BUSINESS_TABLES,
                 self::SYSTEM_TABLES,
             ));
-            $snapshot['foreign_keys'] = $this->collectForeignKeyOrphans($database);
+            $snapshot['foreign_keys'] = $this->collectForeignKeyOrphansForDatabase($pdo, $physicalDatabase);
             $snapshot['status'] = $this->resolveSnapshotStatus($snapshot);
-            $snapshot['detail'] = 'Read-only snapshot collected.';
+            $snapshot['detail'] = 'Read-only snapshot collected via '.$connectionMode.' connection.';
 
             return $snapshot;
         } catch (\Throwable $e) {
-            $snapshot['status'] = 'WARNING';
-            $snapshot['detail'] = $this->sanitizeMessage($e->getMessage());
-
-            return $snapshot;
+            return $this->failedSnapshot(
+                $logicalDatabase,
+                $physicalDatabase,
+                $connectionMode,
+                $this->sanitizeMessage($e->getMessage()),
+            );
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function failedSnapshot(
+        string $logicalDatabase,
+        ?string $physicalDatabase,
+        string $connectionMode,
+        string $detail,
+        string $status = 'FAIL',
+    ): array {
+        return [
+            'database' => $logicalDatabase,
+            'logical_database' => $logicalDatabase,
+            'physical_database' => $physicalDatabase,
+            'connection_mode' => $connectionMode,
+            'collected_at' => now()->toIso8601String(),
+            'connection_available' => false,
+            'tables' => [],
+            'row_counts' => [],
+            'schema_fingerprint' => null,
+            'foreign_keys' => [],
+            'status' => $status,
+            'detail' => $detail,
+        ];
+    }
+
+    private function applicationLogicalDatabaseName(): string
+    {
+        $protected = DatabaseSafetyGuard::protectedDatabases();
+
+        return $protected[0] ?? 'gestion';
+    }
+
+    protected function openRestoreReadOnlyPdo(): PDO
+    {
+        $credentials = $this->credentialLoader->loadRestoreCredentials();
+
+        $host = $credentials['host'];
+        $port = $credentials['port'] ?? '3306';
+
+        return new PDO(
+            "mysql:host={$host};port={$port};charset=utf8mb4",
+            $credentials['username'],
+            $credentials['password'],
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 30,
+            ],
+        );
     }
 
     /**
@@ -130,7 +281,7 @@ final class ControlledRestoreSnapshotCollector
     /**
      * @return list<array<string, mixed>>
      */
-    public function collectForeignKeyOrphans(string $database): array
+    private function collectForeignKeyOrphansForDatabase(PDO $pdo, string $physicalDatabase): array
     {
         $results = [];
 
@@ -140,16 +291,16 @@ final class ControlledRestoreSnapshotCollector
             $detail = '';
 
             try {
-                if (! $this->tableExists($database, $check['table'])
-                    || ! $this->tableExists($database, $check['ref_table'])) {
+                if (! $this->tableExists($pdo, $physicalDatabase, $check['table'])
+                    || ! $this->tableExists($pdo, $physicalDatabase, $check['ref_table'])) {
                     $status = 'WARNING';
                     $detail = 'Table missing for FK check.';
                 } else {
                     $sql = sprintf(
                         'SELECT COUNT(*) AS orphan_count FROM `%s`.`%s` child LEFT JOIN `%s`.`%s` parent ON child.`%s` = parent.`%s` WHERE child.`%s` IS NOT NULL AND parent.`%s` IS NULL',
-                        $this->quoteIdentifier($database),
+                        $this->quoteIdentifier($physicalDatabase),
                         $this->quoteIdentifier($check['table']),
-                        $this->quoteIdentifier($database),
+                        $this->quoteIdentifier($physicalDatabase),
                         $this->quoteIdentifier($check['ref_table']),
                         $this->quoteIdentifier($check['column']),
                         $this->quoteIdentifier($check['ref_column']),
@@ -157,8 +308,8 @@ final class ControlledRestoreSnapshotCollector
                         $this->quoteIdentifier($check['ref_column']),
                     );
 
-                    $row = DB::connection('mysql')->selectOne($sql);
-                    $orphanCount = (int) ($row->orphan_count ?? 0);
+                    $row = $this->selectOne($pdo, $sql);
+                    $orphanCount = (int) ($row['orphan_count'] ?? 0);
                     $status = 'PASS';
                     $detail = $orphanCount === 0 ? 'No orphan rows.' : $orphanCount.' orphan row(s).';
                 }
@@ -179,37 +330,24 @@ final class ControlledRestoreSnapshotCollector
         return $results;
     }
 
-    private function mysqlConnectionAvailable(): bool
-    {
-        if (config('database.connections.mysql.driver') !== 'mysql') {
-            return false;
-        }
-
-        try {
-            DB::connection('mysql')->getPdo();
-
-            return true;
-        } catch (\Throwable) {
-            return false;
-        }
-    }
-
     /**
      * @return list<string>
      */
-    private function listTables(string $database): array
+    private function listTables(PDO $pdo, string $database): array
     {
-        $rows = DB::connection('mysql')->select(
+        $rows = $this->selectAll(
+            $pdo,
             'SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME',
             [$database],
         );
 
-        return array_values(array_map(static fn ($row): string => (string) $row->name, $rows));
+        return array_values(array_map(static fn (array $row): string => (string) $row['name'], $rows));
     }
 
-    private function buildSchemaFingerprint(string $database): ?string
+    private function buildSchemaFingerprint(PDO $pdo, string $database): ?string
     {
-        $rows = DB::connection('mysql')->select(
+        $rows = $this->selectAll(
+            $pdo,
             'SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY
              FROM information_schema.COLUMNS
              WHERE TABLE_SCHEMA = ?
@@ -228,22 +366,27 @@ final class ControlledRestoreSnapshotCollector
      * @param  list<string>  $tables
      * @return array<string, int|string>
      */
-    private function collectRowCounts(string $database, array $tables): array
+    private function collectRowCounts(PDO $pdo, string $database, array $tables): array
     {
         $counts = [];
 
         foreach ($tables as $table) {
-            if (! $this->tableExists($database, $table)) {
+            if (! $this->tableExists($pdo, $database, $table)) {
                 $counts[$table] = 'MISSING';
 
                 continue;
             }
 
             try {
-                $row = DB::connection('mysql')->selectOne(
-                    sprintf('SELECT COUNT(*) AS c FROM `%s`.`%s`', $this->quoteIdentifier($database), $this->quoteIdentifier($table)),
+                $row = $this->selectOne(
+                    $pdo,
+                    sprintf(
+                        'SELECT COUNT(*) AS c FROM `%s`.`%s`',
+                        $this->quoteIdentifier($database),
+                        $this->quoteIdentifier($table),
+                    ),
                 );
-                $counts[$table] = (int) ($row->c ?? 0);
+                $counts[$table] = (int) ($row['c'] ?? 0);
             } catch (\Throwable $e) {
                 $counts[$table] = 'ERROR: '.$this->sanitizeMessage($e->getMessage());
             }
@@ -252,14 +395,51 @@ final class ControlledRestoreSnapshotCollector
         return $counts;
     }
 
-    private function tableExists(string $database, string $table): bool
+    private function tableExists(PDO $pdo, string $database, string $table): bool
     {
-        $row = DB::connection('mysql')->selectOne(
+        $row = $this->selectOne(
+            $pdo,
             'SELECT COUNT(*) AS c FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
             [$database, $table],
         );
 
-        return ((int) ($row->c ?? 0)) > 0;
+        return ((int) ($row['c'] ?? 0)) > 0;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function selectOne(PDO $pdo, string $sql, array $params = []): array
+    {
+        $statement = $pdo->prepare($sql);
+        $statement->execute($params);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($row) ? $row : [];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function selectAll(PDO $pdo, string $sql, array $params = []): array
+    {
+        $statement = $pdo->prepare($sql);
+        $statement->execute($params);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($rows as $row) {
+            if (is_array($row)) {
+                $normalized[] = $row;
+            }
+        }
+
+        return $normalized;
     }
 
     /**

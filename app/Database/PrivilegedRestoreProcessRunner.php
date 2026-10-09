@@ -17,6 +17,7 @@ class PrivilegedRestoreProcessRunner
     public function __construct(
         private PrivilegedCredentialLoader $credentialLoader,
         private PrivilegedProcessRunner $processRunner,
+        private RestoreDatabaseTargetResolver $targetResolver = new RestoreDatabaseTargetResolver,
     ) {}
 
     /**
@@ -34,6 +35,7 @@ class PrivilegedRestoreProcessRunner
         ?int $timeoutSeconds = null,
     ): PrivilegedProcessResult {
         $validatedTarget = $this->assertRestoreTargetAllowed($target);
+        $physicalTarget = $this->targetResolver->resolvePhysicalName($validatedTarget);
         $safeBackupName = BackupPathGuard::sanitizeBackupFileName($backupFileName);
         $credentials = $this->credentialLoader->loadRestoreCredentials();
 
@@ -43,7 +45,7 @@ class PrivilegedRestoreProcessRunner
             '--confirmation' => $confirmationPhrase,
         ]);
 
-        $environment = $this->buildRestoreSubprocessEnvironment($credentials, $validatedTarget);
+        $environment = $this->buildRestoreSubprocessEnvironment($credentials, $physicalTarget);
         $this->assertCommandLineContainsNoSecret($command, $credentials['password']);
 
         $process = new Process(

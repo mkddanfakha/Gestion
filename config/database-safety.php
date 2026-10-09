@@ -36,6 +36,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Logical → physical restore database names (hosting prefixes)
+    |--------------------------------------------------------------------------
+    |
+    | Comma-separated logical:physical pairs (colon only), e.g.
+    | gestion_recovery:damo5182_gestion_recovery,gestion_test:damo5182_gestion_test
+    |
+    | Invalid values are captured in restore_database_map_configuration_error at boot
+    | (application stays up; restore/snapshot operations fail explicitly).
+    |
+    */
+
+    ... (static function (): array {
+        $bootstrapped = \App\Database\RestoreDatabaseTargetResolver::bootstrapFromEnv(
+            env('DB_RESTORE_DATABASE_MAP'),
+        );
+
+        return [
+            'restore_database_map' => $bootstrapped['map'],
+            'restore_database_map_configuration_error' => $bootstrapped['error'],
+        ];
+    })(),
+
+    /*
+    |--------------------------------------------------------------------------
     | Destructive Artisan commands
     |--------------------------------------------------------------------------
     */

@@ -4,6 +4,7 @@ namespace App\Services\Restore;
 
 use App\Database\DatabaseAccountGuard;
 use App\Database\DatabaseSafetyGuard;
+use App\Database\RestoreDatabaseTargetResolver;
 use PDO;
 use RuntimeException;
 
@@ -16,7 +17,8 @@ class MysqlPdoDumpImporter implements SqlDumpImporter
 {
     public function import(string $sqlPath, string $explicitTarget): void
     {
-        $target = DatabaseSafetyGuard::assertExplicitRestoreTarget($explicitTarget);
+        $logicalTarget = DatabaseSafetyGuard::assertExplicitRestoreTarget($explicitTarget);
+        $target = app(RestoreDatabaseTargetResolver::class)->resolvePhysicalName($logicalTarget);
         DatabaseAccountGuard::assertAccountForOperation(DatabaseAccountGuard::OPERATION_RESTORE);
 
         if (! is_file($sqlPath)) {

@@ -100,7 +100,7 @@ return [
         'LOCK TABLES',
     ],
 
-    'restore_account' => 'gestion_restore',
+    'restore_account' => env('DB_RESTORE_USERNAME', 'gestion_restore'),
     'restore_account_created' => true,
     'restore_hosts' => ['localhost', '127.0.0.1'],
     'restore_databases' => [

@@ -57,5 +57,8 @@ Automatic silent cutover onto `gestion` remains **forbidden**.
 ```env
 DB_PROTECTED_DATABASES=gestion
 DB_RESTORE_ALLOWED_DATABASES=gestion_recovery,gestion_test
+DB_RESTORE_DATABASE_MAP=gestion_recovery:damo5182_gestion_recovery,gestion_test:damo5182_gestion_test
 DB_RESTORE_CONFIRMATION_PHRASE=RESTORE
 ```
+
+`DB_RESTORE_DATABASE_MAP` uses **colon** separators only (`logical:physical`). Equals signs are rejected at config parse time.
