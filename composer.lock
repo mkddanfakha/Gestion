@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4186a15685627919ac832a828bdadc18",
+    "content-hash": "7093e92208807edd5d9b920789545d7d",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -8531,12 +8531,12 @@
             "version": "v3.16.1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/barryvdh/laravel-debugbar.git",
+                "url": "https://github.com/fruitcake/laravel-debugbar.git",
                 "reference": "21b2c6fce05453efd4bceb34f9fddaa1cdb44090"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/barryvdh/laravel-debugbar/zipball/21b2c6fce05453efd4bceb34f9fddaa1cdb44090",
+                "url": "https://api.github.com/repos/fruitcake/laravel-debugbar/zipball/21b2c6fce05453efd4bceb34f9fddaa1cdb44090",
                 "reference": "21b2c6fce05453efd4bceb34f9fddaa1cdb44090",
                 "shasum": ""
             },
