@@ -7,6 +7,7 @@ use App\Services\Backup\BackupMetadataService;
 use App\Services\Backup\BackupPathGuard;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
+
 beforeEach(function () {
     $this->withoutVite();
     Config::set('backup.backup.name', 'gestion/feature-import');
@@ -16,7 +17,7 @@ beforeEach(function () {
 
 function featureMakeValidBackupZip(string $absolutePath): void
 {
-    $zip = new \ZipArchive();
+    $zip = new \ZipArchive;
     expect($zip->open($absolutePath, ZipArchive::CREATE | ZipArchive::OVERWRITE))->toBeTrue();
     $zip->addFromString(
         'db-dumps/mysql-gestion.sql',
@@ -24,6 +25,87 @@ function featureMakeValidBackupZip(string $absolutePath): void
     );
     $zip->close();
 }
+
+test('POST admin backups import restores max_execution_time after successful import', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $maxExecutionBefore = ini_get('max_execution_time');
+
+    $tmp = tempnam(sys_get_temp_dir(), 'featimpini');
+    @unlink($tmp);
+    $tmpZip = $tmp.'.zip';
+    featureMakeValidBackupZip($tmpZip);
+    $importName = 'feature-import-ini-'.uniqid('', true).'.zip';
+
+    $this->actingAs($admin)->post(route('admin.backups.import'), [
+        'backup_file' => new UploadedFile($tmpZip, $importName, 'application/zip', null, true),
+    ])->assertRedirect(route('admin.backups.index'));
+
+    expect(ini_get('max_execution_time'))->toBe($maxExecutionBefore);
+
+    @unlink($tmpZip);
+    @unlink(BackupPathGuard::resolveExistingBackupPath($importName));
+});
+
+test('POST admin backups import restores max_execution_time when backup file is missing', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $maxExecutionBefore = ini_get('max_execution_time');
+
+    $this->actingAs($admin)->post(route('admin.backups.import'), [])
+        ->assertRedirect(route('admin.backups.index'));
+
+    expect(ini_get('max_execution_time'))->toBe($maxExecutionBefore);
+});
+
+test('POST admin backups import restores max_execution_time when zip is rejected', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $maxExecutionBefore = ini_get('max_execution_time');
+
+    $tmp = tempnam(sys_get_temp_dir(), 'featbadini');
+    @unlink($tmp);
+    $tmpZip = $tmp.'.zip';
+    $zip = new ZipArchive;
+    $zip->open($tmpZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $zip->addFromString('readme.txt', 'no sql');
+    $zip->close();
+
+    $this->actingAs($admin)->post(route('admin.backups.import'), [
+        'backup_file' => new UploadedFile($tmpZip, 'no-sql-ini.zip', 'application/zip', null, true),
+    ])->assertRedirect(route('admin.backups.index'));
+
+    expect(ini_get('max_execution_time'))->toBe($maxExecutionBefore);
+
+    @unlink($tmpZip);
+});
+
+test('POST admin backups import restores max_execution_time when duplicate filename is rejected', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $maxExecutionBefore = ini_get('max_execution_time');
+    $importName = 'duplicate-ini-'.uniqid('', true).'.zip';
+
+    $tmp = tempnam(sys_get_temp_dir(), 'featdupini');
+    @unlink($tmp);
+    $tmpZip = $tmp.'.zip';
+    featureMakeValidBackupZip($tmpZip);
+
+    $this->actingAs($admin)->post(route('admin.backups.import'), [
+        'backup_file' => new UploadedFile($tmpZip, $importName, 'application/zip', null, true),
+    ])->assertRedirect(route('admin.backups.index'));
+
+    $tmpSecond = tempnam(sys_get_temp_dir(), 'featdupini2');
+    @unlink($tmpSecond);
+    $tmpZipSecond = $tmpSecond.'.zip';
+    featureMakeValidBackupZip($tmpZipSecond);
+
+    $this->actingAs($admin)->post(route('admin.backups.import'), [
+        'backup_file' => new UploadedFile($tmpZipSecond, $importName, 'application/zip', null, true),
+    ])->assertRedirect(route('admin.backups.index'))
+        ->assertSessionHas('error');
+
+    expect(ini_get('max_execution_time'))->toBe($maxExecutionBefore);
+
+    @unlink($tmpZipSecond);
+    @unlink(BackupPathGuard::resolveExistingBackupPath($importName));
+});
 
 test('POST admin backups import accepts valid zip for admin user', function () {
     $admin = User::factory()->create(['role' => 'admin']);
@@ -58,7 +140,7 @@ test('POST admin backups import rejects zip without sql', function () {
     $tmp = tempnam(sys_get_temp_dir(), 'featbad');
     @unlink($tmp);
     $tmpZip = $tmp.'.zip';
-    $zip = new \ZipArchive();
+    $zip = new \ZipArchive;
     $zip->open($tmpZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
     $zip->addFromString('readme.txt', 'no sql');
     $zip->close();

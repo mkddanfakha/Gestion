@@ -243,57 +243,75 @@ class BackupController extends Controller
     {
         $this->checkPermission(request(), 'backups', 'create');
 
-        ini_set('max_execution_time', '600');
-        ini_set('memory_limit', '512M');
-
-        if (! $request->hasFile('backup_file')) {
-            return redirect()->route('admin.backups.index')
-                ->with('error', 'Veuillez sélectionner un fichier zip de sauvegarde.');
-        }
-
-        $originalName = $request->file('backup_file')?->getClientOriginalName();
+        $previousMaxExecutionTime = ini_get('max_execution_time');
+        $previousMemoryLimit = ini_get('memory_limit');
 
         try {
-            $result = $importService->import($request->file('backup_file'));
+            if (ini_set('max_execution_time', '600') === false) {
+                Log::warning('backup.import.failed_to_raise_max_execution_time');
+            }
 
-            $preview = [
-                'filename' => $result['filename'],
-                'type' => BackupMetadataService::uiTypeFromMetaType($result['type'] ?? null) ?? 'database',
-                'status' => 'imported',
-                'size_bytes' => $result['size'] ?? null,
-                'size' => $this->formatBytes((int) ($result['size'] ?? 0)),
-                'sha256' => $result['sha256'] ?? null,
-                'restored' => false,
-            ];
+            if (ini_set('memory_limit', '512M') === false) {
+                Log::warning('backup.import.failed_to_raise_memory_limit');
+            }
 
-            return redirect()->route('admin.backups.index')
-                ->with('success', 'Sauvegarde importée avec succès. Aucune restauration n\'a été effectuée.')
-                ->with('import_preview', $preview);
-        } catch (BackupImportRejectedException $e) {
-            BackupAuditService::importRejected($e->errorCode, $originalName);
+            if (! $request->hasFile('backup_file')) {
+                return redirect()->route('admin.backups.index')
+                    ->with('error', 'Veuillez sélectionner un fichier zip de sauvegarde.');
+            }
 
-            return redirect()->route('admin.backups.index')
-                ->with('error', $this->friendlyImportMessageForCode($e->errorCode, $e->getMessage()));
-        } catch (RuntimeException $e) {
-            Log::warning('backup.import.rejected', [
-                'message' => $e->getMessage(),
-                'user_id' => $request->user()?->id,
-            ]);
+            $originalName = $request->file('backup_file')?->getClientOriginalName();
 
-            BackupAuditService::importRejected($e->getMessage(), $originalName);
+            try {
+                $result = $importService->import($request->file('backup_file'));
 
-            return redirect()->route('admin.backups.index')
-                ->with('error', $this->friendlyImportErrorMessage($e->getMessage()));
-        } catch (Throwable $e) {
-            Log::error('backup.import.exception', [
-                'message' => $e->getMessage(),
-                'user_id' => $request->user()?->id,
-            ]);
+                $preview = [
+                    'filename' => $result['filename'],
+                    'type' => BackupMetadataService::uiTypeFromMetaType($result['type'] ?? null) ?? 'database',
+                    'status' => 'imported',
+                    'size_bytes' => $result['size'] ?? null,
+                    'size' => $this->formatBytes((int) ($result['size'] ?? 0)),
+                    'sha256' => $result['sha256'] ?? null,
+                    'restored' => false,
+                ];
 
-            BackupAuditService::importRejected('unexpected_error', $originalName);
+                return redirect()->route('admin.backups.index')
+                    ->with('success', 'Sauvegarde importée avec succès. Aucune restauration n\'a été effectuée.')
+                    ->with('import_preview', $preview);
+            } catch (BackupImportRejectedException $e) {
+                BackupAuditService::importRejected($e->errorCode, $originalName);
 
-            return redirect()->route('admin.backups.index')
-                ->with('error', 'L\'import de la sauvegarde a échoué. Veuillez réessayer.');
+                return redirect()->route('admin.backups.index')
+                    ->with('error', $this->friendlyImportMessageForCode($e->errorCode, $e->getMessage()));
+            } catch (RuntimeException $e) {
+                Log::warning('backup.import.rejected', [
+                    'message' => $e->getMessage(),
+                    'user_id' => $request->user()?->id,
+                ]);
+
+                BackupAuditService::importRejected($e->getMessage(), $originalName);
+
+                return redirect()->route('admin.backups.index')
+                    ->with('error', $this->friendlyImportErrorMessage($e->getMessage()));
+            } catch (Throwable $e) {
+                Log::error('backup.import.exception', [
+                    'message' => $e->getMessage(),
+                    'user_id' => $request->user()?->id,
+                ]);
+
+                BackupAuditService::importRejected('unexpected_error', $originalName);
+
+                return redirect()->route('admin.backups.index')
+                    ->with('error', 'L\'import de la sauvegarde a échoué. Veuillez réessayer.');
+            }
+        } finally {
+            if (ini_set('max_execution_time', (string) $previousMaxExecutionTime) === false) {
+                Log::warning('backup.import.failed_to_restore_max_execution_time');
+            }
+
+            if (ini_set('memory_limit', (string) $previousMemoryLimit) === false) {
+                Log::warning('backup.import.failed_to_restore_memory_limit');
+            }
         }
     }
 
@@ -635,7 +653,7 @@ class BackupController extends Controller
      */
     private function classifyArchiveMetadata(string $absolutePath): array
     {
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($absolutePath) !== true) {
             return ['type' => 'unknown', 'status' => 'invalid'];
         }
