@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Database\BackupConcurrencyGuard;
 use App\Database\PrivilegedProcessRunner;
+use App\Services\Backup\BackupArchiveResolutionException;
 use App\Services\Backup\BackupInstallationKey;
 use App\Services\Backup\BackupManifestAttachmentService;
 use App\Services\Backup\BackupMetadataService;
@@ -28,7 +29,6 @@ class RunProductionBackupCommand extends Command
             $onlyToDisk = null;
         }
         $deferManifest = (bool) $this->option('defer-manifest');
-        $startedAt = time();
 
         try {
             BackupInstallationKey::assertReadyForBackupOperation();
@@ -39,6 +39,9 @@ class RunProductionBackupCommand extends Command
         }
 
         $this->info('Starting production backup via isolated subprocess (gestion_backup, CACHE_STORE=file)...');
+
+        $archivesBeforeRun = $manifests->snapshotExistingArchives();
+        $startedAt = time();
 
         try {
             $result = BackupConcurrencyGuard::runBackup(function () use ($runner, $onlyDb, $onlyToDisk) {
@@ -72,23 +75,41 @@ class RunProductionBackupCommand extends Command
 
         if (! $deferManifest) {
             try {
-                $meta = $manifests->attachNewestArchiveSince(
+                $meta = $manifests->attachArchiveProducedByOperation(
                     $startedAt,
+                    $archivesBeforeRun,
                     $onlyDb,
                     BackupMetadataService::SOURCE_SCHEDULER,
                     null,
                 );
                 if ($meta === null) {
-                    Log::warning('backup.production.manifest.missing_archive', [
+                    Log::error('backup.production.manifest.missing_archive', [
                         'only_db' => $onlyDb,
                         'started_at' => $startedAt,
                     ]);
+                    $this->error('Production backup subprocess succeeded but no new archive could be identified for manifest attachment.');
+
+                    return self::FAILURE;
                 }
-            } catch (\Throwable $e) {
-                Log::warning('backup.production.manifest.failed', [
+            } catch (BackupArchiveResolutionException $e) {
+                Log::error('backup.production.manifest.ambiguous_archive', [
                     'only_db' => $onlyDb,
+                    'started_at' => $startedAt,
+                    'reason' => $e->reason,
                     'message' => $e->getMessage(),
                 ]);
+                $this->error($e->getMessage());
+
+                return self::FAILURE;
+            } catch (\Throwable $e) {
+                Log::error('backup.production.manifest.failed', [
+                    'only_db' => $onlyDb,
+                    'started_at' => $startedAt,
+                    'message' => $e->getMessage(),
+                ]);
+                $this->error('Production backup archive exists but manifest attachment failed: '.$e->getMessage());
+
+                return self::FAILURE;
             }
         }
 

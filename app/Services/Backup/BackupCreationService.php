@@ -48,14 +48,20 @@ final class BackupCreationService
     }
 
     /**
-     * After a successful backup:production run, attach sidecar meta to the newest archive.
+     * After a successful backup:production run, attach sidecar meta to the archive produced by that run.
      *
+     * @param  array<string, array{mtime: int, size: int}>  $archivesBeforeRun
      * @return array<string, mixed>|null
      */
-    public function attachManualMetadata(bool $onlyDb, ?int $userId, int $notBeforeTimestamp): ?array
-    {
-        return app(BackupManifestAttachmentService::class)->attachNewestArchiveSince(
+    public function attachManualMetadata(
+        bool $onlyDb,
+        ?int $userId,
+        int $notBeforeTimestamp,
+        array $archivesBeforeRun,
+    ): ?array {
+        return app(BackupManifestAttachmentService::class)->attachArchiveProducedByOperation(
             $notBeforeTimestamp,
+            $archivesBeforeRun,
             $onlyDb,
             BackupMetadataService::SOURCE_MANUAL,
             $userId,

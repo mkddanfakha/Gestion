@@ -50,7 +50,7 @@ afterEach(function () {
 
 function makeManifestTestZip(string $absolutePath, bool $withFiles = false): void
 {
-    $zip = new ZipArchive();
+    $zip = new ZipArchive;
     expect($zip->open($absolutePath, ZipArchive::CREATE | ZipArchive::OVERWRITE))->toBeTrue();
     $zip->addFromString(
         'db-dumps/mysql-gestion.sql',
@@ -64,12 +64,14 @@ function makeManifestTestZip(string $absolutePath, bool $withFiles = false): voi
 
 test('attachment service rejects empty zip and writes manifest after validation', function () {
     $name = 'attach-service.zip';
+    $attachment = app(\App\Services\Backup\BackupManifestAttachmentService::class);
+    $baseline = $attachment->snapshotExistingArchives();
+    $started = time() - 10;
     $path = BackupPathGuard::resolveNewBackupPath($name);
     makeManifestTestZip($path);
-
-    $started = time() - 10;
-    $meta = app(\App\Services\Backup\BackupManifestAttachmentService::class)->attachNewestArchiveSince(
+    $meta = $attachment->attachArchiveProducedByOperation(
         $started,
+        $baseline,
         true,
         BackupMetadataService::SOURCE_SCHEDULER,
         null,

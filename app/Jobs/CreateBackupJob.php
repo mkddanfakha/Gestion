@@ -2,10 +2,12 @@
 
 namespace App\Jobs;
 
+use App\Services\Backup\BackupArchiveResolutionException;
 use App\Services\Backup\BackupAuditService;
 use App\Services\Backup\BackupCreationProgress;
 use App\Services\Backup\BackupCreationService;
 use App\Services\Backup\BackupJobOutputSanitizer;
+use App\Services\Backup\BackupManifestAttachmentService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -48,6 +50,8 @@ class CreateBackupJob implements ShouldQueue
         BackupCreationService $creation,
         BackupJobOutputSanitizer $outputSanitizer,
     ): void {
+        $attachment = app(BackupManifestAttachmentService::class);
+        $archivesBeforeRun = $attachment->snapshotExistingArchives();
         $startedAt = time();
 
         BackupCreationProgress::put($this->jobId, [
@@ -109,7 +113,22 @@ class CreateBackupJob implements ShouldQueue
                     $this->onlyDb,
                     $this->userId > 0 ? $this->userId : null,
                     $startedAt,
+                    $archivesBeforeRun,
                 );
+            } catch (BackupArchiveResolutionException $e) {
+                Log::error('backup.job.create.ambiguous_archive', [
+                    'job_id' => $this->jobId,
+                    'message' => $e->getMessage(),
+                    'user_id' => $this->userId,
+                ]);
+
+                $this->markFailed(
+                    'Plusieurs archives correspondent à cette opération — le manifeste n\'a pas été créé.',
+                    'archive_ambiguous',
+                    null,
+                );
+
+                throw $e;
             } catch (\Throwable $e) {
                 Log::error('backup.job.create.manifest_failed', [
                     'job_id' => $this->jobId,

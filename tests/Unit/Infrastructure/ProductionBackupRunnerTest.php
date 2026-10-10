@@ -130,7 +130,7 @@ test('backup:production writes scheduler manifest after successful subprocess zi
             $path = \App\Services\Backup\BackupPathGuard::resolveNewBackupPath(
                 'cron-'.uniqid('', true).'.zip',
             );
-            $zip = new ZipArchive();
+            $zip = new ZipArchive;
             expect($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE))->toBeTrue();
             $zip->addFromString('db-dumps/mysql-gestion.sql', "CREATE TABLE t (id int);\n");
             $zip->close();
@@ -173,7 +173,7 @@ test('backup:production defer-manifest skips scheduler sidecar', function () {
             $path = \App\Services\Backup\BackupPathGuard::resolveNewBackupPath(
                 'defer-'.uniqid('', true).'.zip',
             );
-            $zip = new ZipArchive();
+            $zip = new ZipArchive;
             $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
             $zip->addFromString('db-dumps/mysql-gestion.sql', "CREATE TABLE t (id int);\n");
             $zip->close();
@@ -210,7 +210,7 @@ test('backup:production delegates to isolated runner without real backup', funct
 
     app()->instance(PrivilegedProcessRunner::class, $fakeRunner);
 
-    $exitCode = Artisan::call('backup:production');
+    $exitCode = Artisan::call('backup:production', ['--defer-manifest' => true]);
 
     expect($exitCode)->toBe(0);
     expect(Artisan::output())->toContain('simulated-backup-success');

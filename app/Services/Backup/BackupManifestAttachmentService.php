@@ -11,18 +11,61 @@ use RuntimeException;
  */
 final class BackupManifestAttachmentService
 {
+    private const MTIME_SKEW_SECONDS = 5;
+
     /**
-     * Find the newest ZIP created at or after $notBeforeTimestamp and attach manifest.
+     * Snapshot ZIP archives present before a backup operation (filename => mtime/size).
      *
-     * @return array<string, mixed>|null null when no matching archive (caller decides severity)
+     * @return array<string, array{mtime: int, size: int}>
      */
-    public function attachNewestArchiveSince(
+    public function snapshotExistingArchives(): array
+    {
+        try {
+            $directory = BackupPathGuard::backupDirectoryAbsolutePath();
+        } catch (RuntimeException) {
+            return [];
+        }
+
+        $snapshot = [];
+
+        try {
+            $iterator = new \DirectoryIterator($directory);
+            foreach ($iterator as $fileInfo) {
+                if ($fileInfo->isDot() || ! $fileInfo->isFile()) {
+                    continue;
+                }
+                if (strtolower($fileInfo->getExtension()) !== 'zip') {
+                    continue;
+                }
+
+                $snapshot[$fileInfo->getFilename()] = [
+                    'mtime' => (int) $fileInfo->getMTime(),
+                    'size' => (int) $fileInfo->getSize(),
+                ];
+            }
+        } catch (\Throwable) {
+            return [];
+        }
+
+        return $snapshot;
+    }
+
+    /**
+     * Find the archive produced by the current operation and attach a manifest.
+     *
+     * @param  array<string, array{mtime: int, size: int}>  $baselineBeforeRun
+     * @return array<string, mixed>|null null when no new/changed archive matches
+     *
+     * @throws BackupArchiveResolutionException when more than one archive matches
+     */
+    public function attachArchiveProducedByOperation(
         int $notBeforeTimestamp,
+        array $baselineBeforeRun,
         bool $onlyDb,
         string $source,
         ?int $userId = null,
     ): ?array {
-        $resolved = $this->resolveNewestArchiveSince($notBeforeTimestamp);
+        $resolved = $this->resolveArchiveProducedByOperation($notBeforeTimestamp, $baselineBeforeRun);
         if ($resolved === null) {
             return null;
         }
@@ -37,18 +80,86 @@ final class BackupManifestAttachmentService
     }
 
     /**
+     * @deprecated Prefer attachArchiveProducedByOperation() with a pre-run snapshot.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function attachNewestArchiveSince(
+        int $notBeforeTimestamp,
+        bool $onlyDb,
+        string $source,
+        ?int $userId = null,
+    ): ?array {
+        return $this->attachArchiveProducedByOperation(
+            $notBeforeTimestamp,
+            [],
+            $onlyDb,
+            $source,
+            $userId,
+        );
+    }
+
+    /**
+     * Resolve exactly one archive created or modified by the operation since $notBeforeTimestamp.
+     *
+     * @param  array<string, array{mtime: int, size: int}>  $baselineBeforeRun
+     * @return array{absolute: string, filename: string}|null
+     *
+     * @throws BackupArchiveResolutionException
+     */
+    public function resolveArchiveProducedByOperation(
+        int $notBeforeTimestamp,
+        array $baselineBeforeRun,
+    ): ?array {
+        $candidates = $this->collectOperationArchiveCandidates($notBeforeTimestamp, $baselineBeforeRun);
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        if (count($candidates) > 1) {
+            throw new BackupArchiveResolutionException(
+                'DATABASE SAFETY: multiple backup archives match the current operation; refusing to attach a manifest to the wrong file.',
+                BackupArchiveResolutionException::AMBIGUOUS,
+            );
+        }
+
+        return $candidates[0];
+    }
+
+    /**
+     * @deprecated Prefer resolveArchiveProducedByOperation() with a pre-run snapshot.
+     *
      * @return array{absolute: string, filename: string}|null
      */
     public function resolveNewestArchiveSince(int $notBeforeTimestamp): ?array
     {
         try {
-            $directory = BackupPathGuard::backupDirectoryAbsolutePath();
-        } catch (RuntimeException) {
+            return $this->resolveArchiveProducedByOperation(
+                $notBeforeTimestamp,
+                [],
+            );
+        } catch (BackupArchiveResolutionException) {
             return null;
         }
+    }
 
-        $newest = null;
-        $newestMtime = 0;
+    /**
+     * @param  array<string, array{mtime: int, size: int}>  $baselineBeforeRun
+     * @return list<array{absolute: string, filename: string}>
+     */
+    private function collectOperationArchiveCandidates(
+        int $notBeforeTimestamp,
+        array $baselineBeforeRun,
+    ): array {
+        try {
+            $directory = BackupPathGuard::backupDirectoryAbsolutePath();
+        } catch (RuntimeException) {
+            return [];
+        }
+
+        $threshold = $notBeforeTimestamp - self::MTIME_SKEW_SECONDS;
+        $candidates = [];
 
         try {
             $iterator = new \DirectoryIterator($directory);
@@ -60,36 +171,36 @@ final class BackupManifestAttachmentService
                     continue;
                 }
 
+                $filename = $fileInfo->getFilename();
                 $mtime = (int) $fileInfo->getMTime();
-                if ($mtime < $notBeforeTimestamp - 5) {
+                $size = (int) $fileInfo->getSize();
+                $baselineEntry = $baselineBeforeRun[$filename] ?? null;
+
+                if ($baselineEntry !== null
+                    && $baselineEntry['mtime'] === $mtime
+                    && $baselineEntry['size'] === $size) {
                     continue;
                 }
 
-                if ($mtime >= $newestMtime) {
-                    $newestMtime = $mtime;
-                    $newest = $fileInfo->getPathname();
+                if ($mtime < $threshold) {
+                    continue;
                 }
+
+                $candidates[] = [
+                    'absolute' => $fileInfo->getPathname(),
+                    'filename' => $filename,
+                ];
             }
         } catch (\Throwable) {
-            return null;
+            return [];
         }
 
-        if ($newest === null || ! is_file($newest)) {
-            return null;
-        }
-
-        return [
-            'absolute' => $newest,
-            'filename' => basename($newest),
-        ];
+        return $candidates;
     }
 
     /**
      * Validate archive then write meta/{zip}.json (local source of truth).
      *
-     * @return array<string, mixed>
-     */
-    /**
      * @param  array<string, mixed>  $extraAttributes
      * @return array<string, mixed>
      */
@@ -143,7 +254,7 @@ final class BackupManifestAttachmentService
 
     private function archiveHasNonDbContent(string $absolutePath): bool
     {
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($absolutePath) !== true) {
             return false;
         }

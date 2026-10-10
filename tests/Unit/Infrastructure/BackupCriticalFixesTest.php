@@ -63,7 +63,7 @@ afterEach(function () {
 
 function makeMinimalValidBackupZip(string $absolutePath): void
 {
-    $zip = new ZipArchive();
+    $zip = new ZipArchive;
     expect($zip->open($absolutePath, ZipArchive::CREATE | ZipArchive::OVERWRITE))->toBeTrue();
     $zip->addFromString(
         'db-dumps/mysql-gestion.sql',
@@ -161,7 +161,7 @@ test('import of full archive writes FULL type in sidecar', function () {
     $tmp = tempnam(sys_get_temp_dir(), 'bkfull');
     @unlink($tmp);
     $tmpZip = $tmp.'.zip';
-    $zip = new ZipArchive();
+    $zip = new ZipArchive;
     expect($zip->open($tmpZip, ZipArchive::CREATE | ZipArchive::OVERWRITE))->toBeTrue();
     $zip->addFromString('db-dumps/mysql-gestion.sql', "CREATE TABLE `users` (`id` int);\nINSERT INTO `users` VALUES (1);\n");
     $zip->addFromString('attachments/demo/file.txt', 'hello');
@@ -246,7 +246,7 @@ test('import service rejects zip without sql dump', function () {
     $tmp = tempnam(sys_get_temp_dir(), 'bknosql');
     @unlink($tmp);
     $tmpZip = $tmp.'.zip';
-    $zip = new ZipArchive();
+    $zip = new ZipArchive;
     $zip->open($tmpZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
     $zip->addFromString('readme.txt', 'no dump here');
     $zip->close();
@@ -263,7 +263,7 @@ test('import service rejects zip with traversal entry', function () {
     $tmp = tempnam(sys_get_temp_dir(), 'bktrav');
     @unlink($tmp);
     $tmpZip = $tmp.'.zip';
-    $zip = new ZipArchive();
+    $zip = new ZipArchive;
     $zip->open($tmpZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
     $zip->addFromString('../evil.sql', 'CREATE TABLE x (id int);');
     $zip->close();
@@ -320,7 +320,7 @@ test('import service rejects zip with Windows absolute path entry', function () 
     $tmp = tempnam(sys_get_temp_dir(), 'bkwin');
     @unlink($tmp);
     $tmpZip = $tmp.'.zip';
-    $zip = new ZipArchive();
+    $zip = new ZipArchive;
     $zip->open($tmpZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
     $zip->addFromString('C:/temp/evil.sql', 'CREATE TABLE x (id int);');
     $zip->close();
@@ -512,6 +512,9 @@ test('ui creation path acquires lock only once via backup:production', function 
             expect(BackupConcurrencyGuard::isBackupLocked())->toBeTrue();
             $this->acquisitions++;
 
+            $path = BackupPathGuard::resolveNewBackupPath('ui-lock-once-'.uniqid('', true).'.zip');
+            makeMinimalValidBackupZip($path);
+
             return new \App\Database\PrivilegedProcessResult(0, 'ok', '');
         }
     };
@@ -541,6 +544,9 @@ test('concurrent second backup:production fails while lock held then succeeds af
 
         public function runBackupRun(bool $onlyDb = false, ?array $credentials = null, ?string $onlyToDisk = null): \App\Database\PrivilegedProcessResult
         {
+            $path = BackupPathGuard::resolveNewBackupPath('concurrent-second-'.uniqid('', true).'.zip');
+            makeMinimalValidBackupZip($path);
+
             return new \App\Database\PrivilegedProcessResult(0, 'second-ok', '');
         }
     };
