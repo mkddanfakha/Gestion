@@ -1,7 +1,6 @@
 <?php
 
 use App\Database\DatabaseAccountGuard;
-use App\Database\DatabaseSafetyGuard;
 use App\Database\PrivilegedCredentialLoader;
 use App\Database\PrivilegedProcessResult;
 use App\Database\PrivilegedProcessRunner;
@@ -9,10 +8,8 @@ use App\Database\PrivilegedRestoreProcessRunner;
 use App\Database\ProtectedDatabaseException;
 use App\Services\Backup\BackupManifestService;
 use App\Services\Backup\BackupMetadataService;
-use App\Services\Backup\BackupPathGuard;
 use App\Services\Restore\BackupRestoreRejectedException;
 use App\Services\Restore\DatabaseRestoreService;
-use App\Services\Restore\SqlDumpImporter;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 
@@ -77,6 +74,8 @@ beforeEach(function () {
 
 afterEach(function () {
     putenv(PrivilegedProcessRunner::SUBPROCESS_MARKER);
+    unset($_ENV['DB_DATABASE'], $_SERVER['DB_DATABASE']);
+    putenv('DB_DATABASE');
 });
 
 test('PrivilegedRestoreProcessRunner blocks gestion target before subprocess', function () {
@@ -142,7 +141,10 @@ test('restore credential loader never exposes password in exceptions', function 
     }
 });
 
-test('PrivilegedRestoreProcessRunner buildRestoreSubprocessEnvironment uses validated target', function () {
+test('PrivilegedRestoreProcessRunner buildRestoreSubprocessEnvironment keeps application DB_DATABASE for active checks', function () {
+    $_ENV['DB_DATABASE'] = 'damo5182_gestion_staging';
+    $_SERVER['DB_DATABASE'] = 'damo5182_gestion_staging';
+
     $runner = new PrivilegedRestoreProcessRunner(
         new PrivilegedCredentialLoader,
         new PrivilegedProcessRunner(new PrivilegedCredentialLoader),
@@ -155,10 +157,10 @@ test('PrivilegedRestoreProcessRunner buildRestoreSubprocessEnvironment uses vali
         'port' => '3306',
         'database' => 'gestion_recovery',
         'source' => 'test.local',
-    ], 'gestion_test');
+    ]);
 
     expect($env['DB_USERNAME'])->toBe('gestion_restore');
-    expect($env['DB_DATABASE'])->toBe('gestion_test');
+    expect($env['DB_DATABASE'])->toBe('damo5182_gestion_staging');
     expect($env[PrivilegedProcessRunner::SUBPROCESS_MARKER])->toBe(PrivilegedProcessRunner::SUBPROCESS_OPERATION_RESTORE);
     expect($env['DB_PASSWORD'])->toBe('secret-restore');
 });
@@ -196,7 +198,7 @@ test('DatabaseRestoreService runtime gestion_app delegates to privileged runner'
     $dir = $root.DIRECTORY_SEPARATOR.$folder;
     File::ensureDirectoryExists($dir);
     $zipPath = $dir.DIRECTORY_SEPARATOR.'delegate-test.zip';
-    $zip = new ZipArchive();
+    $zip = new ZipArchive;
     $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
     $zip->addFromString('db-dumps/mysql-gestion.sql', "CREATE TABLE `users` (id int);\n");
     $zip->close();
@@ -236,7 +238,7 @@ test('DatabaseRestoreService subprocess failure surfaces error without success',
     $dir = $root.DIRECTORY_SEPARATOR.$folder;
     File::ensureDirectoryExists($dir);
     $zipPath = $dir.DIRECTORY_SEPARATOR.'fail-test.zip';
-    $zip = new ZipArchive();
+    $zip = new ZipArchive;
     $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
     $zip->addFromString('db-dumps/mysql-gestion.sql', "CREATE TABLE `users` (id int);\n");
     $zip->close();
@@ -264,7 +266,7 @@ test('db:restore is registered in PrivilegedCommandGuard operations', function (
 
 test('sanitizeForLog redacts restore password from subprocess output', function () {
     $secret = 'restore-secret-value';
-    $output = "Connected with password restore-secret-value and done";
+    $output = 'Connected with password restore-secret-value and done';
 
     expect(PrivilegedCredentialLoader::sanitizeForLog($output, $secret))
         ->not->toContain($secret)
@@ -302,7 +304,7 @@ test('DatabaseRestoreService does not start subprocess when SHA integrity fails'
     $name = 'sha-invalid-restore.zip';
     $path = $dir.DIRECTORY_SEPARATOR.$name;
 
-    $zip = new ZipArchive();
+    $zip = new ZipArchive;
     $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
     $zip->addFromString('db-dumps/mysql-gestion.sql', "CREATE TABLE `users` (id int);\n");
     $zip->close();

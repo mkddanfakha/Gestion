@@ -35,7 +35,7 @@ class PrivilegedRestoreProcessRunner
         ?int $timeoutSeconds = null,
     ): PrivilegedProcessResult {
         $validatedTarget = $this->assertRestoreTargetAllowed($target);
-        $physicalTarget = $this->targetResolver->resolvePhysicalName($validatedTarget);
+        $this->targetResolver->resolvePhysicalName($validatedTarget);
         $safeBackupName = BackupPathGuard::sanitizeBackupFileName($backupFileName);
         $credentials = $this->credentialLoader->loadRestoreCredentials();
 
@@ -45,7 +45,7 @@ class PrivilegedRestoreProcessRunner
             '--confirmation' => $confirmationPhrase,
         ]);
 
-        $environment = $this->buildRestoreSubprocessEnvironment($credentials, $physicalTarget);
+        $environment = $this->buildRestoreSubprocessEnvironment($credentials);
         $this->assertCommandLineContainsNoSecret($command, $credentials['password']);
 
         $process = new Process(
@@ -72,16 +72,17 @@ class PrivilegedRestoreProcessRunner
      * @param  array{username: string, password: string, host: string, port: ?string, database: string, source: string}  $credentials
      * @return array<string, string>
      */
-    public function buildRestoreSubprocessEnvironment(array $credentials, string $validatedTarget): array
+    public function buildRestoreSubprocessEnvironment(array $credentials): array
     {
         $environment = $this->inheritProcessEnvironment();
 
+        // Keep inherited DB_DATABASE (application runtime database) so resolvePhysicalName
+        // can reject restore targets whose physical name equals the active app database.
         $overrides = [
             PrivilegedProcessRunner::SUBPROCESS_MARKER => PrivilegedProcessRunner::SUBPROCESS_OPERATION_RESTORE,
             'DB_CONNECTION' => 'mysql',
             'DB_USERNAME' => $credentials['username'],
             'DB_PASSWORD' => $credentials['password'],
-            'DB_DATABASE' => $validatedTarget,
             'DB_HOST' => $credentials['host'],
             'CACHE_STORE' => 'file',
             'BACKUP_LOCK_CACHE_STORE' => 'file',
