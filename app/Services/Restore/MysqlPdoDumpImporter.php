@@ -15,12 +15,14 @@ use RuntimeException;
  */
 class MysqlPdoDumpImporter implements SqlDumpImporter
 {
+    public function __construct(
+        private ?SqlDumpStatementSplitter $statementSplitter = null,
+    ) {
+        $this->statementSplitter ??= new SqlDumpStatementSplitter;
+    }
+
     public function import(string $sqlPath, string $explicitTarget): void
     {
-        $logicalTarget = DatabaseSafetyGuard::assertExplicitRestoreTarget($explicitTarget);
-        $target = app(RestoreDatabaseTargetResolver::class)->resolvePhysicalName($logicalTarget);
-        DatabaseAccountGuard::assertAccountForOperation(DatabaseAccountGuard::OPERATION_RESTORE);
-
         if (! is_file($sqlPath)) {
             throw new RuntimeException('SQL dump file not found.');
         }
@@ -34,13 +36,12 @@ class MysqlPdoDumpImporter implements SqlDumpImporter
             throw new RuntimeException('Dump contains DROP DATABASE gestion — refused.');
         }
 
-        // Never honour dump-level database switches (would risk writing outside the explicit target).
-        $sql = preg_replace('/^\s*USE\s+[`\'"]?[^;`\'"]+[`\'"]?\s*;/mi', '', $sql) ?? $sql;
-        $sql = preg_replace('/^\s*CREATE\s+DATABASE\b[^;]*;/mi', '', $sql) ?? $sql;
-        $sql = preg_replace('/^\s*DROP\s+DATABASE\b[^;]*;/mi', '', $sql) ?? $sql;
-        // mysqldump LOCK TABLES requires LOCK TABLES grant; gestion_restore is DDL/DML-only on allow-listed DBs.
-        $sql = preg_replace('/^\s*LOCK\s+TABLES\b[^;]*;/mi', '', $sql) ?? $sql;
-        $sql = preg_replace('/^\s*UNLOCK\s+TABLES\s*;/mi', '', $sql) ?? $sql;
+        $statements = $this->statementSplitter->split($sql);
+        $this->statementSplitter->validateExecutableStatements($statements);
+
+        $logicalTarget = DatabaseSafetyGuard::assertExplicitRestoreTarget($explicitTarget);
+        $target = app(RestoreDatabaseTargetResolver::class)->resolvePhysicalName($logicalTarget);
+        DatabaseAccountGuard::assertAccountForOperation(DatabaseAccountGuard::OPERATION_RESTORE);
 
         $mysql = config('database.connections.mysql', []);
         $host = is_array($mysql) ? (string) ($mysql['host'] ?? '127.0.0.1') : '127.0.0.1';
@@ -63,114 +64,20 @@ class MysqlPdoDumpImporter implements SqlDumpImporter
         $pdo->exec("CREATE DATABASE `{$target}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         $pdo->exec("USE `{$target}`");
 
-        $this->runStatements($pdo, $sql);
-    }
-
-    private function runStatements(PDO $pdo, string $sql): void
-    {
-        foreach ($this->splitStatements($sql) as $statement) {
-            $pdo->exec($statement);
-        }
+        $this->runStatements($pdo, $statements);
     }
 
     /**
-     * Split on ';' outside of quotes / backticks so session payloads with ';' stay intact.
-     *
-     * @return list<string>
+     * @param  list<string>  $statements
      */
-    private function splitStatements(string $sql): array
+    private function runStatements(PDO $pdo, array $statements): void
     {
-        $statements = [];
-        $buffer = '';
-        $len = strlen($sql);
-        $inSingle = false;
-        $inDouble = false;
-        $inBacktick = false;
-
-        for ($i = 0; $i < $len; $i++) {
-            $ch = $sql[$i];
-            $prev = $i > 0 ? $sql[$i - 1] : '';
-
-            if ($inSingle) {
-                if ($ch === "'" && $prev !== '\\') {
-                    // MySQL escape: '' inside string
-                    if ($i + 1 < $len && $sql[$i + 1] === "'") {
-                        $buffer .= "''";
-                        $i++;
-                        continue;
-                    }
-                    $inSingle = false;
-                }
-                $buffer .= $ch;
+        foreach ($statements as $statement) {
+            if ($this->statementSplitter->shouldSkipStatement($statement)) {
                 continue;
             }
 
-            if ($inDouble) {
-                if ($ch === '"' && $prev !== '\\') {
-                    $inDouble = false;
-                }
-                $buffer .= $ch;
-                continue;
-            }
-
-            if ($inBacktick) {
-                if ($ch === '`') {
-                    $inBacktick = false;
-                }
-                $buffer .= $ch;
-                continue;
-            }
-
-            if ($ch === '-' && $i + 1 < $len && $sql[$i + 1] === '-') {
-                // Line comment until newline
-                while ($i < $len && $sql[$i] !== "\n") {
-                    $i++;
-                }
-                continue;
-            }
-
-            if ($ch === '/' && $i + 1 < $len && $sql[$i + 1] === '*') {
-                $i += 2;
-                while ($i + 1 < $len && ! ($sql[$i] === '*' && $sql[$i + 1] === '/')) {
-                    $i++;
-                }
-                $i++; // consume '/'
-                continue;
-            }
-
-            if ($ch === "'") {
-                $inSingle = true;
-                $buffer .= $ch;
-                continue;
-            }
-            if ($ch === '"') {
-                $inDouble = true;
-                $buffer .= $ch;
-                continue;
-            }
-            if ($ch === '`') {
-                $inBacktick = true;
-                $buffer .= $ch;
-                continue;
-            }
-
-            if ($ch === ';') {
-                $statement = trim($buffer);
-                $buffer = '';
-                if ($statement !== '' && ! str_starts_with($statement, '/*')) {
-                    $statements[] = $statement;
-                }
-                continue;
-            }
-
-            $buffer .= $ch;
+            $pdo->exec($statement);
         }
-
-        $tail = trim($buffer);
-        if ($tail !== '') {
-            $statements[] = $tail;
-        }
-
-        return $statements;
     }
 }
