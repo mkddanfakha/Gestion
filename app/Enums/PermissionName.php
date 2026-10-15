@@ -101,6 +101,9 @@ enum PermissionName: string
     case SalesUpdate = 'sales.update';
     case SalesDelete = 'sales.delete';
     case SalesInvoice = 'sales.invoice';
+    case SalesPaymentsView = 'sales.payments.view';
+    case SalesPaymentsRecord = 'sales.payments.record';
+    case SalesPaymentsVoid = 'sales.payments.void';
 
     // suppliers
     case SuppliersView = 'suppliers.view';

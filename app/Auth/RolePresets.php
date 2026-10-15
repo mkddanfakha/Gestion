@@ -153,6 +153,8 @@ final class RolePresets
             PermissionName::SalesUpdate,
             PermissionName::SalesDelete,
             PermissionName::SalesInvoice,
+            PermissionName::SalesPaymentsView,
+            PermissionName::SalesPaymentsRecord,
             PermissionName::QuotesView,
             PermissionName::QuotesCreate,
             PermissionName::QuotesUpdate,

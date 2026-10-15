@@ -357,7 +357,7 @@
                 <div v-if="errors.customer_id" class="invalid-feedback d-block">{{ errors.customer_id }}</div>
               </div>
 
-              <div class="sale-payment-panel border rounded p-3 mb-3">
+              <div v-if="mode === 'create'" class="sale-payment-panel border rounded p-3 mb-3">
                 <div class="d-flex align-items-center gap-2 mb-3">
                   <i class="bi bi-cash-coin text-success"></i>
                   <span class="fw-semibold">Paiement</span>
@@ -457,7 +457,53 @@
                 </div>
               </div>
 
-              <div v-if="form.payment_method === 'cash'" class="border rounded p-3 sale-payment-cash-panel mb-3">
+              <div v-if="mode === 'edit'" class="sale-payment-panel border rounded p-3 mb-3 bg-light">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                  <i class="bi bi-cash-coin text-success"></i>
+                  <span class="fw-semibold">Paiement</span>
+                </div>
+                <p class="small text-muted mb-3">
+                  Les règlements ne se modifient plus ici. Utilisez le bouton
+                  <strong>Encaisser</strong> sur la fiche vente.
+                </p>
+                <div class="sale-payment-row mb-2">
+                  <span class="sale-payment-row__label">Total encaissé</span>
+                  <span class="sale-payment-row__value fw-semibold text-primary">
+                    {{ formatCurrency(form.down_payment_amount || 0) }}
+                  </span>
+                </div>
+                <div class="sale-payment-row mb-2">
+                  <span class="sale-payment-row__label">Reste à payer</span>
+                  <span class="sale-payment-row__value fw-semibold text-warning">
+                    {{ formatCurrency(paymentState.remainingAmount) }}
+                  </span>
+                </div>
+                <div class="sale-payment-row mb-3">
+                  <span class="sale-payment-row__label">Statut</span>
+                  <span :class="paymentStatusBadgeClass">
+                    <i :class="paymentStatusIcon" class="me-1"></i>
+                    {{ paymentStatusLabel }}
+                  </span>
+                </div>
+
+                <div class="mb-0">
+                  <label class="form-label mb-1" :class="{ 'text-muted': isSalePaid }">
+                    Échéance
+                    <i v-if="isSalePaid" class="bi bi-lock-fill ms-1 text-muted" title="Vente payée"></i>
+                  </label>
+                  <input
+                    v-model="form.due_date"
+                    type="date"
+                    class="form-control"
+                    :class="{ 'is-invalid': errors.due_date }"
+                    :disabled="isSalePaid"
+                    :aria-disabled="isSalePaid"
+                  />
+                  <div v-if="errors.due_date" class="invalid-feedback">{{ errors.due_date }}</div>
+                </div>
+              </div>
+
+              <div v-if="mode === 'create' && form.payment_method === 'cash'" class="border rounded p-3 sale-payment-cash-panel mb-3">
                 <div class="mb-2">
                   <label class="form-label mb-1">Montant reçu (FCFA)</label>
                   <div class="input-group">

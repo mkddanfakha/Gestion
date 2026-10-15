@@ -421,6 +421,11 @@ final class PermissionCatalog
                 'delete' => ['Supprimer une vente', 'Permet de supprimer une vente.', 40],
                 'invoice' => ['Factures vente', 'Permet de télécharger ou imprimer les factures de vente.', 50],
             ],
+            'sales.payments' => [
+                'view' => ['Voir les règlements vente', 'Permet de consulter l\'historique des règlements clients.', 10],
+                'record' => ['Encaisser une vente', 'Permet d\'enregistrer un règlement sur une vente.', 20],
+                'void' => ['Annuler un règlement vente', 'Permet d\'annuler un règlement client (réservé aux administrateurs).', 30],
+            ],
             'suppliers' => [
                 'view' => ['Voir les fournisseurs', 'Permet de consulter les fournisseurs.', 10],
                 'create' => ['Créer un fournisseur', 'Permet de créer un nouveau fournisseur.', 20],

@@ -183,19 +183,24 @@
               <span>Remise:</span>
               <span class="fw-medium">{{ formatCurrency(sale.discount_amount || 0) }}</span>
             </div>
-            <div v-if="(sale.down_payment_amount || 0) > 0" class="d-flex justify-content-between mb-2">
-              <span>Acompte:</span>
-              <span class="fw-medium text-primary">{{ formatCurrency(sale.down_payment_amount || 0) }}</span>
+            <div class="d-flex justify-content-between mb-2">
+              <span>Total encaissé:</span>
+              <span class="fw-medium text-primary">{{ formatCurrency(paymentSummary.total_collected) }}</span>
             </div>
-            <div v-if="(sale.remaining_amount || 0) > 0" class="d-flex justify-content-between mb-2">
-              <span>Reste à payer:</span>
-              <span class="fw-medium text-warning">{{ formatCurrency(sale.remaining_amount || 0) }}</span>
+            <div class="d-flex justify-content-between mb-2">
+              <span>Solde restant:</span>
+              <span
+                class="fw-medium"
+                :class="paymentSummary.remaining_balance > 0 ? 'text-warning' : 'text-success'"
+              >
+                {{ formatCurrency(paymentSummary.remaining_balance) }}
+              </span>
             </div>
             <div class="d-flex justify-content-between mb-2">
               <span>Statut de paiement:</span>
               <span class="fw-medium">
-                <span :class="getPaymentStatusClass(sale.payment_status || 'paid')">
-                  {{ getPaymentStatusLabel(sale.payment_status || 'paid') }}
+                <span :class="getPaymentStatusClass(paymentSummary.payment_status || 'pending')">
+                  {{ getPaymentStatusLabel(paymentSummary.payment_status || 'pending') }}
                 </span>
               </span>
             </div>
@@ -207,13 +212,31 @@
           </div>
         </div>
 
+        <SalePaymentHistory
+          v-if="canViewPaymentHistory"
+          :transactions="paymentTransactions"
+          :ledger-blocked-message="paymentLedgerBlockedMessage"
+        />
+
         <!-- Actions rapides -->
         <div class="card mb-4">
           <div class="card-header">
             <h5 class="card-title mb-0">Actions rapides</h5>
           </div>
           <div class="card-body">
+            <div v-if="paymentLedgerBlockedMessage" class="alert alert-warning py-2 small mb-3">
+              {{ paymentLedgerBlockedMessage }}
+            </div>
             <div class="d-grid gap-2">
+              <button
+                v-if="canRecordPayment"
+                type="button"
+                class="btn btn-success"
+                @click="openCollectModal"
+              >
+                <i class="bi bi-cash-stack me-1"></i>
+                Encaisser
+              </button>
               <button
                 v-if="canPreviewInvoice"
                 type="button"
@@ -288,19 +311,29 @@
         </div>
       </div>
     </div>
+
+    <SalePaymentCollectModal
+      :show="collectModalOpen"
+      :sale-id="sale.id"
+      :max-amount="paymentSummary.remaining_balance"
+      @close="collectModalOpen = false"
+    />
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue'
+import SalePaymentCollectModal from '@/components/sales/SalePaymentCollectModal.vue'
+import SalePaymentHistory, { type SalePaymentTransactionRow } from '@/components/sales/SalePaymentHistory.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { useDocumentPdfPreview } from '@/composables/useDocumentPdfPreview'
 import { usePermissions } from '@/composables/usePermissions'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { formatDate, formatDateTime } from '@/utils/dateFormatter'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { getSalePaymentMethodLabel, getSalePaymentStatusLabel } from '@/utils/salePaymentLabels'
 
 const { success, error, confirm } = useSweetAlert()
 const { openFromUrl } = useDocumentPdfPreview()
@@ -310,6 +343,7 @@ const canPreviewInvoice = canAny('sales', ['invoice', 'create', 'update'])
 const isDownloading = ref(false)
 const isPrinting = ref(false)
 const isPreviewing = ref(false)
+const collectModalOpen = ref(false)
 
 interface Category {
   id: number
@@ -355,43 +389,61 @@ interface Sale {
   remaining_amount?: number
   payment_status?: string
   payment_method: string
+  status?: string
   created_at: string
   notes?: string
   customer?: Customer
   user?: User
   saleItems?: SaleItem[]
-  items_count?: number  // Ajout du champ items_count
+  items_count?: number
+}
+
+interface PaymentSummary {
+  total_amount: number
+  total_collected: number
+  remaining_balance: number
+  payment_status?: string | null
 }
 
 interface Props {
   sale: Sale
+  payment_summary?: PaymentSummary
+  can_record_payment?: boolean
+  can_view_payment_history?: boolean
+  payment_ledger_blocked_message?: string | null
+  payment_transactions?: SalePaymentTransactionRow[]
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  can_record_payment: false,
+  can_view_payment_history: false,
+  payment_ledger_blocked_message: null,
+  payment_transactions: () => [],
+})
 
-const getPaymentMethodLabel = (method?: string | null) => {
-  if (!method) {
-    return 'Non renseigné'
+const paymentSummary = computed<PaymentSummary>(() => {
+  if (props.payment_summary) {
+    return props.payment_summary
   }
 
-  const labels: Record<string, string> = {
-    cash: 'Espèces',
-    card: 'Carte',
-    bank_transfer: 'Virement bancaire',
-    check: 'Chèque',
-    orange_money: 'Orange Money',
-    wave: 'Wave'
+  return {
+    total_amount: props.sale.total_amount,
+    total_collected: props.sale.down_payment_amount ?? 0,
+    remaining_balance: props.sale.remaining_amount ?? props.sale.total_amount,
+    payment_status: props.sale.payment_status ?? 'pending',
   }
-  return labels[method] || method
-}
+})
 
-const getPaymentStatusLabel = (status: string) => {
-  const labels: Record<string, string> = {
-    'paid': 'Payé',
-    'partial': 'Paiement partiel',
-    'pending': 'En attente'
-  }
-  return labels[status] || status
+const canRecordPayment = computed(() => props.can_record_payment)
+const canViewPaymentHistory = computed(() => props.can_view_payment_history)
+const paymentTransactions = computed(() => props.payment_transactions ?? [])
+const paymentLedgerBlockedMessage = computed(() => props.payment_ledger_blocked_message)
+
+const getPaymentMethodLabel = getSalePaymentMethodLabel
+const getPaymentStatusLabel = getSalePaymentStatusLabel
+
+const openCollectModal = () => {
+  collectModalOpen.value = true
 }
 
 const getPaymentStatusClass = (status: string) => {

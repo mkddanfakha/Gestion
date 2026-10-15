@@ -40,6 +40,7 @@ export function route(name: string, params: any = {}) {
         'sales.edit': '/sales/{id}/edit',
         'sales.update': '/sales/{id}',
         'sales.destroy': '/sales/{id}',
+        'sales.payments.store': '/sales/{sale}/payments',
         'sales.invoice.download': '/sales/{sale}/invoice/download',
         'sales.invoice.print': '/sales/{sale}/invoice/print',
         'sales.invoice.preview': '/sales/invoice/preview',

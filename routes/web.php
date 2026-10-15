@@ -76,6 +76,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Ventes
     Route::resource('sales', SaleController::class);
+    Route::post('/sales/{sale}/payments', [\App\Http\Controllers\SalePaymentController::class, 'store'])
+        ->name('sales.payments.store');
     Route::get('/sales/{sale}/invoice/download', [SaleController::class, 'downloadInvoice'])->name('sales.invoice.download');
     Route::get('/sales/{sale}/invoice/print', [SaleController::class, 'printInvoice'])->name('sales.invoice.print');
     Route::post('/sales/invoice/preview', [DocumentPreviewController::class, 'saleInvoice'])->name('sales.invoice.preview');

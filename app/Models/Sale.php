@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PayableType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -74,6 +75,12 @@ class Sale extends Model
     public function saleItems(): HasMany
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    public function paymentTransactions(): HasMany
+    {
+        return $this->hasMany(PaymentTransaction::class, 'payable_id')
+            ->where('payable_type', PayableType::Sale);
     }
 
     /**

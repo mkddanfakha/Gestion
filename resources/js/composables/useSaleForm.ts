@@ -617,7 +617,7 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
   const validateForm = () => {
     const errors: Record<string, string> = {}
 
-    if (isPaymentMethodRequired.value && !form.payment_method) {
+    if (mode !== 'edit' && isPaymentMethodRequired.value && !form.payment_method) {
       errors.payment_method = 'Veuillez sélectionner un mode de paiement.'
     }
 
@@ -641,12 +641,14 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
       errors.discount_amount = 'Le montant de la remise ne peut pas être négatif'
     }
 
-    if (form.down_payment_amount < 0) {
-      errors.down_payment_amount = 'Le montant payé ne peut pas être négatif'
-    }
+    if (mode !== 'edit') {
+      if (form.down_payment_amount < 0) {
+        errors.down_payment_amount = 'Le montant payé ne peut pas être négatif'
+      }
 
-    if (form.down_payment_amount > totalAmount.value) {
-      errors.down_payment_amount = 'Le montant payé ne peut pas dépasser le montant total'
+      if (form.down_payment_amount > totalAmount.value) {
+        errors.down_payment_amount = 'Le montant payé ne peut pas dépasser le montant total'
+      }
     }
 
     form.items.forEach((item, index) => {
@@ -714,21 +716,31 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     }
   }
 
-  const buildPayload = (overrides: Record<string, unknown> = {}) => ({
-    customer_id: form.customer_id || null,
-    payment_method: form.payment_method || null,
-    notes: form.notes || null,
-    due_date: form.due_date || null,
-    tax_amount: taxEnabled.value ? form.tax_amount || 0 : 0,
-    discount_amount: discountEnabled.value ? form.discount_amount || 0 : 0,
-    down_payment_amount: overrides.down_payment_amount ?? effectiveDownPaymentAmount.value,
-    items: form.items.map((item) => ({
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-    })),
-    ...overrides,
-  })
+  const buildPayload = (overrides: Record<string, unknown> = {}) => {
+    const base = {
+      customer_id: form.customer_id || null,
+      notes: form.notes || null,
+      due_date: form.due_date || null,
+      tax_amount: taxEnabled.value ? form.tax_amount || 0 : 0,
+      discount_amount: discountEnabled.value ? form.discount_amount || 0 : 0,
+      items: form.items.map((item) => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+      })),
+    }
+
+    if (mode === 'edit') {
+      return { ...base, ...overrides }
+    }
+
+    return {
+      ...base,
+      payment_method: form.payment_method || null,
+      down_payment_amount: overrides.down_payment_amount ?? effectiveDownPaymentAmount.value,
+      ...overrides,
+    }
+  }
 
   const scrollToFirstError = () => {
     requestAnimationFrame(() => {
@@ -764,7 +776,7 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
       return false
     }
 
-    if (form.payment_method === 'cash' && cashReceivedAmount.value > 0) {
+    if (mode !== 'edit' && form.payment_method === 'cash' && cashReceivedAmount.value > 0) {
       if (cashReceivedAmount.value < cashAmountExpected.value) {
         error(`Le montant reçu doit être au moins égal à ${formatCurrency(cashAmountExpected.value)}.`)
         return false

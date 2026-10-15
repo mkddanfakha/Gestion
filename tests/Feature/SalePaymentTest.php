@@ -215,7 +215,7 @@ test('creating sale with partial payment requires payment method', function () {
         ->assertSessionHasErrors(['payment_method']);
 });
 
-test('updating sale payment amount recalculates status automatically', function () {
+test('collecting remaining balance via dedicated endpoint marks sale paid', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $product = createSaleTestProduct();
 
@@ -228,10 +228,10 @@ test('updating sale payment amount recalculates status automatically', function 
 
     expect($sale->payment_status)->toBe('partial');
 
-    $this->actingAs($admin)->put(route('sales.update', $sale->id), saleStorePayload($product, [
-        'down_payment_amount' => 100000,
+    $this->actingAs($admin)->post(route('sales.payments.store', $sale), [
+        'amount' => 50000,
         'payment_method' => 'wave',
-    ]))->assertRedirect();
+    ])->assertRedirect();
 
     $sale->refresh();
 

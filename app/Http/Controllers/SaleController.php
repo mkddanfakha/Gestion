@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Auth\AuthorizationService;
+use App\Enums\PayableType;
+use App\Enums\PermissionName;
+use App\Enums\PaymentTransactionStatus;
+use App\Models\PaymentTransaction;
 use App\Models\Sale;
 use App\Models\Product;
 use App\Models\Customer;
@@ -9,7 +14,9 @@ use App\Models\Company;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\ProductStockNotFoundException;
 use App\Services\ActivityLogger;
+use App\Exceptions\InvalidPaymentTransactionException;
 use App\Services\SalePaymentService;
+use App\Services\SalePaymentTransactionService;
 use App\Services\SaleStockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +29,7 @@ class SaleController extends Controller
 
     public function __construct(
         protected SaleStockService $saleStockService,
+        protected SalePaymentTransactionService $salePaymentTransactionService,
     ) {}
 
     /**
@@ -214,15 +222,15 @@ class SaleController extends Controller
                     'sale_number' => Sale::generateSaleNumber(),
                     'customer_id' => $validated['customer_id'] ?? null,
                     'user_id' => auth()->id(),
-                    'payment_method' => $paymentMethod,
+                    'payment_method' => null,
                     'notes' => $validated['notes'] ?? null,
                     'due_date' => $validated['due_date'] ?? null,
                     'subtotal' => $subtotal,
                     'tax_amount' => $taxAmount,
                     'discount_amount' => $discountAmount,
-                    'down_payment_amount' => $paymentState['down_payment_amount'],
-                    'remaining_amount' => $paymentState['remaining_amount'],
-                    'payment_status' => $paymentState['payment_status'],
+                    'down_payment_amount' => 0,
+                    'remaining_amount' => $totalAmount,
+                    'payment_status' => SalePaymentService::STATUS_PENDING,
                     'total_amount' => $totalAmount,
                     'status' => 'completed',
                 ]);
@@ -238,7 +246,16 @@ class SaleController extends Controller
 
                 $this->saleStockService->applySaleCreation($sale, $productQuantities);
 
-                return $sale;
+                if ($paymentState['down_payment_amount'] > 0 && $paymentMethod !== null) {
+                    $this->salePaymentTransactionService->recordInitialDownPaymentForNewSale(
+                        $sale,
+                        auth()->user(),
+                        $paymentState['down_payment_amount'],
+                        $paymentMethod,
+                    );
+                }
+
+                return $sale->fresh();
             });
         } catch (InsufficientStockException|ProductStockNotFoundException) {
             return back()->withErrors(
@@ -248,6 +265,8 @@ class SaleController extends Controller
                     $stockMessage,
                 ),
             )->withInput();
+        } catch (InvalidPaymentTransactionException $exception) {
+            return back()->withErrors(['down_payment_amount' => $exception->getMessage()])->withInput();
         }
 
         ActivityLogger::logCreate('Facture', $sale);
@@ -290,9 +309,97 @@ class SaleController extends Controller
         $saleData['saleItems'] = $saleItems->toArray();
         $saleData['items_count'] = $itemsCount;
         
-        return Inertia::render('Sales/Show', [
-            'sale' => $saleData,
-        ]);
+        return Inertia::render('Sales/Show', array_merge(
+            ['sale' => $saleData],
+            $this->paymentUiPayload($request, $sale),
+        ));
+    }
+
+    /**
+     * @return array{
+     *     payment_summary: array{
+     *         total_amount: float,
+     *         total_collected: float,
+     *         remaining_balance: float,
+     *         payment_status: string|null,
+     *     },
+     *     can_record_payment: bool,
+     *     can_view_payment_history: bool,
+     *     payment_ledger_blocked_message: string|null,
+     *     payment_transactions: list<array<string, mixed>>,
+     * }
+     */
+    protected function paymentUiPayload(Request $request, Sale $sale): array
+    {
+        $user = $request->user();
+        $authorization = app(AuthorizationService::class);
+
+        $summary = [
+            'total_amount' => round((float) $sale->total_amount, 2),
+            'total_collected' => round((float) $sale->down_payment_amount, 2),
+            'remaining_balance' => round((float) $sale->remaining_amount, 2),
+            'payment_status' => $sale->payment_status,
+        ];
+
+        $canViewHistory = $authorization->allows($user, PermissionName::SalesPaymentsView);
+        $canRecord = $authorization->allows($user, PermissionName::SalesPaymentsRecord);
+
+        $ledgerBlocked = null;
+
+        try {
+            $this->salePaymentTransactionService->assertPaymentLedgerAligned($sale);
+        } catch (InvalidPaymentTransactionException $exception) {
+            $ledgerBlocked = $exception->getMessage();
+        }
+
+        $canCollect = $canRecord
+            && $ledgerBlocked === null
+            && $sale->status !== 'cancelled'
+            && $summary['remaining_balance'] > SalePaymentTransactionService::MONEY_EPSILON;
+
+        $transactions = [];
+
+        if ($canViewHistory) {
+            $methodLabels = [
+                'cash' => 'Espèces',
+                'card' => 'Carte',
+                'bank_transfer' => 'Virement bancaire',
+                'check' => 'Chèque',
+                'orange_money' => 'Orange Money',
+                'wave' => 'Wave',
+            ];
+
+            $transactions = PaymentTransaction::query()
+                ->where('payable_type', PayableType::Sale)
+                ->where('payable_id', $sale->id)
+                ->where('status', PaymentTransactionStatus::Posted)
+                ->orderByDesc('paid_at')
+                ->orderByDesc('id')
+                ->get()
+                ->map(static function (PaymentTransaction $transaction) use ($methodLabels) {
+                    $origin = $transaction->origin?->value ?? 'recorded';
+
+                    return [
+                        'id' => $transaction->id,
+                        'amount' => round((float) $transaction->amount, 2),
+                        'paid_at' => $transaction->paid_at?->toIso8601String(),
+                        'payment_method' => $transaction->payment_method,
+                        'payment_method_label' => $methodLabels[$transaction->payment_method] ?? $transaction->payment_method,
+                        'reference' => $transaction->reference,
+                        'origin' => $origin,
+                        'origin_label' => $origin === 'historical_backfill' ? 'Reprise historique' : 'Encaissement',
+                    ];
+                })
+                ->all();
+        }
+
+        return [
+            'payment_summary' => $summary,
+            'can_record_payment' => $canCollect,
+            'can_view_payment_history' => $canViewHistory,
+            'payment_ledger_blocked_message' => $ledgerBlocked,
+            'payment_transactions' => $transactions,
+        ];
     }
 
     /**
@@ -353,14 +460,18 @@ class SaleController extends Controller
         }
 
         $oldPaymentStatus = $sale->payment_status;
-        
+
+        try {
+            $this->salePaymentTransactionService->assertPaymentLedgerAligned($sale);
+        } catch (InvalidPaymentTransactionException $exception) {
+            return back()->withErrors(['down_payment_amount' => $exception->getMessage()])->withInput();
+        }
+
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
-            'payment_method' => 'nullable|string|in:cash,card,bank_transfer,check,orange_money,wave',
             'notes' => 'nullable|string|max:1000',
             'tax_amount' => 'nullable|numeric|min:0',
             'discount_amount' => 'nullable|numeric|min:0',
-            'down_payment_amount' => 'nullable|numeric|min:0',
             'due_date' => 'nullable|date',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
@@ -415,27 +526,18 @@ class SaleController extends Controller
 
         $taxAmount = $validated['tax_amount'] ?? 0;
         $discountAmount = $validated['discount_amount'] ?? 0;
-        $downPaymentAmount = $validated['down_payment_amount'] ?? 0;
         $totalAmount = $subtotal + $taxAmount - $discountAmount;
 
-        $paymentState = SalePaymentService::calculatePaymentState(
-            $totalAmount,
-            $downPaymentAmount,
+        $postedPaid = $this->salePaymentTransactionService->sumPostedAmount(
+            \App\Enums\PayableType::Sale,
+            (int) $sale->id,
         );
 
-        $paymentMethodError = SalePaymentService::paymentMethodValidationMessage(
-            $validated['payment_method'] ?? null,
-            $paymentState['down_payment_amount'],
-        );
-
-        if ($paymentMethodError) {
-            return back()->withErrors(['payment_method' => $paymentMethodError])->withInput();
+        if ($totalAmount + SalePaymentTransactionService::MONEY_EPSILON < $postedPaid) {
+            return back()->withErrors([
+                'items' => 'Le total de la vente ne peut pas être inférieur au montant déjà encaissé ('.number_format($postedPaid, 0, ',', ' ').' FCFA).',
+            ])->withInput();
         }
-
-        $paymentMethod = SalePaymentService::resolvePaymentMethod(
-            $validated['payment_method'] ?? null,
-            $paymentState['down_payment_amount'],
-        );
 
         try {
             DB::transaction(function () use (
@@ -445,8 +547,6 @@ class SaleController extends Controller
                 $taxAmount,
                 $discountAmount,
                 $totalAmount,
-                $paymentState,
-                $paymentMethod,
                 $oldQuantities,
                 $newQuantities,
             ) {
@@ -454,15 +554,11 @@ class SaleController extends Controller
 
                 $sale->update([
                     'customer_id' => $validated['customer_id'] ?? null,
-                    'payment_method' => $paymentMethod,
                     'notes' => $validated['notes'] ?? null,
                     'due_date' => $validated['due_date'] ?? null,
                     'subtotal' => $subtotal,
                     'tax_amount' => $taxAmount,
                     'discount_amount' => $discountAmount,
-                    'down_payment_amount' => $paymentState['down_payment_amount'],
-                    'remaining_amount' => $paymentState['remaining_amount'],
-                    'payment_status' => $paymentState['payment_status'],
                     'total_amount' => $totalAmount,
                 ]);
 
@@ -476,6 +572,8 @@ class SaleController extends Controller
                         'total_price' => $item['quantity'] * $item['unit_price'],
                     ]);
                 }
+
+                $this->salePaymentTransactionService->syncSalePaymentAggregates($sale->fresh());
             });
         } catch (InsufficientStockException|ProductStockNotFoundException) {
             return back()->withErrors(
@@ -489,7 +587,7 @@ class SaleController extends Controller
 
         $sale->refresh();
 
-        if ($paymentState['payment_status'] === SalePaymentService::STATUS_PAID && $oldPaymentStatus !== SalePaymentService::STATUS_PAID) {
+        if ($sale->payment_status === SalePaymentService::STATUS_PAID && $oldPaymentStatus !== SalePaymentService::STATUS_PAID) {
             ActivityLogger::logPayment($sale);
         } else {
             ActivityLogger::logUpdate('Facture', $sale);
@@ -607,4 +705,5 @@ class SaleController extends Controller
 
         return $errors;
     }
+
 }
