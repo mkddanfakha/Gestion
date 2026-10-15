@@ -475,7 +475,7 @@
                           Télécharger
                         </button>
                         <button
-                          v-if="canRestore('backups') && canRestoreBackup(backup)"
+                          v-if="RESTORE_UI_ENABLED && canRestore('backups') && canRestoreBackup(backup)"
                           type="button"
                           class="btn btn-sm btn-outline-warning"
                           :disabled="processing || operationsBusy"
@@ -558,7 +558,7 @@
                     Télécharger
                   </button>
                   <button
-                    v-if="canRestore('backups') && canRestoreBackup(backup)"
+                    v-if="RESTORE_UI_ENABLED && canRestore('backups') && canRestoreBackup(backup)"
                     type="button"
                     class="btn btn-sm btn-outline-warning"
                     :disabled="processing || operationsBusy"
@@ -931,6 +931,9 @@ import { usePermissions } from '@/composables/usePermissions'
 import Swal from 'sweetalert2'
 
 const { canCreate, canDownload, canDelete, canRestore } = usePermissions()
+
+/** Temporary: hide restore entry points in the UI; server restore API unchanged. */
+const RESTORE_UI_ENABLED = false
 
 type BackupType = 'database' | 'full' | 'unknown' | string | null
 type BackupStatus = 'valid' | 'invalid' | string | null
