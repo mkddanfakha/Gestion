@@ -21,10 +21,11 @@ return new class extends Migration
             $table->string('reference')->nullable();
             $table->text('note')->nullable();
             $table->string('origin', 32)->default('recorded');
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            // NIANE / schéma MyISAM : pas de FK SQL vers users (BIGINT UNSIGNED côté users.id).
+            $table->unsignedBigInteger('user_id');
             $table->string('status', 16)->default('posted');
             $table->timestamp('voided_at')->nullable();
-            $table->foreignId('voided_by_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->unsignedBigInteger('voided_by_user_id')->nullable();
             $table->text('void_reason')->nullable();
             $table->string('idempotency_key', 128)->nullable();
             $table->timestamps();
@@ -32,6 +33,7 @@ return new class extends Migration
             $table->index(['payable_type', 'payable_id', 'status']);
             $table->index(['paid_at']);
             $table->index(['user_id']);
+            $table->index(['voided_by_user_id']);
             $table->unique('idempotency_key');
         });
     }
