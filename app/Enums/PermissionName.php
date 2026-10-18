@@ -105,6 +105,9 @@ enum PermissionName: string
     case SalesPaymentsRecord = 'sales.payments.record';
     case SalesPaymentsVoid = 'sales.payments.void';
 
+    // treasury
+    case TreasuryView = 'treasury.view';
+
     // suppliers
     case SuppliersView = 'suppliers.view';
     case SuppliersCreate = 'suppliers.create';

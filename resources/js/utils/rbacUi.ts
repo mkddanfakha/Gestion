@@ -52,6 +52,8 @@ export const DEFAULT_MODULE_LABELS: Record<string, string> = {
   inventory: 'Inventaire',
   backups: 'Sauvegardes',
   'user-activities': 'Activité des utilisateurs',
+  treasury: 'Trésorerie',
+  'sales.payments': 'Règlements clients',
 }
 
 /** Classification UI sensible (documentée) — indépendante du backend. */

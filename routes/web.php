@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\RolesPermissionsController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\UserActivityController;
+use App\Http\Controllers\TreasuryController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -143,6 +144,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/company/signature', [CompanyController::class, 'deleteSignature'])->name('company.signature.delete');
     Route::post('/company/stamp', [CompanyController::class, 'uploadStamp'])->name('company.stamp.upload');
     Route::delete('/company/stamp', [CompanyController::class, 'deleteStamp'])->name('company.stamp.delete');
+
+    Route::get('/treasury', [TreasuryController::class, 'index'])->name('treasury.index');
 
     Route::get('/user-activities', [UserActivityController::class, 'index'])->name('user-activities.index');
     Route::get('/user-activities/{type}/{id}', [UserActivityController::class, 'detail'])

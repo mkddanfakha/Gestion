@@ -7,6 +7,7 @@ use App\Auth\AssignablePermissionResolver;
 use App\Auth\AuthorizationService;
 use App\Auth\LastAdminProtectionException;
 use App\Auth\RbacAuditService;
+use App\Auth\RbacUiPresenter;
 use App\Auth\RolePresets;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -68,6 +69,7 @@ class UserController extends Controller
     {
         return Inertia::render('Admin/Users/Create', [
             'permissionsByResource' => AssignablePermissionResolver::adminGridByResource(),
+            'moduleLabels' => RbacUiPresenter::moduleLabels(),
             'rolePresets' => self::rolePresetsPayload(),
         ]);
     }
@@ -164,6 +166,7 @@ class UserController extends Controller
         return Inertia::render('Admin/Users/Edit', [
             'user' => $user,
             'permissionsByResource' => AssignablePermissionResolver::adminGridByResource(),
+            'moduleLabels' => RbacUiPresenter::moduleLabels(),
             'userPermissionIds' => $userPermissionIds,
             'rolePresets' => self::rolePresetsPayload(),
             'isLastActiveAdmin' => $this->adminProtection->isLastAdmin($user),

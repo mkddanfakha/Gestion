@@ -26,7 +26,19 @@ final class RbacUiPresenter
         'inventory' => 'Inventaire',
         'backups' => 'Sauvegardes',
         'user-activities' => 'Activité des utilisateurs',
+        'treasury' => 'Trésorerie',
+        'sales.payments' => 'Règlements clients',
     ];
+
+    /**
+     * Libellés FR des modules RBAC pour l’UI admin (Utilisateurs, Rôles & permissions).
+     *
+     * @return array<string, string>
+     */
+    public static function moduleLabels(): array
+    {
+        return self::MODULE_LABELS;
+    }
 
     private const ROLE_META = [
         User::ROLE_ADMIN => [

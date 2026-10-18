@@ -108,6 +108,16 @@
               <span class="nav-label">Entreprise</span>
             </Link>
           </li>
+          <li v-if="canView('treasury')" class="nav-item">
+            <Link
+              :href="route('treasury.index')"
+              class="nav-link nav-link-pill"
+              :class="{ active: $page.url.startsWith('/treasury') }"
+            >
+              <span class="nav-icon-wrap nav-icon-wrap--company"><i class="bi bi-cash-stack"></i></span>
+              <span class="nav-label">Trésorerie</span>
+            </Link>
+          </li>
           <li v-if="canView('user-activities')" class="nav-item">
             <Link
               :href="route('user-activities.index')"

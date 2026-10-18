@@ -119,6 +119,7 @@ export function route(name: string, params: any = {}) {
         'inventory.close': '/inventory/{session}/close',
         'inventory.export.pdf': '/inventory/{session}/export/pdf',
         'inventory.export.excel': '/inventory/{session}/export/excel',
+        'treasury.index': '/treasury',
         'user-activities.index': '/user-activities',
         'user-activities.detail': '/user-activities/{type}/{id}',
         'company.edit': '/company',

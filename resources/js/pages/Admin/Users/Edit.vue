@@ -217,6 +217,7 @@ interface Props {
     is_active: boolean
   }
   permissionsByResource: Record<string, Permission[]>
+  moduleLabels?: Record<string, string>
   userPermissionIds: number[]
   rolePresets: {
     vendeur: string[]
@@ -235,7 +236,10 @@ const canonicalPermissionsByResource = computed(() =>
   filterCanonicalPermissionGrid(props.permissionsByResource),
 )
 
-const moduleLabels = DEFAULT_MODULE_LABELS
+const moduleLabels = computed(() => ({
+  ...DEFAULT_MODULE_LABELS,
+  ...(props.moduleLabels ?? {}),
+}))
 
 const flatCanonicalPermissions = computed<RbacPermission[]>(() => {
   const items: RbacPermission[] = []

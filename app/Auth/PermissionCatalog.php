@@ -422,9 +422,16 @@ final class PermissionCatalog
                 'invoice' => ['Factures vente', 'Permet de télécharger ou imprimer les factures de vente.', 50],
             ],
             'sales.payments' => [
-                'view' => ['Voir les règlements vente', 'Permet de consulter l\'historique des règlements clients.', 10],
-                'record' => ['Encaisser une vente', 'Permet d\'enregistrer un règlement sur une vente.', 20],
-                'void' => ['Annuler un règlement vente', 'Permet d\'annuler un règlement client (réservé aux administrateurs).', 30],
+                'view' => ['Consulter les règlements clients', 'Permet de consulter l\'historique des règlements clients.', 10],
+                'record' => ['Enregistrer un règlement client', 'Permet d\'enregistrer un règlement sur une vente.', 20],
+                'void' => ['Annuler un règlement client', 'Permet d\'annuler un règlement client (réservé aux administrateurs).', 30],
+            ],
+            'treasury' => [
+                'view' => [
+                    'Consulter la trésorerie',
+                    'Permet de consulter les mouvements de trésorerie (encaissements et dépenses) dans le périmètre autorisé.',
+                    10,
+                ],
             ],
             'suppliers' => [
                 'view' => ['Voir les fournisseurs', 'Permet de consulter les fournisseurs.', 10],

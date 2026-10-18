@@ -165,6 +165,7 @@ final class RolePresets
             PermissionName::CustomersView,
             PermissionName::CustomersCreate,
             PermissionName::CustomersUpdate,
+            PermissionName::TreasuryView,
         ]);
     }
 
@@ -222,6 +223,7 @@ final class RolePresets
             PermissionName::InventoryClose,
             PermissionName::InventoryExport,
             PermissionName::UserActivitiesView,
+            PermissionName::TreasuryView,
         ]);
     }
 

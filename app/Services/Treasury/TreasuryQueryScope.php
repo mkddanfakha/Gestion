@@ -1,0 +1,17 @@
+<?php
+
+namespace App\Services\Treasury;
+
+use App\Models\User;
+
+/**
+ * Périmètre RBAC pour la lecture trésorerie (ventes / dépenses visibles).
+ */
+final readonly class TreasuryQueryScope
+{
+    public function __construct(
+        public User $user,
+        public bool $includeSalePayments,
+        public bool $includeExpenses,
+    ) {}
+}
