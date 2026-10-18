@@ -325,6 +325,7 @@ class SaleController extends Controller
      *     },
      *     can_record_payment: bool,
      *     can_view_payment_history: bool,
+     *     can_void_payment: bool,
      *     payment_ledger_blocked_message: string|null,
      *     payment_transactions: list<array<string, mixed>>,
      * }
@@ -343,6 +344,7 @@ class SaleController extends Controller
 
         $canViewHistory = $authorization->allows($user, PermissionName::SalesPaymentsView);
         $canRecord = $authorization->allows($user, PermissionName::SalesPaymentsRecord);
+        $canVoid = $authorization->allows($user, PermissionName::SalesPaymentsVoid);
 
         $ledgerBlocked = null;
 
@@ -372,12 +374,16 @@ class SaleController extends Controller
             $transactions = PaymentTransaction::query()
                 ->where('payable_type', PayableType::Sale)
                 ->where('payable_id', $sale->id)
-                ->where('status', PaymentTransactionStatus::Posted)
+                ->whereIn('status', [
+                    PaymentTransactionStatus::Posted,
+                    PaymentTransactionStatus::Voided,
+                ])
                 ->orderByDesc('paid_at')
                 ->orderByDesc('id')
                 ->get()
                 ->map(static function (PaymentTransaction $transaction) use ($methodLabels) {
                     $origin = $transaction->origin?->value ?? 'recorded';
+                    $status = $transaction->status?->value ?? PaymentTransactionStatus::Posted->value;
 
                     return [
                         'id' => $transaction->id,
@@ -388,6 +394,9 @@ class SaleController extends Controller
                         'reference' => $transaction->reference,
                         'origin' => $origin,
                         'origin_label' => $origin === 'historical_backfill' ? 'Reprise historique' : 'Encaissement',
+                        'status' => $status,
+                        'void_reason' => $transaction->void_reason,
+                        'voided_at' => $transaction->voided_at?->toIso8601String(),
                     ];
                 })
                 ->all();
@@ -397,6 +406,7 @@ class SaleController extends Controller
             'payment_summary' => $summary,
             'can_record_payment' => $canCollect,
             'can_view_payment_history' => $canViewHistory,
+            'can_void_payment' => $canVoid && $ledgerBlocked === null,
             'payment_ledger_blocked_message' => $ledgerBlocked,
             'payment_transactions' => $transactions,
         ];

@@ -41,6 +41,7 @@ export function route(name: string, params: any = {}) {
         'sales.update': '/sales/{id}',
         'sales.destroy': '/sales/{id}',
         'sales.payments.store': '/sales/{sale}/payments',
+        'sales.payments.void': '/sales/payments/{payment}/void',
         'sales.invoice.download': '/sales/{sale}/invoice/download',
         'sales.invoice.print': '/sales/{sale}/invoice/print',
         'sales.invoice.preview': '/sales/invoice/preview',

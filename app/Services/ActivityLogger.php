@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\ActivityLog;
+use App\Models\PaymentTransaction;
+use App\Models\Sale;
 use App\Models\User;
 use App\Services\Audit\ChangeDetector;
 use Illuminate\Database\Eloquent\Model;
@@ -130,6 +132,28 @@ class ActivityLogger
             'Paiement',
             sprintf('a enregistré le paiement de la facture %s', $label),
             $subject,
+            oldValues: $changes['old_values'],
+            newValues: $changes['new_values'],
+        );
+    }
+
+    public static function logPaymentVoid(Sale $sale, PaymentTransaction $transaction): ActivityLog
+    {
+        $label = ActivityLog::resolveSubjectLabel($sale);
+        $changes = ChangeDetector::detectChanges($sale);
+        $amount = number_format((float) $transaction->amount, 2, ',', ' ');
+        $reason = trim((string) ($transaction->void_reason ?? ''));
+
+        return self::log(
+            ActivityLog::ACTION_CANCEL,
+            'Paiement',
+            sprintf(
+                'a annulé un règlement de %s FCFA sur la facture %s (motif : %s)',
+                $amount,
+                $label,
+                $reason !== '' ? $reason : '—',
+            ),
+            $sale,
             oldValues: $changes['old_values'],
             newValues: $changes['new_values'],
         );

@@ -216,6 +216,7 @@
           v-if="canViewPaymentHistory"
           :transactions="paymentTransactions"
           :ledger-blocked-message="paymentLedgerBlockedMessage"
+          :can-void-payment="canVoidPayment"
         />
 
         <!-- Actions rapides -->
@@ -410,6 +411,7 @@ interface Props {
   payment_summary?: PaymentSummary
   can_record_payment?: boolean
   can_view_payment_history?: boolean
+  can_void_payment?: boolean
   payment_ledger_blocked_message?: string | null
   payment_transactions?: SalePaymentTransactionRow[]
 }
@@ -417,6 +419,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   can_record_payment: false,
   can_view_payment_history: false,
+  can_void_payment: false,
   payment_ledger_blocked_message: null,
   payment_transactions: () => [],
 })
@@ -436,6 +439,7 @@ const paymentSummary = computed<PaymentSummary>(() => {
 
 const canRecordPayment = computed(() => props.can_record_payment)
 const canViewPaymentHistory = computed(() => props.can_view_payment_history)
+const canVoidPayment = computed(() => props.can_void_payment)
 const paymentTransactions = computed(() => props.payment_transactions ?? [])
 const paymentLedgerBlockedMessage = computed(() => props.payment_ledger_blocked_message)
 
