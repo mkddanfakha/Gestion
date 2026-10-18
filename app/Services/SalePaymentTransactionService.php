@@ -90,9 +90,7 @@ class SalePaymentTransactionService
                 throw new InvalidPaymentTransactionException('Cette vente est déjà entièrement réglée.');
             }
 
-            $paidAt = isset($payload['paid_at'])
-                ? \Illuminate\Support\Carbon::parse($payload['paid_at'])
-                : now();
+            $paidAt = $this->resolvePaidAt($payload['paid_at'] ?? null);
 
             $origin = $payload['origin'] ?? PaymentTransactionOrigin::Recorded;
 
@@ -315,6 +313,18 @@ class SalePaymentTransactionService
         if (round((float) $sale->total_amount, 2) <= 0) {
             throw new InvalidPaymentTransactionException('Cette vente n\'a pas de montant à régler.');
         }
+    }
+
+    /**
+     * datetime-local du frontend : composants calendaires UTC sans offset (aligné PAYMENT_TIMEZONE).
+     */
+    private function resolvePaidAt(mixed $paidAt): \Illuminate\Support\Carbon
+    {
+        if ($paidAt === null || $paidAt === '') {
+            return now('UTC');
+        }
+
+        return \Illuminate\Support\Carbon::parse($paidAt, 'UTC');
     }
 
     private function validateAmountAndMethod(float $amount, string $paymentMethod): void

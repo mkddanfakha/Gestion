@@ -133,7 +133,7 @@ import { computed, ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { formatCurrency } from '@/utils/currencyFormatter'
-import { formatDateTime } from '@/utils/dateFormatter'
+import { formatPaymentDateTime } from '@/utils/paymentDateTime'
 
 export interface SalePaymentTransactionRow {
   id: number
@@ -180,7 +180,7 @@ function formatPaidAt(value: string | null): string {
     return '—'
   }
 
-  return formatDateTime(value)
+  return formatPaymentDateTime(value)
 }
 
 function openVoidModal(transaction: SalePaymentTransactionRow): void {

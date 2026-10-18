@@ -171,6 +171,7 @@ import { router } from '@inertiajs/vue3'
 import { reactive } from 'vue'
 import { route } from '@/lib/routes'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { formatPaymentDateTime } from '@/utils/paymentDateTime'
 
 interface MovementRow {
   movement_key: string
@@ -239,15 +240,11 @@ const clearFilters = () => {
 }
 
 const formatDate = (iso: string): string => {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  if (!iso) {
+    return '—'
+  }
+
+  return formatPaymentDateTime(iso)
 }
 
 const formatSignedAmount = (amount: number): string => {

@@ -61,7 +61,7 @@
             </div>
 
             <div class="mb-3">
-              <label class="form-label" for="sale-payment-paid-at">Date et heure du règlement</label>
+              <label class="form-label" for="sale-payment-paid-at">Date et heure du règlement (UTC)</label>
               <input
                 id="sale-payment-paid-at"
                 v-model="form.paid_at"
@@ -116,6 +116,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { formatPaymentDateTimeForInput } from '@/utils/paymentDateTime'
 import { SALE_PAYMENT_METHOD_LABELS } from '@/utils/salePaymentLabels'
 
 const props = defineProps<{
@@ -157,11 +158,8 @@ const canSubmit = computed(() => {
   )
 })
 
-function defaultPaidAtLocal(): string {
-  const now = new Date()
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
-
-  return now.toISOString().slice(0, 16)
+function defaultPaidAtUtc(): string {
+  return formatPaymentDateTimeForInput(new Date())
 }
 
 function resetFormState(): void {
@@ -169,7 +167,7 @@ function resetFormState(): void {
   form.clearErrors()
   form.amount = props.maxAmount > 0 ? props.maxAmount : 0
   form.payment_method = ''
-  form.paid_at = defaultPaidAtLocal()
+  form.paid_at = defaultPaidAtUtc()
   form.reference = ''
   form.note = ''
 }
