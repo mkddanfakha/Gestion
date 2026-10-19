@@ -158,17 +158,10 @@ export const useRealtimeNotifications = () => {
     }
 
     try {
-      // Vérifier que Echo est disponible
       if (!echo) {
-        console.error('Echo n\'est pas disponible. Vérifiez que Pusher est correctement configuré.')
-        console.error('Vérifiez que VITE_PUSHER_APP_KEY est défini dans .env et que les assets ont été recompilés avec npm run build')
-        return
-      }
-      
-      // Vérifier que la clé Pusher est définie
-      const pusherKey = (window as any).Echo?.connector?.pusher?.key
-      if (!pusherKey) {
-        console.error('La clé Pusher n\'est pas configurée. Vérifiez VITE_PUSHER_APP_KEY dans .env et recompilez les assets.')
+        console.warn(
+          'Notifications temps réel désactivées : Echo/Pusher non configuré (VITE_PUSHER_APP_KEY absent du build).',
+        )
         return
       }
       
@@ -240,6 +233,11 @@ export const useRealtimeNotifications = () => {
 
   const stopListening = () => {
     if (!userId || !isListening.value) return
+
+    if (!echo) {
+      isListening.value = false
+      return
+    }
 
     try {
       echo.leave(`user.${userId}.notifications`)

@@ -1,42 +1,59 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
-// Déclarer Pusher comme global pour Laravel Echo
-window.Pusher = Pusher;
+import { buildEchoOptions, resolvePusherClientConfig } from './echo/pusherConfig';
 
-const pusherKey = import.meta.env.VITE_PUSHER_APP_KEY;
-const pusherCluster = import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1';
+type EchoInstance = InstanceType<typeof Echo>;
 
-// Vérifier si Pusher est configuré
-if (!pusherKey) {
-    console.error('VITE_PUSHER_APP_KEY n\'est pas défini. Les notifications en temps réel ne fonctionneront pas.')
-    console.error('Solution: Ajoutez VITE_PUSHER_APP_KEY dans votre .env et recompilez les assets avec npm run build')
+declare global {
+    interface Window {
+        Pusher: typeof Pusher;
+        Echo: EchoInstance | null;
+    }
 }
 
-const echo = new Echo({
-    broadcaster: 'pusher',
-    key: pusherKey,
-    cluster: pusherCluster,
-    forceTLS: true,
-    encrypted: true,
-    authEndpoint: '/broadcasting/auth',
-    auth: {
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        },
-    },
-    enabledTransports: ['ws', 'wss'],
-});
-
-// Écouter les événements de connexion pour le diagnostic
-echo.connector.pusher.connection.bind('error', (error: any) => {
-    console.error('Erreur de connexion Pusher:', error)
-    if (error.error?.data?.code === 4001) {
-        console.error('Erreur d\'authentification: Vérifiez que la route /broadcasting/auth est accessible et que vous êtes authentifié')
+function readCsrfToken(): string {
+    if (typeof document === 'undefined') {
+        return '';
     }
-});
 
-// Logs de connexion supprimés pour réduire le bruit dans la console
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
+function createEchoInstance(key: string, cluster: string): EchoInstance {
+    if (typeof window !== 'undefined') {
+        window.Pusher = Pusher;
+    }
+
+    const echo = new Echo(buildEchoOptions(key, cluster, readCsrfToken()));
+
+    echo.connector.pusher.connection.bind('error', (error: unknown) => {
+        console.error('Erreur de connexion Pusher:', error);
+        const pusherError = error as { error?: { data?: { code?: number } } };
+        if (pusherError.error?.data?.code === 4001) {
+            console.error(
+                "Erreur d'authentification: Vérifiez que la route /broadcasting/auth est accessible et que vous êtes authentifié",
+            );
+        }
+    });
+
+    return echo;
+}
+
+const pusherConfig = resolvePusherClientConfig(
+    import.meta.env.VITE_PUSHER_APP_KEY,
+    import.meta.env.VITE_PUSHER_APP_CLUSTER,
+);
+
+let echo: EchoInstance | null = null;
+
+if (!pusherConfig) {
+    console.warn(
+        "VITE_PUSHER_APP_KEY n'est pas défini : les notifications en temps réel sont désactivées. " +
+            'Ajoutez VITE_PUSHER_APP_KEY dans votre .env et recompilez les assets avec npm run build.',
+    );
+} else {
+    echo = createEchoInstance(pusherConfig.key, pusherConfig.cluster);
+}
 
 export default echo;
-

@@ -12,17 +12,9 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 // Bootstrap JavaScript
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
-// Laravel Echo pour les notifications en temps réel avec Pusher
+// Laravel Echo pour les notifications en temps réel avec Pusher (optionnel si VITE_PUSHER_APP_KEY absent)
 import echo from './echo';
 import { updateCsrfMetaToken } from './lib/csrf';
-
-// Déclarer Echo comme global
-declare global {
-    interface Window {
-        Pusher: any;
-        Echo: typeof echo;
-    }
-}
 
 window.Echo = echo;
 

@@ -25,7 +25,7 @@ export function createPusherNotificationProvider(userId: number): RealtimeProvid
 
             return () => {
                 try {
-                    echo.leave(channelName)
+                    echo?.leave(channelName)
                 } catch {
                     // ignore
                 }
