@@ -1,0 +1,1 @@
+import{q as r}from"./index-CMWG4mbA.js";const o=t=>({url:o.url(t),method:"post"});o.definition={methods:["post"],url:"/two-factor-challenge"};o.url=t=>o.definition.url+r(t);o.post=t=>({url:o.url(t),method:"post"});const e={store:Object.assign(o,o)};export{e as l,o as s};
