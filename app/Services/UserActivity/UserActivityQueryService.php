@@ -27,6 +27,10 @@ class UserActivityQueryService
 
     public const TYPE_INVENTORY = 'inventory';
 
+    public const TYPE_SALE_PAYMENT = 'sale_payment';
+
+    public const TYPE_SALE_PAYMENT_VOID = 'sale_payment_void';
+
     /**
      * @return array<string, string>
      */
@@ -34,6 +38,8 @@ class UserActivityQueryService
     {
         return [
             self::TYPE_SALE => 'Ventes',
+            self::TYPE_SALE_PAYMENT => 'Règlements clients',
+            self::TYPE_SALE_PAYMENT_VOID => 'Annulations de règlement',
             self::TYPE_EXPENSE => 'Dépenses',
             self::TYPE_QUOTE => 'Devis',
             self::TYPE_PURCHASE_ORDER => 'Bons de commande',
@@ -232,7 +238,8 @@ class UserActivityQueryService
                     customers.name as party_name,
                     sales.total_amount as amount,
                     sales.status as status,
-                    COALESCE(sales.sale_date, sales.created_at) as occurred_at
+                    COALESCE(sales.sale_date, sales.created_at) as occurred_at,
+                    sales.id as route_subject_id
                 ");
             $this->applyBranchFilters(
                 $query,
@@ -240,6 +247,81 @@ class UserActivityQueryService
                 'COALESCE(sales.sale_date, sales.created_at)',
                 'sales.user_id',
                 ['sales.sale_number', 'customers.name', 'users.name'],
+            );
+            $parts[] = $query;
+        }
+
+        if ($include(self::TYPE_SALE_PAYMENT)) {
+            $query = DB::table('payment_transactions')
+                ->join('sales', function ($join) {
+                    $join->on('sales.id', '=', 'payment_transactions.payable_id')
+                        ->where('payment_transactions.payable_type', '=', 'sale');
+                })
+                ->leftJoin('customers', 'customers.id', '=', 'sales.customer_id')
+                ->leftJoin('users', 'users.id', '=', 'payment_transactions.user_id')
+                ->whereNotNull('payment_transactions.paid_at')
+                ->selectRaw("
+                    payment_transactions.id as subject_id,
+                    'sale_payment' as activity_type,
+                    payment_transactions.user_id as user_id,
+                    users.name as user_name,
+                    sales.sale_number as reference,
+                    customers.name as party_name,
+                    payment_transactions.amount as amount,
+                    payment_transactions.payment_method as status,
+                    payment_transactions.paid_at as occurred_at,
+                    sales.id as route_subject_id
+                ");
+            $this->applyBranchFilters(
+                $query,
+                $filters,
+                'payment_transactions.paid_at',
+                'payment_transactions.user_id',
+                [
+                    'sales.sale_number',
+                    'customers.name',
+                    'users.name',
+                    'payment_transactions.reference',
+                    'payment_transactions.payment_method',
+                ],
+            );
+            $parts[] = $query;
+        }
+
+        if ($include(self::TYPE_SALE_PAYMENT_VOID)) {
+            $query = DB::table('payment_transactions')
+                ->join('sales', function ($join) {
+                    $join->on('sales.id', '=', 'payment_transactions.payable_id')
+                        ->where('payment_transactions.payable_type', '=', 'sale');
+                })
+                ->leftJoin('customers', 'customers.id', '=', 'sales.customer_id')
+                ->leftJoin('users', 'users.id', '=', 'payment_transactions.voided_by_user_id')
+                ->where('payment_transactions.status', '=', 'voided')
+                ->whereNotNull('payment_transactions.voided_at')
+                ->selectRaw("
+                    payment_transactions.id as subject_id,
+                    'sale_payment_void' as activity_type,
+                    payment_transactions.voided_by_user_id as user_id,
+                    users.name as user_name,
+                    sales.sale_number as reference,
+                    customers.name as party_name,
+                    payment_transactions.amount as amount,
+                    'voided' as status,
+                    payment_transactions.voided_at as occurred_at,
+                    sales.id as route_subject_id
+                ");
+            $this->applyBranchFilters(
+                $query,
+                $filters,
+                'payment_transactions.voided_at',
+                'payment_transactions.voided_by_user_id',
+                [
+                    'sales.sale_number',
+                    'customers.name',
+                    'users.name',
+                    'payment_transactions.reference',
+                    'payment_transactions.void_reason',
+                ],
             );
             $parts[] = $query;
         }
@@ -257,7 +339,8 @@ class UserActivityQueryService
                     COALESCE(suppliers.name, expenses.vendor, expenses.category) as party_name,
                     expenses.amount as amount,
                     expenses.category as status,
-                    COALESCE(expenses.expense_date, expenses.created_at) as occurred_at
+                    COALESCE(expenses.expense_date, expenses.created_at) as occurred_at,
+                    expenses.id as route_subject_id
                 ");
             $this->applyBranchFilters(
                 $query,
@@ -282,7 +365,8 @@ class UserActivityQueryService
                     customers.name as party_name,
                     quotes.total_amount as amount,
                     quotes.status as status,
-                    COALESCE(quotes.quote_date, quotes.created_at) as occurred_at
+                    COALESCE(quotes.quote_date, quotes.created_at) as occurred_at,
+                    quotes.id as route_subject_id
                 ");
             $this->applyBranchFilters(
                 $query,
@@ -307,7 +391,8 @@ class UserActivityQueryService
                     suppliers.name as party_name,
                     purchase_orders.total_amount as amount,
                     purchase_orders.status as status,
-                    COALESCE(purchase_orders.order_date, purchase_orders.created_at) as occurred_at
+                    COALESCE(purchase_orders.order_date, purchase_orders.created_at) as occurred_at,
+                    purchase_orders.id as route_subject_id
                 ");
             $this->applyBranchFilters(
                 $query,
@@ -332,7 +417,8 @@ class UserActivityQueryService
                     suppliers.name as party_name,
                     delivery_notes.total_amount as amount,
                     delivery_notes.status as status,
-                    COALESCE(delivery_notes.delivery_date, delivery_notes.created_at) as occurred_at
+                    COALESCE(delivery_notes.delivery_date, delivery_notes.created_at) as occurred_at,
+                    delivery_notes.id as route_subject_id
                 ");
             $this->applyBranchFilters(
                 $query,
@@ -356,7 +442,8 @@ class UserActivityQueryService
                     inventory_sessions.name as party_name,
                     NULL as amount,
                     inventory_sessions.status as status,
-                    inventory_sessions.created_at as occurred_at
+                    inventory_sessions.created_at as occurred_at,
+                    inventory_sessions.id as route_subject_id
                 ");
             $this->applyBranchFilters(
                 $query,
@@ -378,7 +465,8 @@ class UserActivityQueryService
                 NULL as party_name,
                 sales.total_amount as amount,
                 sales.status as status,
-                sales.created_at as occurred_at
+                sales.created_at as occurred_at,
+                sales.id as route_subject_id
             ")->whereRaw('1 = 0');
         }
 
@@ -468,7 +556,10 @@ class UserActivityQueryService
             'date' => $occurred?->format('d/m/Y'),
             'time' => $occurred?->format('H:i'),
             'occurred_at' => $occurred?->toIso8601String(),
-            'show_route' => $this->showRoute($row->activity_type, (int) $row->subject_id),
+            'show_route' => $this->showRoute(
+                $row->activity_type,
+                (int) ($row->route_subject_id ?? $row->subject_id),
+            ),
         ];
     }
 
@@ -480,7 +571,9 @@ class UserActivityQueryService
         // Clés alignées sur resources/js/lib/routes.ts ({id} / {session}),
         // comme le reste du frontend (Quotes/Index, Sales/Index, etc.).
         return match ($type) {
-            self::TYPE_SALE => ['name' => 'sales.show', 'params' => ['id' => $id]],
+            self::TYPE_SALE,
+            self::TYPE_SALE_PAYMENT,
+            self::TYPE_SALE_PAYMENT_VOID => ['name' => 'sales.show', 'params' => ['id' => $id]],
             self::TYPE_EXPENSE => ['name' => 'expenses.show', 'params' => ['id' => $id]],
             self::TYPE_QUOTE => ['name' => 'quotes.show', 'params' => ['id' => $id]],
             self::TYPE_PURCHASE_ORDER => ['name' => 'purchase-orders.show', 'params' => ['id' => $id]],
@@ -525,6 +618,8 @@ class UserActivityQueryService
             'purchase_orders_count' => $count(self::TYPE_PURCHASE_ORDER),
             'delivery_notes_count' => $count(self::TYPE_DELIVERY_NOTE),
             'inventory_count' => $count(self::TYPE_INVENTORY),
+            'sale_payments_count' => $count(self::TYPE_SALE_PAYMENT),
+            'sale_payment_voids_count' => $count(self::TYPE_SALE_PAYMENT_VOID),
         ];
     }
 

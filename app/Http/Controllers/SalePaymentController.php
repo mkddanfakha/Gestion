@@ -64,12 +64,6 @@ class SalePaymentController extends Controller
             return back()->withErrors(['amount' => $exception->getMessage()])->withInput();
         }
 
-        $sale->refresh();
-
-        if ((float) $sale->down_payment_amount > 0) {
-            ActivityLogger::logPayment($sale);
-        }
-
         return redirect()
             ->route('sales.show', $sale->id)
             ->with('success', 'Règlement enregistré avec succès.');

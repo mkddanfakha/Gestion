@@ -122,6 +122,9 @@ class ActivityLogger
         );
     }
 
+    /**
+     * @deprecated Préférer logSalePaymentRecorded() après enregistrement ledger d'un règlement.
+     */
     public static function logPayment(Model $subject, ?string $label = null): ActivityLog
     {
         $label ??= ActivityLog::resolveSubjectLabel($subject);
@@ -134,6 +137,53 @@ class ActivityLogger
             $subject,
             oldValues: $changes['old_values'],
             newValues: $changes['new_values'],
+        );
+    }
+
+    public static function logSalePaymentRecorded(
+        Sale $sale,
+        PaymentTransaction $transaction,
+        ?User $user = null,
+    ): ActivityLog {
+        $existing = ActivityLog::query()
+            ->where('action', ActivityLog::ACTION_PAYMENT)
+            ->where('new_values->payment_transaction_id', $transaction->id)
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $saleLabel = ActivityLog::resolveSubjectLabel($sale);
+        $amount = number_format((float) $transaction->amount, 2, ',', ' ');
+        $methodLabel = self::salePaymentMethodLabel($transaction->payment_method);
+        $referenceSuffix = filled($transaction->reference)
+            ? sprintf(', réf. %s', $transaction->reference)
+            : '';
+
+        return self::log(
+            ActivityLog::ACTION_PAYMENT,
+            'Paiement',
+            sprintf(
+                'a enregistré un règlement de %s FCFA (%s) sur la vente %s%s',
+                $amount,
+                $methodLabel,
+                $saleLabel,
+                $referenceSuffix,
+            ),
+            $sale,
+            $user,
+            newValues: [
+                'payment_transaction_id' => $transaction->id,
+                'sale_id' => $sale->id,
+                'sale_number' => $sale->sale_number,
+                'amount' => (float) $transaction->amount,
+                'currency' => 'FCFA',
+                'paid_at' => $transaction->paid_at?->toIso8601String(),
+                'payment_method' => $transaction->payment_method,
+                'payment_method_label' => $methodLabel,
+                'reference' => $transaction->reference,
+            ],
         );
     }
 
@@ -155,8 +205,28 @@ class ActivityLogger
             ),
             $sale,
             oldValues: $changes['old_values'],
-            newValues: $changes['new_values'],
+            newValues: array_merge($changes['new_values'] ?? [], [
+                'payment_transaction_id' => $transaction->id,
+                'amount' => (float) $transaction->amount,
+                'currency' => 'FCFA',
+                'voided_at' => $transaction->voided_at?->toIso8601String(),
+                'payment_method' => $transaction->payment_method,
+                'reference' => $transaction->reference,
+            ]),
         );
+    }
+
+    public static function salePaymentMethodLabel(?string $method): string
+    {
+        return match ($method) {
+            'cash' => 'Espèces',
+            'card' => 'Carte',
+            'bank_transfer' => 'Virement bancaire',
+            'check' => 'Chèque',
+            'orange_money' => 'Orange Money',
+            'wave' => 'Wave',
+            default => $method ?: 'Non renseigné',
+        };
     }
 
     public static function logRestore(string $module, Model $subject, ?string $label = null): ActivityLog

@@ -9,6 +9,7 @@ use App\Exceptions\InvalidPaymentTransactionException;
 use App\Models\PaymentTransaction;
 use App\Models\Sale;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -110,7 +111,10 @@ class SalePaymentTransactionService
 
             $this->syncSalePaymentAggregates($sale);
 
-            return $transaction->fresh();
+            $transaction = $transaction->fresh();
+            ActivityLogger::logSalePaymentRecorded($sale->fresh(), $transaction, $user);
+
+            return $transaction;
         });
     }
 
@@ -204,7 +208,10 @@ class SalePaymentTransactionService
 
             $this->syncSalePaymentAggregates($lockedSale);
 
-            return $transaction->fresh();
+            $transaction = $transaction->fresh();
+            ActivityLogger::logSalePaymentRecorded($lockedSale->fresh(), $transaction, $user);
+
+            return $transaction;
         });
     }
 

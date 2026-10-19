@@ -79,7 +79,7 @@ class ActivityLog extends Model
             self::ACTION_DELETE => 'Suppression',
             self::ACTION_VALIDATE => 'Validation',
             self::ACTION_CANCEL => 'Annulation',
-            self::ACTION_PAYMENT => 'Paiement',
+            self::ACTION_PAYMENT => 'Règlement enregistré',
             self::ACTION_LOGIN => 'Connexion',
             self::ACTION_LOGOUT => 'Déconnexion',
             self::ACTION_RESTORE => 'Restauration',

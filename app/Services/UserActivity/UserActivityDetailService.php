@@ -3,14 +3,17 @@
 namespace App\Services\UserActivity;
 
 use App\Auth\AuthorizationService;
+use App\Enums\PayableType;
 use App\Models\Company;
 use App\Models\DeliveryNote;
 use App\Models\Expense;
 use App\Models\InventorySession;
+use App\Models\PaymentTransaction;
 use App\Models\PurchaseOrder;
 use App\Models\Quote;
 use App\Models\Sale;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -49,6 +52,8 @@ class UserActivityDetailService
 
         return match ($type) {
             UserActivityQueryService::TYPE_SALE => $this->saleDetail($user, $id),
+            UserActivityQueryService::TYPE_SALE_PAYMENT => $this->salePaymentDetail($user, $id),
+            UserActivityQueryService::TYPE_SALE_PAYMENT_VOID => $this->salePaymentDetail($user, $id, true),
             UserActivityQueryService::TYPE_EXPENSE => $this->expenseDetail($user, $id),
             UserActivityQueryService::TYPE_QUOTE => $this->quoteDetail($user, $id),
             UserActivityQueryService::TYPE_PURCHASE_ORDER => $this->purchaseOrderDetail($user, $id),
@@ -98,6 +103,63 @@ class UserActivityDetailService
                 'total' => $this->money($item->total_price),
             ])->values()->all(),
             $sale->notes,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function salePaymentDetail(User $user, int $paymentId, bool $voidContext = false): array
+    {
+        $this->assertCanView($user, 'sales.view');
+
+        $payment = PaymentTransaction::query()
+            ->with(['user:id,name', 'voidedByUser:id,name'])
+            ->where('payable_type', PayableType::Sale)
+            ->find($paymentId);
+
+        if (! $payment) {
+            throw new NotFoundHttpException('Règlement introuvable.');
+        }
+
+        $sale = Sale::query()->with(['customer:id,name'])->find($payment->payable_id);
+        if (! $sale) {
+            throw new NotFoundHttpException('Vente introuvable.');
+        }
+
+        if ($user->isVendeur() && $sale->user_id !== $user->id) {
+            throw new HttpException(403, 'Accès refusé. Vous ne pouvez accéder qu\'à vos propres ventes.');
+        }
+
+        $methodLabel = ActivityLogger::salePaymentMethodLabel($payment->payment_method);
+        $type = $voidContext
+            ? UserActivityQueryService::TYPE_SALE_PAYMENT_VOID
+            : UserActivityQueryService::TYPE_SALE_PAYMENT;
+
+        $fields = [
+            ['label' => 'Vente', 'value' => $sale->sale_number],
+            ['label' => 'Client', 'value' => $sale->customer?->name],
+            ['label' => 'Montant', 'value' => number_format((float) $payment->amount, 2, ',', ' ').' FCFA'],
+            ['label' => 'Mode de paiement', 'value' => $methodLabel],
+            ['label' => 'Date du règlement', 'value' => $this->formatDateTime($payment->paid_at)],
+            ['label' => 'Référence règlement', 'value' => $payment->reference],
+            ['label' => 'Enregistré par', 'value' => $payment->user?->name],
+        ];
+
+        if ($voidContext) {
+            $fields[] = ['label' => 'Annulé par', 'value' => $payment->voidedByUser?->name];
+            $fields[] = ['label' => 'Date d\'annulation', 'value' => $this->formatDateTime($payment->voided_at)];
+            $fields[] = ['label' => 'Motif', 'value' => $payment->void_reason];
+        }
+
+        return $this->payload(
+            $type,
+            $fields,
+            [
+                ['label' => 'Montant encaissé', 'value' => $this->money($payment->amount)],
+            ],
+            [],
+            $payment->note,
         );
     }
 

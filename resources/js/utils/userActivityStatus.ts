@@ -45,6 +45,19 @@ const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
 }
 
 /** Aligné sur getInventoryStatusListLabel / InventoryExportService. */
+const SALE_PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Espèces',
+  card: 'Carte',
+  bank_transfer: 'Virement bancaire',
+  check: 'Chèque',
+  orange_money: 'Orange Money',
+  wave: 'Wave',
+}
+
+const SALE_PAYMENT_VOID_STATUS_LABELS: Record<string, string> = {
+  voided: 'Annulé',
+}
+
 const INVENTORY_STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
   counting: 'Comptage',
@@ -57,6 +70,8 @@ const INVENTORY_STATUS_LABELS: Record<string, string> = {
 
 const LABELS_BY_ACTIVITY_TYPE: Record<string, Record<string, string>> = {
   sale: SALE_STATUS_LABELS,
+  sale_payment: SALE_PAYMENT_METHOD_LABELS,
+  sale_payment_void: SALE_PAYMENT_VOID_STATUS_LABELS,
   expense: EXPENSE_CATEGORY_LABELS,
   quote: QUOTE_STATUS_LABELS,
   purchase_order: PURCHASE_ORDER_STATUS_LABELS,

@@ -271,10 +271,6 @@ class SaleController extends Controller
 
         ActivityLogger::logCreate('Facture', $sale);
 
-        if ($sale->down_payment_amount > 0) {
-            ActivityLogger::logPayment($sale);
-        }
-
         return redirect()->route('sales.show', $sale->id)
             ->with('success', 'Vente créée avec succès.');
     }
