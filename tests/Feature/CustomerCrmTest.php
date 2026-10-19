@@ -4,6 +4,7 @@ use App\Enums\PayableType;
 use App\Enums\PaymentTransactionStatus;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\Permission;
 use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\Quote;
@@ -109,6 +110,135 @@ function createCrmProduct(float $price = 100000): Product
         'is_active' => true,
     ]);
 }
+
+function crmVendeurWithCustomerAndSalesView(): User
+{
+    (new PermissionSeeder())->run();
+
+    $vendeur = User::factory()->create(['role' => 'vendeur']);
+    $permissionIds = Permission::query()
+        ->whereIn('name', ['customers.view', 'sales.view'])
+        ->pluck('id');
+    $vendeur->permissions()->sync($permissionIds);
+
+    return $vendeur;
+}
+
+function crmCreateCustomerSaleForVendeur(
+    Customer $customer,
+    User $vendeur,
+    float $totalAmount,
+    float $remainingAmount,
+    string $paymentStatus,
+): Sale {
+    $downPayment = $totalAmount - $remainingAmount;
+
+    return Sale::create([
+        'sale_number' => Sale::generateSaleNumber(),
+        'customer_id' => $customer->id,
+        'user_id' => $vendeur->id,
+        'subtotal' => $totalAmount,
+        'tax_amount' => 0,
+        'discount_amount' => 0,
+        'down_payment_amount' => $downPayment,
+        'remaining_amount' => $remainingAmount,
+        'payment_status' => $paymentStatus,
+        'total_amount' => $totalAmount,
+        'status' => 'completed',
+        'payment_method' => $downPayment > 0 ? 'cash' : null,
+    ]);
+}
+
+/**
+ * @return array{
+ *     customer: Customer,
+ *     vendeurA: User,
+ *     vendeurB: User,
+ *     saleA: Sale,
+ *     saleB: Sale
+ * }
+ */
+function crmSharedTwoVendeurSalesScenario(bool $vendeurAWithCustomerPermissions = false): array
+{
+    $customer = Customer::factory()->create();
+    $vendeurA = $vendeurAWithCustomerPermissions
+        ? crmVendeurWithCustomerAndSalesView()
+        : User::factory()->create(['role' => 'vendeur']);
+    $vendeurB = User::factory()->create(['role' => 'vendeur']);
+
+    $saleA = crmCreateCustomerSaleForVendeur($customer, $vendeurA, 100000, 50000, 'partial');
+    $saleB = crmCreateCustomerSaleForVendeur($customer, $vendeurB, 80000, 80000, 'pending');
+
+    return compact('customer', 'vendeurA', 'vendeurB', 'saleA', 'saleB');
+}
+
+test('crm buildSummary scopes remaining balance and unpaid invoices to vendeur sales', function () {
+    ['customer' => $customer, 'vendeurA' => $vendeurA, 'saleA' => $saleA, 'saleB' => $saleB] = crmSharedTwoVendeurSalesScenario();
+
+    $service = app(CustomerCrmService::class);
+    $summary = $service->buildSummary($customer, $vendeurA);
+
+    expect($summary['remaining_balance'])->toBe(50000.0)
+        ->and($summary['unpaid_invoices_count'])->toBe(1)
+        ->and($summary['orders_count'])->toBe(1)
+        ->and($summary['total_purchased'])->toBe(100000.0);
+
+    $unpaid = $service->unpaidInvoices($customer, $vendeurA);
+
+    expect($unpaid)->toHaveCount(1)
+        ->and($unpaid[0]['id'])->toBe($saleA->id);
+
+    expect(collect($unpaid)->pluck('id')->all())->not->toContain($saleB->id);
+});
+
+test('customer show exposes vendeur scoped crm debt and scoped sale collections', function () {
+    ['customer' => $customer, 'vendeurA' => $vendeurA, 'saleA' => $saleA] = crmSharedTwoVendeurSalesScenario(true);
+
+    $this->actingAs($vendeurA)->get(route('customers.show', $customer))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Customers/Show')
+            ->where('crm.remaining_balance', 50000)
+            ->where('crm.unpaid_invoices_count', 1)
+            ->where('crm.orders_count', 1)
+            ->has('unpaidInvoices', 1)
+            ->where('unpaidInvoices.0.id', $saleA->id)
+            ->has('salesHistory.data', 1)
+            ->where('salesHistory.data.0.id', $saleA->id)
+            ->has('invoicesHistory.data', 1)
+            ->where('invoicesHistory.data.0.id', $saleA->id)
+        );
+});
+
+test('admin crm summary and customer show include all vendeur sales debt', function () {
+    ['customer' => $customer, 'saleA' => $saleA, 'saleB' => $saleB] = crmSharedTwoVendeurSalesScenario();
+    $admin = crmAdmin();
+    $service = app(CustomerCrmService::class);
+
+    $summary = $service->buildSummary($customer, $admin);
+
+    expect($summary['remaining_balance'])->toBe(130000.0)
+        ->and($summary['unpaid_invoices_count'])->toBe(2)
+        ->and($summary['orders_count'])->toBe(2)
+        ->and($summary['total_purchased'])->toBe(180000.0);
+
+    $unpaid = $service->unpaidInvoices($customer, $admin);
+    expect(collect($unpaid)->pluck('id')->sort()->values()->all())
+        ->toEqual([$saleA->id, $saleB->id]);
+
+    $this->actingAs($admin)->get(route('customers.show', $customer))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Customers/Show')
+            ->where('crm.remaining_balance', 130000)
+            ->where('crm.unpaid_invoices_count', 2)
+            ->where('crm.orders_count', 2)
+            ->has('salesHistory.data', 2)
+            ->has('unpaidInvoices', 2)
+        );
+});
+
+// Accès direct sales.show sur vente d'un autre vendeur : couvert par tests/Feature/SaleVisibilityTest.php
 
 test('crm summary matches ledger after multiple payments on one sale', function () {
     $admin = crmAdmin();
