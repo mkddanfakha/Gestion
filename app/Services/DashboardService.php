@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Enums\PayableType;
+use App\Enums\PaymentTransactionStatus;
 use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\DeliveryNote;
 use App\Models\Expense;
+use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -107,12 +110,24 @@ class DashboardService
         return Sale::query()->visibleTo($user);
     }
 
+    /**
+     * Encaissements réels (ledger posted) sur la date paid_at, ventes visibles.
+     */
+    protected function postedSalePaymentsInRangeQuery(User $user, Carbon $start, Carbon $end): Builder
+    {
+        return PaymentTransaction::query()
+            ->where('payable_type', PayableType::Sale)
+            ->where('status', PaymentTransactionStatus::Posted)
+            ->whereBetween('paid_at', [
+                $start->copy()->startOfSecond(),
+                $end->copy()->endOfSecond(),
+            ])
+            ->whereIn('payable_id', Sale::query()->visibleTo($user)->select('id'));
+    }
+
     protected function revenueForRange(User $user, Carbon $start, Carbon $end): float
     {
-        return (float) $this->salesQuery($user)
-            ->whereBetween('created_at', [$start, $end])
-            ->selectRaw('COALESCE(SUM(CASE WHEN payment_status = "paid" THEN total_amount ELSE down_payment_amount END), 0) as revenue')
-            ->value('revenue');
+        return (float) $this->postedSalePaymentsInRangeQuery($user, $start, $end)->sum('amount');
     }
 
     protected function kpis(User $user, array $period, bool $canViewFinancials): array
@@ -276,10 +291,9 @@ class DashboardService
         $useMonthlyBuckets = $period['period'] === self::PERIOD_YEAR || $period['period'] === self::PERIOD_QUARTER;
 
         if ($useMonthlyBuckets) {
-            $rows = $this->salesQuery($user)
-                ->whereBetween('created_at', [$start, $end])
-                ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as bucket')
-                ->selectRaw('COALESCE(SUM(CASE WHEN payment_status = "paid" THEN total_amount ELSE down_payment_amount END), 0) as total')
+            $rows = $this->postedSalePaymentsInRangeQuery($user, $start, $end)
+                ->selectRaw('DATE_FORMAT(paid_at, "%Y-%m") as bucket')
+                ->selectRaw('COALESCE(SUM(amount), 0) as total')
                 ->groupBy('bucket')
                 ->orderBy('bucket')
                 ->get()
@@ -300,10 +314,9 @@ class DashboardService
             return $points;
         }
 
-        $rows = $this->salesQuery($user)
-            ->whereBetween('created_at', [$start, $end])
-            ->selectRaw('DATE(created_at) as bucket')
-            ->selectRaw('COALESCE(SUM(CASE WHEN payment_status = "paid" THEN total_amount ELSE down_payment_amount END), 0) as total')
+        $rows = $this->postedSalePaymentsInRangeQuery($user, $start, $end)
+            ->selectRaw('DATE(paid_at) as bucket')
+            ->selectRaw('COALESCE(SUM(amount), 0) as total')
             ->groupBy('bucket')
             ->orderBy('bucket')
             ->get()
@@ -335,10 +348,8 @@ class DashboardService
             'wave' => 'Wave',
         ];
 
-        $rows = $this->salesQuery($user)
-            ->whereBetween('created_at', [$period['start'], $period['end']])
-            ->whereNotNull('payment_method')
-            ->select('payment_method', DB::raw('COUNT(*) as count'), DB::raw('COALESCE(SUM(CASE WHEN payment_status = "paid" THEN total_amount ELSE down_payment_amount END), 0) as amount'))
+        $rows = $this->postedSalePaymentsInRangeQuery($user, $period['start'], $period['end'])
+            ->select('payment_method', DB::raw('COUNT(*) as count'), DB::raw('COALESCE(SUM(amount), 0) as amount'))
             ->groupBy('payment_method')
             ->orderByDesc('amount')
             ->get();
