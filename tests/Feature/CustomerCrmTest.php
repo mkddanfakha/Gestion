@@ -1,15 +1,21 @@
 <?php
 
+use App\Enums\PayableType;
+use App\Enums\PaymentTransactionStatus;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\Sale;
 use App\Models\User;
 use App\Services\CustomerCrmService;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
+
+require_once __DIR__.'/SalePaymentTestHelpers.php';
 
 test('customer store redirects to show page on successful creation', function () {
     $admin = User::factory()->create(['role' => 'admin']);
@@ -39,6 +45,52 @@ test('invalid customer store does not redirect to show page', function () {
     expect(Customer::query()->count())->toBe(0);
 });
 
+function crmAdmin(): User
+{
+    return User::factory()->create(['role' => 'admin']);
+}
+
+function crmCreateSaleForCustomer(User $admin, Customer $customer, Product $product): Sale
+{
+    test()->actingAs($admin)->post(route('sales.store'), saleStorePayload($product, [
+        'customer_id' => $customer->id,
+    ]))->assertRedirect();
+
+    return Sale::query()->latest('id')->firstOrFail();
+}
+
+function crmLedgerPostedTotalForCustomer(Customer $customer): float
+{
+    $saleIds = Sale::query()
+        ->where('customer_id', $customer->id)
+        ->where('status', '!=', 'cancelled')
+        ->pluck('id');
+
+    return round((float) PaymentTransaction::query()
+        ->where('payable_type', PayableType::Sale)
+        ->where('status', PaymentTransactionStatus::Posted)
+        ->whereIn('payable_id', $saleIds)
+        ->sum('amount'), 2);
+}
+
+function crmSalesRemainingSum(Customer $customer): float
+{
+    return round((float) Sale::query()
+        ->where('customer_id', $customer->id)
+        ->where('status', '!=', 'cancelled')
+        ->sum('remaining_amount'), 2);
+}
+
+function expectCrmSummaryMatchesLedger(Customer $customer, ?User $viewer = null): void
+{
+    $summary = app(CustomerCrmService::class)->buildSummary($customer, $viewer);
+    $postedTotal = crmLedgerPostedTotalForCustomer($customer);
+    $remainingSum = crmSalesRemainingSum($customer);
+
+    expect($summary['total_paid'])->toBe($postedTotal)
+        ->and($summary['remaining_balance'])->toBe($remainingSum);
+}
+
 function createCrmProduct(float $price = 100000): Product
 {
     $category = Category::create([
@@ -57,6 +109,131 @@ function createCrmProduct(float $price = 100000): Product
         'is_active' => true,
     ]);
 }
+
+test('crm summary matches ledger after multiple payments on one sale', function () {
+    $admin = crmAdmin();
+    $customer = Customer::factory()->create();
+    $product = createSaleTestProduct(100000);
+    $sale = crmCreateSaleForCustomer($admin, $customer, $product);
+
+    $this->actingAs($admin)->post(route('sales.payments.store', $sale), [
+        'amount' => 30000,
+        'payment_method' => 'cash',
+    ])->assertRedirect();
+
+    $this->actingAs($admin)->post(route('sales.payments.store', $sale), [
+        'amount' => 70000,
+        'payment_method' => 'wave',
+    ])->assertRedirect();
+
+    $sale->refresh();
+
+    expect(crmLedgerPostedTotalForCustomer($customer))->toBe(100000.0)
+        ->and((float) $sale->down_payment_amount)->toBe(100000.0)
+        ->and((float) $sale->remaining_amount)->toBe(0.0)
+        ->and($sale->payment_status)->toBe('paid');
+
+    $summary = app(CustomerCrmService::class)->buildSummary($customer, null);
+
+    expect($summary['total_paid'])->toBe(100000.0)
+        ->and($summary['remaining_balance'])->toBe(0.0)
+        ->and($summary['unpaid_invoices_count'])->toBe(0);
+
+    expectCrmSummaryMatchesLedger($customer);
+});
+
+test('crm summary matches ledger for partially paid sale', function () {
+    $admin = crmAdmin();
+    $customer = Customer::factory()->create();
+    $product = createSaleTestProduct(100000);
+    $sale = crmCreateSaleForCustomer($admin, $customer, $product);
+
+    $this->actingAs($admin)->post(route('sales.payments.store', $sale), [
+        'amount' => 40000,
+        'payment_method' => 'orange_money',
+    ])->assertRedirect();
+
+    $sale->refresh();
+
+    expect(crmLedgerPostedTotalForCustomer($customer))->toBe(40000.0)
+        ->and((float) $sale->remaining_amount)->toBe(60000.0)
+        ->and($sale->payment_status)->toBe('partial');
+
+    $summary = app(CustomerCrmService::class)->buildSummary($customer, null);
+
+    expect($summary['total_paid'])->toBe(40000.0)
+        ->and($summary['remaining_balance'])->toBe(60000.0)
+        ->and($summary['unpaid_invoices_count'])->toBe(1);
+
+    expectCrmSummaryMatchesLedger($customer);
+});
+
+test('crm summary updates after payment void and excludes voided from paid total', function () {
+    (new PermissionSeeder())->run();
+    $admin = crmAdmin();
+    $customer = Customer::factory()->create();
+    $product = createSaleTestProduct(100000);
+    $sale = crmCreateSaleForCustomer($admin, $customer, $product);
+
+    $this->actingAs($admin)->post(route('sales.payments.store', $sale), [
+        'amount' => 50000,
+        'payment_method' => 'cash',
+    ])->assertRedirect();
+
+    $payment = PaymentTransaction::query()->latest('id')->firstOrFail();
+
+    expect(crmLedgerPostedTotalForCustomer($customer))->toBe(50000.0);
+
+    $this->actingAs($admin)->post(route('sales.payments.void', $payment), [
+        'void_reason' => 'Erreur encaissement CRM test',
+    ])->assertRedirect();
+
+    $sale->refresh();
+
+    expect($payment->fresh()->status)->toBe(PaymentTransactionStatus::Voided)
+        ->and(crmLedgerPostedTotalForCustomer($customer))->toBe(0.0)
+        ->and((float) $sale->down_payment_amount)->toBe(0.0)
+        ->and((float) $sale->remaining_amount)->toBe(100000.0)
+        ->and($sale->payment_status)->toBe('pending');
+
+    $summary = app(CustomerCrmService::class)->buildSummary($customer, null);
+
+    expect($summary['total_paid'])->toBe(0.0)
+        ->and($summary['remaining_balance'])->toBe(100000.0)
+        ->and($summary['unpaid_invoices_count'])->toBe(1);
+
+    expectCrmSummaryMatchesLedger($customer);
+});
+
+test('crm ledger totals are isolated per customer', function () {
+    $admin = crmAdmin();
+    $customerA = Customer::factory()->create();
+    $customerB = Customer::factory()->create();
+    $productA = createSaleTestProduct(100000);
+    $productB = createSaleTestProduct(80000);
+
+    $saleA = crmCreateSaleForCustomer($admin, $customerA, $productA);
+    crmCreateSaleForCustomer($admin, $customerB, $productB);
+
+    $this->actingAs($admin)->post(route('sales.payments.store', $saleA), [
+        'amount' => 25000,
+        'payment_method' => 'cash',
+    ])->assertRedirect();
+
+    expect(crmLedgerPostedTotalForCustomer($customerA))->toBe(25000.0)
+        ->and(crmLedgerPostedTotalForCustomer($customerB))->toBe(0.0);
+
+    $summaryA = app(CustomerCrmService::class)->buildSummary($customerA, null);
+    $summaryB = app(CustomerCrmService::class)->buildSummary($customerB, null);
+
+    expect($summaryA['total_paid'])->toBe(25000.0)
+        ->and($summaryA['remaining_balance'])->toBe(75000.0)
+        ->and($summaryB['total_paid'])->toBe(0.0)
+        ->and($summaryB['remaining_balance'])->toBe(80000.0);
+
+    expectCrmSummaryMatchesLedger($customerA);
+    expectCrmSummaryMatchesLedger($customerB);
+});
 
 test('customer crm summary aggregates sales and quotes correctly', function () {
     $service = app(CustomerCrmService::class);
