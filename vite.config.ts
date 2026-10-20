@@ -100,6 +100,10 @@ export default defineConfig(({ mode }) => {
                 refresh: true,
             }),
 
+            wayfinder({
+                formVariants: true,
+            }),
+
             tailwindcss(),
 
             vue({
