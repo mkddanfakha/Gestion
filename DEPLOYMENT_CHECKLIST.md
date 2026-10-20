@@ -21,6 +21,21 @@ Si des dépendances ont été ajoutées ou modifiées dans `composer.json` :
 composer install --no-dev --optimize-autoloader
 ```
 
+#### Composer — racine d'installation (OBLIGATOIRE en production)
+
+- **Ne jamais copier** le dossier `vendor/` depuis un autre worktree, un backup, une machine de build ou un zip préparé ailleurs. `vendor/` n'est pas versionné dans Git pour cette raison.
+- **Toujours exécuter Composer** (`composer install` ou `composer dump-autoload --optimize`) depuis la **racine finale** de l'installation : le répertoire qui contient **`artisan`** et **`composer.json`** (ex. racine du site sur le serveur, pas un dossier temporaire de déploiement).
+- Après une mise à jour **code-only** (`git pull`, rsync du code sans `vendor/`), régénérer l'autoload depuis cette même racine dès que des **classes `app/`** ou des **dépendances** (`composer.lock`) ont changé :
+  ```bash
+  cd /chemin/vers/racine-app   # doit contenir artisan + composer.json
+  composer install --no-dev --optimize-autoloader
+  ```
+- **Vérifier l'autoload** après installation ou déploiement (lecture seule, ne modifie rien) :
+  ```bash
+  php scripts/verify-composer-autoload-root.php
+  ```
+  Le script doit afficher `verify-composer-autoload-root: OK`. En cas d'échec, ne pas mettre en production : régénérer `vendor/` depuis la racine du site (voir ci-dessus), sans copier `vendor/` d'ailleurs.
+
 Si des dépendances frontend ont été modifiées dans `package.json` :
 ```bash
 npm install --production
@@ -65,8 +80,9 @@ cd /path/to/your/app
 # Récupérer les dernières modifications
 git pull origin main
 
-# Installer les dépendances PHP
+# Installer les dépendances PHP (depuis cette racine — ne pas copier vendor/ ailleurs)
 composer install --no-dev --optimize-autoloader
+php scripts/verify-composer-autoload-root.php
 
 # Installer les dépendances Node.js (si nécessaire)
 npm install --production
@@ -99,8 +115,9 @@ php artisan optimize
 ## Vérifications après déploiement
 
 1. Vérifier que l'application fonctionne : visitez votre site
-2. Vérifier les logs d'erreurs : `tail -f storage/logs/laravel.log`
-3. Vérifier les permissions : `ls -la storage/` et `ls -la bootstrap/cache/`
+2. Vérifier l'autoload Composer : `php scripts/verify-composer-autoload-root.php` (doit retourner OK)
+3. Vérifier les logs d'erreurs : `tail -f storage/logs/laravel.log`
+4. Vérifier les permissions : `ls -la storage/` et `ls -la bootstrap/cache/`
 
 ## Notes importantes
 
