@@ -149,7 +149,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/user-activities', [UserActivityController::class, 'index'])->name('user-activities.index');
     Route::get('/user-activities/{type}/{id}', [UserActivityController::class, 'detail'])
-        ->where('type', 'sale|expense|quote|purchase_order|delivery_note|inventory')
+        ->where('type', 'sale|sale_payment|sale_payment_void|expense|quote|purchase_order|delivery_note|inventory')
         ->whereNumber('id')
         ->name('user-activities.detail');
     

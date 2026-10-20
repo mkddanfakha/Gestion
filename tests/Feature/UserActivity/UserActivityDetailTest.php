@@ -1,11 +1,15 @@
 <?php
 
 use App\Auth\RolePresets;
+use App\Models\Customer;
+use App\Models\PaymentTransaction;
 use App\Models\Permission;
 use App\Models\Quote;
 use App\Models\Sale;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
+
+require_once __DIR__.'/../SalePaymentTestHelpers.php';
 
 function seedUserActivitiesDetailFixtures(): void
 {
@@ -119,4 +123,60 @@ test('admin peut recuperer le detail d une vente', function () {
         ->assertOk()
         ->assertJsonPath('type', 'sale')
         ->assertJsonFragment(['label' => 'Référence', 'value' => $sale->sale_number]);
+});
+
+test('detail sale_payment autorise admin avec acces ventes', function () {
+    seedUserActivitiesDetailFixtures();
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = Customer::factory()->create();
+    $product = createSaleTestProduct(100000);
+
+    test()->actingAs($admin)->post(route('sales.store'), saleStorePayload($product, [
+        'customer_id' => $customer->id,
+    ]))->assertRedirect();
+
+    $sale = Sale::query()->latest('id')->firstOrFail();
+
+    test()->actingAs($admin)->post(route('sales.payments.store', $sale), [
+        'amount' => 40000,
+        'payment_method' => 'wave',
+    ])->assertRedirect();
+
+    $payment = PaymentTransaction::query()->latest('id')->firstOrFail();
+
+    test()->actingAs($admin)
+        ->getJson(route('user-activities.detail', ['type' => 'sale_payment', 'id' => $payment->id]))
+        ->assertOk()
+        ->assertJsonPath('type', 'sale_payment')
+        ->assertJsonPath('type_label', 'Règlements clients');
+});
+
+test('detail sale_payment_void autorise admin pour reglement annule', function () {
+    seedUserActivitiesDetailFixtures();
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = Customer::factory()->create();
+    $product = createSaleTestProduct(100000);
+
+    test()->actingAs($admin)->post(route('sales.store'), saleStorePayload($product, [
+        'customer_id' => $customer->id,
+    ]))->assertRedirect();
+
+    $sale = Sale::query()->latest('id')->firstOrFail();
+
+    test()->actingAs($admin)->post(route('sales.payments.store', $sale), [
+        'amount' => 30000,
+        'payment_method' => 'cash',
+    ])->assertRedirect();
+
+    $payment = PaymentTransaction::query()->latest('id')->firstOrFail();
+
+    test()->actingAs($admin)->post(route('sales.payments.void', $payment), [
+        'void_reason' => 'Test detail activite annulation',
+    ])->assertRedirect();
+
+    test()->actingAs($admin)
+        ->getJson(route('user-activities.detail', ['type' => 'sale_payment_void', 'id' => $payment->id]))
+        ->assertOk()
+        ->assertJsonPath('type', 'sale_payment_void')
+        ->assertJsonPath('type_label', 'Annulations de règlement');
 });
