@@ -24,6 +24,7 @@ export function route(name: string, params: any = {}) {
         'customers.autocomplete': '/customers/autocomplete',
         'customers.check-duplicates': '/customers/check-duplicates',
         'customers.potential-duplicates': '/customers/potential-duplicates',
+        'customers.receivables': '/customers/receivables',
         'customers.index': '/customers',
         'customers.create': '/customers/create',
         'customers.store': '/customers',

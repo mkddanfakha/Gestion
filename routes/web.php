@@ -71,6 +71,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/customers/check-duplicates', [CustomerController::class, 'checkDuplicates'])->name('customers.check-duplicates');
     Route::get('/customers/potential-duplicates', [CustomerController::class, 'potentialDuplicates'])->name('customers.potential-duplicates');
     Route::get('/customers/autocomplete', [CustomerController::class, 'autocomplete'])->name('customers.autocomplete');
+    Route::get('/customers/receivables', [CustomerController::class, 'receivables'])->name('customers.receivables');
     Route::resource('customers', CustomerController::class);
     Route::get('/customers/export/excel', [CustomerController::class, 'exportExcel'])->name('customers.export.excel');
     Route::get('/customers/export/pdf', [CustomerController::class, 'exportPdf'])->name('customers.export.pdf');

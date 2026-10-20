@@ -38,6 +38,13 @@
             {{ isExportingExcel ? 'Export en cours...' : 'Exporter Excel' }}
           </button>
           <Link
+            :href="route('customers.receivables')"
+            class="btn btn-outline-primary page-header__action--wide"
+          >
+            <i class="bi bi-cash-stack me-1"></i>
+            Créances clients
+          </Link>
+          <Link
             :href="route('customers.potential-duplicates')"
             class="btn btn-outline-warning page-header__action--wide"
           >

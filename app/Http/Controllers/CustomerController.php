@@ -50,6 +50,32 @@ class CustomerController extends Controller
     }
 
     /**
+     * Liste centralisée des clients débiteurs (créances).
+     */
+    public function receivables(Request $request)
+    {
+        $this->checkPermission($request, 'customers', 'view');
+
+        $user = $request->user();
+        $search = $request->filled('search') ? (string) $request->search : null;
+
+        $report = $this->customerCrmService->receivablesReport(
+            $user,
+            $search,
+            (int) $request->get('page', 1),
+        );
+
+        return Inertia::render('Customers/Receivables', [
+            'debtors' => $report['debtors'],
+            'portfolioTotal' => $report['portfolio_total'],
+            'filters' => $request->only(['search']),
+            'unreliableExcludedSalesCount' => $user?->isAdmin()
+                ? $report['unreliable_excluded_sales_count']
+                : null,
+        ]);
+    }
+
+    /**
      * Show the form for creating a new resource.
      */
     public function create(Request $request)
