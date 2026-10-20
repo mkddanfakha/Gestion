@@ -55,9 +55,27 @@
           <li v-if="canView('customers') || canView('sales') || canView('quotes') || canView('expenses')" class="nav-group-spacer" aria-hidden="true"></li>
           
           <li v-if="canView('customers')" class="nav-item">
-            <Link :href="route('customers.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/customers') }">
+            <Link
+              :href="route('customers.index')"
+              class="nav-link nav-link-pill"
+              :class="{
+                active:
+                  $page.url.startsWith('/customers')
+                  && !$page.url.startsWith('/customers/receivables'),
+              }"
+            >
               <span class="nav-icon-wrap nav-icon-wrap--commerce"><i class="bi bi-people"></i></span>
               <span class="nav-label">Clients</span>
+            </Link>
+          </li>
+          <li v-if="canView('customers')" class="nav-item">
+            <Link
+              :href="route('customers.receivables')"
+              class="nav-link nav-link-pill"
+              :class="{ active: $page.url.startsWith('/customers/receivables') }"
+            >
+              <span class="nav-icon-wrap nav-icon-wrap--commerce"><i class="bi bi-cash-stack"></i></span>
+              <span class="nav-label">Créances clients</span>
             </Link>
           </li>
           <li v-if="canView('sales')" class="nav-item">

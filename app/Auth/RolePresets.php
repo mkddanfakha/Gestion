@@ -103,6 +103,67 @@ final class RolePresets
     }
 
     /**
+     * Preset + permissions additionnelles (attribution admin).
+     * Le preset reste le socle minimal ; les extras ne peuvent pas introduire sales.* pour un gestionnaire.
+     *
+     * @param  list<int|string>  $requestedPermissionIds
+     * @return list<int>
+     */
+    public static function resolvedPermissionIds(string $role, array $requestedPermissionIds = []): array
+    {
+        if ($role === User::ROLE_ADMIN) {
+            return [];
+        }
+
+        if ($role === User::ROLE_USER) {
+            return AssignablePermissionResolver::canonicalizeIds($requestedPermissionIds);
+        }
+
+        if (! in_array($role, [User::ROLE_VENDEUR, User::ROLE_GESTIONNAIRE], true)) {
+            return self::permissionIds($role);
+        }
+
+        $mergedIds = array_values(array_unique(array_merge(
+            self::permissionIds($role),
+            AssignablePermissionResolver::canonicalizeIds($requestedPermissionIds),
+        )));
+
+        if ($mergedIds === []) {
+            return [];
+        }
+
+        $names = Permission::query()
+            ->whereIn('id', $mergedIds)
+            ->pluck('name', 'id')
+            ->all();
+
+        $allowedNames = [];
+
+        foreach ($names as $name) {
+            $name = (string) $name;
+
+            if ($role === User::ROLE_GESTIONNAIRE && str_starts_with($name, 'sales.')) {
+                continue;
+            }
+
+            $allowedNames[] = $name;
+        }
+
+        $allowedNames = array_values(array_unique($allowedNames));
+
+        if ($allowedNames === []) {
+            return self::permissionIds($role);
+        }
+
+        return Permission::query()
+            ->whereIn('name', $allowedNames)
+            ->pluck('id')
+            ->map(static fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
      * Valide tous les presets contre PermissionCatalog.
      *
      * @return list<string> Messages d'erreur (vide si valide)

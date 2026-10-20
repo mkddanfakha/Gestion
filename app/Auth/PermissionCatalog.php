@@ -348,7 +348,7 @@ final class PermissionCatalog
                 'update' => ['Mettre à jour l\'entreprise', 'Permet de modifier les informations et visuels de l\'entreprise.', 30],
             ],
             'customers' => [
-                'view' => ['Voir les clients', 'Permet de consulter la liste et les fiches clients.', 10],
+                'view' => ['Voir les clients et les créances clients', 'Permet de consulter la liste des clients, les fiches client et la page Créances clients.', 10],
                 'create' => ['Créer un client', 'Permet de créer un nouveau client.', 20],
                 'edit' => ['Modifier un client (legacy)', 'Accès au formulaire client (permission legacy).', 25],
                 'update' => ['Modifier les clients', 'Permet de modifier un client existant.', 30],

@@ -1,5 +1,6 @@
 <?php
 
+use App\Auth\RolePresets;
 use App\Models\Customer;
 use App\Models\PaymentTransaction;
 use App\Models\Permission;
@@ -294,6 +295,27 @@ test('vente entierement payee exclue malgre epsilon arrondi', function () {
 
     expect($report['portfolio_total'])->toBe(0.0)
         ->and($report['debtors']->total())->toBe(0);
+});
+
+test('gestionnaire avec customers view accede aux creances sur tout le portefeuille visible', function () {
+    (new PermissionSeeder())->run();
+    $admin = receivablesAdmin();
+    $gestionnaire = User::factory()->create(['role' => User::ROLE_GESTIONNAIRE]);
+    $gestionnaire->permissions()->sync(
+        RolePresets::resolvedPermissionIds(User::ROLE_GESTIONNAIRE, [
+            Permission::query()->where('name', 'customers.view')->value('id'),
+        ]),
+    );
+
+    $customer = Customer::factory()->create();
+    receivablesCreateSaleForCustomer($admin, $customer, 90000, 90000, 'pending');
+
+    $this->actingAs($gestionnaire)->get(route('customers.receivables'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('portfolioTotal', 90000)
+            ->has('debtors.data', 1)
+        );
 });
 
 test('receivables recherche filtre les debiteurs et le total portefeuille', function () {

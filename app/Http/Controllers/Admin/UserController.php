@@ -105,9 +105,15 @@ class UserController extends Controller
             if ($user->role === 'admin') {
                 $user->permissions()->sync([]);
             } elseif ($user->role === User::ROLE_VENDEUR) {
-                $user->permissions()->sync(RolePresets::permissionIds(User::ROLE_VENDEUR));
+                $user->permissions()->sync(RolePresets::resolvedPermissionIds(
+                    User::ROLE_VENDEUR,
+                    $validated['permissions'] ?? [],
+                ));
             } elseif ($user->role === User::ROLE_GESTIONNAIRE) {
-                $user->permissions()->sync(RolePresets::permissionIds(User::ROLE_GESTIONNAIRE));
+                $user->permissions()->sync(RolePresets::resolvedPermissionIds(
+                    User::ROLE_GESTIONNAIRE,
+                    $validated['permissions'] ?? [],
+                ));
             } elseif (isset($validated['permissions'])) {
                 $user->permissions()->attach(
                     AssignablePermissionResolver::canonicalizeIds($validated['permissions'])
@@ -235,9 +241,15 @@ class UserController extends Controller
                 if ($lockedUser->role === 'admin') {
                     $lockedUser->permissions()->sync([]);
                 } elseif ($lockedUser->role === User::ROLE_VENDEUR) {
-                    $lockedUser->permissions()->sync(RolePresets::permissionIds(User::ROLE_VENDEUR));
+                    $lockedUser->permissions()->sync(RolePresets::resolvedPermissionIds(
+                        User::ROLE_VENDEUR,
+                        $validated['permissions'] ?? [],
+                    ));
                 } elseif ($lockedUser->role === User::ROLE_GESTIONNAIRE) {
-                    $lockedUser->permissions()->sync(RolePresets::permissionIds(User::ROLE_GESTIONNAIRE));
+                    $lockedUser->permissions()->sync(RolePresets::resolvedPermissionIds(
+                        User::ROLE_GESTIONNAIRE,
+                        $validated['permissions'] ?? [],
+                    ));
                 } elseif (isset($validated['permissions'])) {
                     $lockedUser->permissions()->sync(
                         AssignablePermissionResolver::canonicalizeIds($validated['permissions'])

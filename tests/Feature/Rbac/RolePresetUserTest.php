@@ -32,6 +32,73 @@ test('creating vendeur assigns role preset including dashboard view', function (
     expect($names)->toEqualCanonicalizing(RolePresets::permissionNames(User::ROLE_VENDEUR));
 });
 
+test('creating gestionnaire peut recevoir customers view en permission additionnelle', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+    $customersViewId = Permission::query()->where('name', 'customers.view')->value('id');
+    $salesViewId = Permission::query()->where('name', 'sales.view')->value('id');
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.store'), [
+            'name' => 'Gestionnaire Creances',
+            'email' => 'gestionnaire.creances@example.com',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'role' => User::ROLE_GESTIONNAIRE,
+            'is_active' => true,
+            'permissions' => [$customersViewId, $salesViewId],
+        ])
+        ->assertRedirect(route('admin.users.index'));
+
+    $user = User::query()->where('email', 'gestionnaire.creances@example.com')->firstOrFail();
+    $names = $user->permissions()->pluck('name')->all();
+
+    expect($names)->toContain('customers.view')
+        ->and($names)->toContain('inventory.view')
+        ->and(collect($names)->contains(fn (string $name): bool => str_starts_with($name, 'sales.')))->toBeFalse();
+});
+
+test('modifier gestionnaire conserve customers view apres enregistrement', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+    $customersViewId = Permission::query()->where('name', 'customers.view')->value('id');
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.store'), [
+            'name' => 'Gestionnaire Persist',
+            'email' => 'gestionnaire.persist@example.com',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'role' => User::ROLE_GESTIONNAIRE,
+            'is_active' => true,
+            'permissions' => [$customersViewId],
+        ])
+        ->assertRedirect(route('admin.users.index'));
+
+    $user = User::query()->where('email', 'gestionnaire.persist@example.com')->firstOrFail();
+
+    $this->actingAs($admin)
+        ->put(route('admin.users.update', $user), [
+            'name' => 'Gestionnaire Persist Renomme',
+            'email' => $user->email,
+            'role' => User::ROLE_GESTIONNAIRE,
+            'is_active' => true,
+            'permissions' => [$customersViewId],
+        ])
+        ->assertRedirect(route('admin.users.index'));
+
+    $user->refresh();
+
+    expect($user->permissions()->pluck('name')->all())->toContain('customers.view');
+
+    $this->actingAs($admin)
+        ->get(route('admin.users.edit', $user))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('userPermissionIds', function ($ids) use ($customersViewId) {
+                return collect($ids)->contains($customersViewId);
+            })
+        );
+});
+
 test('creating gestionnaire assigns preset without sales permissions', function () {
     $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 

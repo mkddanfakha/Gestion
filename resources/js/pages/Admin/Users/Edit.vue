@@ -151,6 +151,12 @@
                   Les administrateurs ont un accès complet (bypass) — aperçu du catalogue.
                 </template>
                 <template v-else-if="form.role === 'user'">Sélectionnez les permissions personnalisées</template>
+                <template v-else-if="form.role === 'gestionnaire'">
+                  Preset « gestionnaire » + permissions additionnelles (ex. clients / créances). Les ventes (sales.*) restent interdites.
+                </template>
+                <template v-else-if="form.role === 'vendeur'">
+                  Preset « vendeur » + permissions additionnelles optionnelles.
+                </template>
                 <template v-else>Aperçu du preset « {{ form.role }} » (appliqué à l’enregistrement côté serveur)</template>
               </small>
             </div>
@@ -159,7 +165,7 @@
                 v-model="form.permissions"
                 :permissions="displayedPermissions"
                 :module-labels="moduleLabels"
-                :disabled="form.role !== 'user' || isLastActiveAdmin"
+                :disabled="form.role === 'admin' || isLastActiveAdmin"
               />
             </div>
           </div>
@@ -189,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import AppLayout from '@/layouts/BootstrapLayout.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
@@ -264,9 +270,14 @@ const displayedPermissions = computed<RbacPermission[]>(() => {
     return flatCanonicalPermissions.value
   }
 
-  if (form.role === 'vendeur' || form.role === 'gestionnaire') {
-    const names = new Set(props.rolePresets[form.role] ?? [])
-    return flatCanonicalPermissions.value.filter((permission) => names.has(permission.name))
+  if (form.role === 'gestionnaire') {
+    return flatCanonicalPermissions.value.filter(
+      (permission) => !permission.name.startsWith('sales.'),
+    )
+  }
+
+  if (form.role === 'vendeur') {
+    return flatCanonicalPermissions.value
   }
 
   return flatCanonicalPermissions.value
@@ -342,16 +353,6 @@ const onRoleChange = () => {
 
   applyRolePresetSelection()
 }
-
-watch(
-  () => [form.role, flatCanonicalPermissions.value.length] as const,
-  () => {
-    if (form.role === 'admin' || form.role === 'vendeur' || form.role === 'gestionnaire') {
-      applyRolePresetSelection()
-    }
-  },
-  { immediate: form.role === 'admin' || form.role === 'vendeur' || form.role === 'gestionnaire' },
-)
 
 const submit = () => {
   clientErrors.value = {}

@@ -56,6 +56,7 @@ test('page roles-permissions accessible aux admins uniquement', function () {
                 $names = collect($permissions)->pluck('name');
 
                 return $names->contains('inventory.reopen')
+                    && $names->contains('customers.view')
                     && ! $names->contains('inventory.review')
                     && ! $names->contains('products.edit');
             })
