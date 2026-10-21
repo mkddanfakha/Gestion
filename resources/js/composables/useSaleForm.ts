@@ -8,12 +8,15 @@ import { useDocumentProductBarcode } from '@/composables/useDocumentProductBarco
 import { restoreInertiaFormData } from '@/drafts/restoreInertiaForm'
 import { formatDateForInput, getTodayForInput, normalizeFormDateFields } from '@/utils/dateFormatter'
 import {
+  calculateCashChangeAmount,
   calculateSalePaymentState,
   getPaymentStatusBadgeClass,
   getPaymentStatusIcon,
   getPaymentStatusLabel,
-  isPaymentMethodRequired as requiresPaymentMethod,
+  isCheckoutPaymentMethodRequired,
+  resolveCashAmountDue,
   resolveEffectiveDownPaymentAmount,
+  type SaleCheckoutPaymentType,
 } from '@/utils/salePaymentStatus'
 
 export type SaleFormMode = 'create' | 'edit'
@@ -145,6 +148,7 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
   const taxEnabled = ref(mode === 'edit' ? toNumber(sale?.tax_amount) > 0 : true)
   const discountEnabled = ref(mode === 'edit' ? toNumber(sale?.discount_amount) > 0 : true)
   const cashReceivedAmount = ref(0)
+  const paymentType = ref<SaleCheckoutPaymentType>('without_deposit')
 
   const form = useForm(buildInitialForm(mode, sale))
 
@@ -158,6 +162,7 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
       taxEnabled: mode === 'edit' ? toNumber(sale?.tax_amount) > 0 : true,
       discountEnabled: mode === 'edit' ? toNumber(sale?.discount_amount) > 0 : true,
       cashReceivedAmount: 0,
+      paymentType: 'without_deposit' as SaleCheckoutPaymentType,
     },
   }
 
@@ -171,6 +176,7 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
       taxEnabled: taxEnabled.value,
       discountEnabled: discountEnabled.value,
       cashReceivedAmount: cashReceivedAmount.value,
+      paymentType: paymentType.value,
     },
   })
 
@@ -192,6 +198,9 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
       taxEnabled.value = Boolean(uiState.taxEnabled)
       discountEnabled.value = Boolean(uiState.discountEnabled)
       cashReceivedAmount.value = toNumber(uiState.cashReceivedAmount)
+      if (uiState.paymentType === 'without_deposit' || uiState.paymentType === 'with_deposit') {
+        paymentType.value = uiState.paymentType
+      }
     }
   }
 
@@ -304,6 +313,20 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
       if (max <= 0 || item.quantity >= max) return
     }
     item.quantity += 1
+    updateItemTotal(index)
+  }
+
+  const setItemQuantity = (index: number, rawValue: string) => {
+    const item = form.items[index]
+    const parsed = parseInt(rawValue, 10)
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      item.quantity = 1
+    } else if (item.product_id) {
+      const max = getMaxQuantity(index)
+      item.quantity = max > 0 ? Math.min(parsed, max) : parsed
+    } else {
+      item.quantity = parsed
+    }
     updateItemTotal(index)
   }
 
@@ -508,22 +531,12 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     validateField('discount_percent', discountPercent.value)
   }
 
-  const updateTaxPercentFromAmount = () => {
-    if (taxMode.value !== 'amount') return
-    syncTaxPercentFromAmount()
-  }
-
-  const updateDiscountPercentFromAmount = () => {
-    if (discountMode.value !== 'amount') return
-    syncDiscountPercentFromAmount()
-  }
-
-  watch(taxMode, (newMode) => {
+  watch(taxMode, () => {
     taxPercentUserEdited.value = false
     syncTaxPercentFromAmount()
   })
 
-  watch(discountMode, (newMode) => {
+  watch(discountMode, () => {
     discountPercentUserEdited.value = false
     syncDiscountPercentFromAmount()
   })
@@ -572,9 +585,10 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
   const effectiveDownPaymentAmount = computed(() =>
     resolveEffectiveDownPaymentAmount({
       totalAmount: totalAmount.value,
-      downPaymentAmount: form.down_payment_amount || 0,
+      downPaymentAmount: paymentType.value === 'with_deposit' ? form.down_payment_amount || 0 : 0,
       paymentMethod: form.payment_method,
       cashReceivedAmount: cashReceivedAmount.value,
+      paymentType: paymentType.value,
     }),
   )
 
@@ -586,27 +600,51 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
   const paymentStatusBadgeClass = computed(() => getPaymentStatusBadgeClass(paymentState.value.paymentStatus))
   const paymentStatusIcon = computed(() => getPaymentStatusIcon(paymentState.value.paymentStatus))
   const isSalePaid = computed(() => paymentState.value.paymentStatus === 'paid')
-  const isPaymentMethodRequired = computed(() => requiresPaymentMethod(effectiveDownPaymentAmount.value))
+  const isPaymentMethodRequired = computed(() =>
+    isCheckoutPaymentMethodRequired({
+      paymentType: paymentType.value,
+      totalAmount: totalAmount.value,
+      downPaymentAmount: paymentType.value === 'with_deposit' ? form.down_payment_amount || 0 : 0,
+    }),
+  )
 
   const onDownPaymentInput = () => {
     validateField('down_payment_amount', form.down_payment_amount)
     validateField('payment_method', form.payment_method)
   }
 
-  const cashAmountExpected = computed(() => {
-    const paid = form.down_payment_amount || 0
-    if (paid > 0 && paid < totalAmount.value) {
-      return Math.max(0, totalAmount.value - paid)
-    }
-    return totalAmount.value
-  })
+  const cashAmountDue = computed(() =>
+    resolveCashAmountDue({
+      totalAmount: totalAmount.value,
+      downPaymentAmount: paymentType.value === 'with_deposit' ? form.down_payment_amount || 0 : 0,
+      paymentType: paymentType.value,
+    }),
+  )
 
   const changeAmount = computed(() => {
-    if (form.payment_method === 'cash' && cashReceivedAmount.value >= cashAmountExpected.value) {
-      return cashReceivedAmount.value - cashAmountExpected.value
+    if (form.payment_method !== 'cash') {
+      return 0
     }
-    return 0
+    return calculateCashChangeAmount({
+      totalAmount: totalAmount.value,
+      downPaymentAmount: paymentType.value === 'with_deposit' ? form.down_payment_amount || 0 : 0,
+      cashReceivedAmount: cashReceivedAmount.value,
+      paymentType: paymentType.value,
+    })
   })
+
+  const paymentTypeLabel = computed(() =>
+    paymentType.value === 'with_deposit' ? 'Paiement avec acompte' : 'Paiement sans acompte',
+  )
+
+  const showCashReceivedField = computed(
+    () => mode !== 'edit' && form.payment_method === 'cash' && totalAmount.value > 0,
+  )
+
+  const onPaymentTypeChange = () => {
+    validateField('down_payment_amount', form.down_payment_amount)
+    validateField('payment_method', form.payment_method)
+  }
 
   watch(totalAmount, (total) => {
     if ((form.down_payment_amount || 0) > total) {
@@ -641,13 +679,13 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
       errors.discount_amount = 'Le montant de la remise ne peut pas être négatif'
     }
 
-    if (mode !== 'edit') {
+    if (mode !== 'edit' && paymentType.value === 'with_deposit') {
       if (form.down_payment_amount < 0) {
-        errors.down_payment_amount = 'Le montant payé ne peut pas être négatif'
+        errors.down_payment_amount = 'L’acompte ne peut pas être négatif'
       }
 
       if (form.down_payment_amount > totalAmount.value) {
-        errors.down_payment_amount = 'Le montant payé ne peut pas dépasser le montant total'
+        errors.down_payment_amount = 'L’acompte ne peut pas dépasser le total de la vente'
       }
     }
 
@@ -693,10 +731,13 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
         }
         break
     case 'down_payment_amount':
+      if (paymentType.value !== 'with_deposit') {
+        break
+      }
       if (typeof value === 'number' && value < 0) {
-        errorMessage = 'Le montant payé ne peut pas être négatif'
+        errorMessage = 'L’acompte ne peut pas être négatif'
       } else if (typeof value === 'number' && value > totalAmount.value) {
-        errorMessage = 'Le montant payé ne peut pas dépasser le montant total'
+        errorMessage = 'L’acompte ne peut pas dépasser le total de la vente'
       }
       break
     case 'tax_percent':
@@ -776,10 +817,24 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
       return false
     }
 
-    if (mode !== 'edit' && form.payment_method === 'cash' && cashReceivedAmount.value > 0) {
-      if (cashReceivedAmount.value < cashAmountExpected.value) {
-        error(`Le montant reçu doit être au moins égal à ${formatCurrency(cashAmountExpected.value)}.`)
-        return false
+    if (mode !== 'edit' && form.payment_method === 'cash' && totalAmount.value > 0) {
+      const due = cashAmountDue.value
+      if (paymentType.value === 'without_deposit') {
+        if (cashReceivedAmount.value < due) {
+          error(`Le montant reçu doit être au moins égal au total (${formatCurrency(due)}).`)
+          return false
+        }
+      } else if (paymentType.value === 'with_deposit' && (form.down_payment_amount || 0) > 0) {
+        if (cashReceivedAmount.value > 0 && cashReceivedAmount.value < due) {
+          error(
+            `Le montant reçu doit être au moins égal à l’acompte (${formatCurrency(due)}).`,
+          )
+          return false
+        }
+        if (cashReceivedAmount.value === 0) {
+          error('Saisissez le montant remis par le client pour encaisser l’acompte.')
+          return false
+        }
       }
     }
 
@@ -875,6 +930,11 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     taxEnabled,
     discountEnabled,
     cashReceivedAmount,
+    paymentType,
+    paymentTypeLabel,
+    showCashReceivedField,
+    cashAmountDue,
+    onPaymentTypeChange,
     pageTitle,
     breadcrumbLabel,
     submitLabel,
@@ -893,7 +953,6 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     paymentStatusIcon,
     isSalePaid,
     isPaymentMethodRequired,
-    cashAmountExpected,
     changeAmount,
     hasDuplicateProducts,
     getProduct,
@@ -905,6 +964,7 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     canIncrementQuantity,
     decrementQuantity,
     incrementQuantity,
+    setItemQuantity,
     isProductDuplicate,
     mergeDuplicateProducts,
     isQuantityExceedsStock,

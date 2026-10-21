@@ -21,57 +21,51 @@
     />
 
     <form novalidate @submit.prevent="submit">
-      <div class="form-page__body">
-      <!-- Cartes résumé horizontales -->
-      <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-          <div class="sale-stat-card h-100">
-            <div class="sale-stat-card__icon">
-              <i class="bi bi-bag"></i>
-            </div>
-            <div>
-              <div class="sale-stat-card__value">{{ itemsCount }}</div>
-              <div class="sale-stat-card__label">article{{ itemsCount > 1 ? 's' : '' }}</div>
-            </div>
-          </div>
+      <div class="form-page__body sale-form-flow">
+      <!-- 1. Client -->
+      <div class="card sale-card mb-3">
+        <div class="card-header sale-card-header">
+          <i class="bi bi-person me-2"></i>
+          Client
         </div>
-        <div class="col-6 col-md-3">
-          <div class="sale-stat-card h-100">
-            <div class="sale-stat-card__icon">
-              <i class="bi bi-tag"></i>
-            </div>
-            <div>
-              <div class="sale-stat-card__value sale-stat-card__value--sm">{{ formatCurrency(subtotal) }}</div>
-              <div class="sale-stat-card__label">Sous-total</div>
-            </div>
+        <div class="card-body">
+          <label class="form-label">
+            <i class="bi bi-search me-1 text-muted"></i>
+            Rechercher un client
+          </label>
+          <div class="sale-customer-toolbar">
+            <CustomerAutocomplete
+              ref="customerAutocompleteRef"
+              v-model="form.customer_id"
+              :customers="localCustomers"
+              placeholder="Nom, téléphone, e-mail… (optionnel)"
+              :is-invalid="!!errors.customer_id"
+              :allow-create="false"
+            />
+            <button
+              v-if="canCreateCustomer"
+              type="button"
+              class="btn btn-outline-success sale-customer-toolbar__add"
+              @click="openCustomerCreateModal()"
+            >
+              <i class="bi bi-person-plus me-1"></i>
+              Ajouter un nouveau client
+            </button>
           </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="sale-stat-card sale-stat-card--accent h-100">
-            <div class="sale-stat-card__icon">
-              <i class="bi bi-percent"></i>
-            </div>
-            <div>
-              <div class="sale-stat-card__value sale-stat-card__value--sm">
-                {{ discountAmount > 0 ? `- ${formatCurrency(discountAmount)}` : formatCurrency(0) }}
-              </div>
-              <div class="sale-stat-card__label">Remise</div>
-            </div>
+          <div v-if="form.customer_id && canView('customers')" class="mt-2">
+            <Link
+              :href="route('customers.show', { id: form.customer_id })"
+              class="customer-profile-link"
+            >
+              <i class="bi bi-person-lines-fill me-1"></i>
+              Voir la fiche client
+            </Link>
           </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="sale-stat-card sale-stat-card--total h-100">
-            <div class="sale-stat-card__icon">
-              <i class="bi bi-wallet2"></i>
-            </div>
-            <div>
-              <div class="sale-stat-card__value sale-stat-card__value--total">{{ formatCurrency(totalAmount) }}</div>
-              <div class="sale-stat-card__label">TOTAL</div>
-            </div>
-          </div>
+          <div v-if="errors.customer_id" class="invalid-feedback d-block">{{ errors.customer_id }}</div>
         </div>
       </div>
 
+      <!-- 2. Code-barres -->
       <div class="card sale-card mb-3">
         <div class="card-body">
           <BarcodeScanner
@@ -87,7 +81,7 @@
         </div>
       </div>
 
-      <!-- Table articles -->
+      <!-- 3. Produits -->
       <div class="card sale-card mb-4">
         <div class="card-body p-0">
           <div v-if="form.items.length === 0" class="text-center py-5 text-muted">
@@ -152,7 +146,16 @@
                       >
                         <i class="bi bi-dash"></i>
                       </button>
-                      <span class="sale-qty-stepper__value">{{ item.quantity }}</span>
+                      <input
+                        type="number"
+                        class="sale-qty-stepper__input"
+                        :value="item.quantity"
+                        min="1"
+                        :max="item.product_id && getAvailableStock(index) > 0 ? getAvailableStock(index) : undefined"
+                        inputmode="numeric"
+                        aria-label="Quantité"
+                        @input="setItemQuantity(index, ($event.target as HTMLInputElement).value)"
+                      />
                       <button
                         type="button"
                         class="sale-qty-stepper__btn"
@@ -247,7 +250,16 @@
                       >
                         <i class="bi bi-dash"></i>
                       </button>
-                      <span class="sale-qty-stepper__value">{{ item.quantity }}</span>
+                      <input
+                        type="number"
+                        class="sale-qty-stepper__input"
+                        :value="item.quantity"
+                        min="1"
+                        :max="item.product_id && getAvailableStock(index) > 0 ? getAvailableStock(index) : undefined"
+                        inputmode="numeric"
+                        aria-label="Quantité"
+                        @input="setItemQuantity(index, ($event.target as HTMLInputElement).value)"
+                      />
                       <button
                         type="button"
                         class="sale-qty-stepper__btn"
@@ -322,251 +334,16 @@
         </div>
       </div>
 
-      <!-- Bas : Client & Ajustements -->
-      <div class="row g-4">
-        <div class="col-lg-6">
-          <div class="card sale-card h-100">
-            <div class="card-header sale-card-header">
-              <i class="bi bi-person me-2"></i>
-              Client &amp; paiement
-            </div>
-            <div class="card-body">
-              <div class="mb-3">
-                <label class="form-label">
-                  <i class="bi bi-search me-1 text-muted"></i>
-                  Client
-                </label>
-                <CustomerAutocomplete
-                  ref="customerAutocompleteRef"
-                  v-model="form.customer_id"
-                  :customers="localCustomers"
-                  placeholder="Rechercher un client (optionnel)..."
-                  :is-invalid="!!errors.customer_id"
-                  :allow-create="canCreateCustomer"
-                  @create-request="openCustomerCreateModal"
-                />
-                <div v-if="form.customer_id && canView('customers')" class="mt-2">
-                  <Link
-                    :href="route('customers.show', { id: form.customer_id })"
-                    class="customer-profile-link"
-                  >
-                    <i class="bi bi-person-lines-fill me-1"></i>
-                    Voir la fiche client
-                  </Link>
-                </div>
-                <div v-if="errors.customer_id" class="invalid-feedback d-block">{{ errors.customer_id }}</div>
-              </div>
-
-              <div v-if="mode === 'create'" class="sale-payment-panel border rounded p-3 mb-3">
-                <div class="d-flex align-items-center gap-2 mb-3">
-                  <i class="bi bi-cash-coin text-success"></i>
-                  <span class="fw-semibold">Paiement</span>
-                </div>
-
-                <div class="sale-payment-row mb-3">
-                  <span class="sale-payment-row__label">Total de la vente</span>
-                  <span class="sale-payment-row__value fw-semibold">{{ formatCurrency(totalAmount) }}</span>
-                </div>
-
-                <div class="mb-3">
-                  <label class="form-label mb-1">
-                    Mode de paiement
-                    <span v-if="isPaymentMethodRequired" class="text-danger">*</span>
-                  </label>
-                  <select
-                    v-model="form.payment_method"
-                    class="form-select"
-                    :required="isPaymentMethodRequired"
-                    :class="{ 'is-invalid': errors.payment_method || clientErrors.payment_method }"
-                    @blur="validateField('payment_method', form.payment_method)"
-                    @change="validateField('payment_method', form.payment_method)"
-                  >
-                    <option value="">Aucun / non renseigné</option>
-                    <option value="cash">Espèces</option>
-                    <option value="card">Carte</option>
-                    <option value="bank_transfer">Virement bancaire</option>
-                    <option value="check">Chèque</option>
-                    <option value="orange_money">Orange Money</option>
-                    <option value="wave">Wave</option>
-                  </select>
-                  <div v-if="errors.payment_method" class="invalid-feedback">{{ errors.payment_method }}</div>
-                  <div v-if="clientErrors.payment_method" class="invalid-feedback">{{ clientErrors.payment_method }}</div>
-                  <small v-if="!isPaymentMethodRequired" class="form-text text-muted">
-                    Facultatif tant qu'aucun paiement n'est saisi.
-                  </small>
-                </div>
-
-                <div class="mb-3">
-                  <label class="form-label mb-1">Montant payé</label>
-                  <div class="input-group">
-                    <input
-                      v-model.number="form.down_payment_amount"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      :max="totalAmount"
-                      class="form-control"
-                      placeholder="0"
-                      :class="{ 'is-invalid': errors.down_payment_amount || clientErrors.down_payment_amount }"
-                      @input="onDownPaymentInput"
-                    />
-                    <span class="input-group-text">FCFA</span>
-                  </div>
-                  <div v-if="errors.down_payment_amount" class="invalid-feedback d-block">{{ errors.down_payment_amount }}</div>
-                  <div v-if="clientErrors.down_payment_amount" class="invalid-feedback d-block">{{ clientErrors.down_payment_amount }}</div>
-                  <div class="form-text text-muted">Maximum : {{ formatCurrency(totalAmount) }}</div>
-                </div>
-
-                <div class="sale-payment-row mb-3">
-                  <span class="sale-payment-row__label">Reste à payer</span>
-                  <span
-                    class="sale-payment-row__value fw-semibold"
-                    :class="paymentState.remainingAmount > 0 ? 'text-warning' : 'text-success'"
-                  >
-                    {{ formatCurrency(paymentState.remainingAmount) }}
-                  </span>
-                </div>
-
-                <div class="mb-3">
-                  <label class="form-label mb-1" :class="{ 'text-muted': isSalePaid }">
-                    Échéance
-                    <i v-if="isSalePaid" class="bi bi-lock-fill ms-1 text-muted" title="Vente payée"></i>
-                  </label>
-                  <input
-                    v-model="form.due_date"
-                    type="date"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.due_date }"
-                    :disabled="isSalePaid"
-                    :min="mode === 'create' ? today : undefined"
-                    :aria-disabled="isSalePaid"
-                  />
-                  <div v-if="errors.due_date" class="invalid-feedback">{{ errors.due_date }}</div>
-                  <small v-if="isSalePaid" class="form-text text-muted">
-                    Non modifiable — la vente est entièrement payée.
-                  </small>
-                  <small v-else class="form-text text-muted">Date limite de paiement (optionnel)</small>
-                </div>
-
-                <div class="sale-payment-row">
-                  <span class="sale-payment-row__label">Statut</span>
-                  <span :class="paymentStatusBadgeClass">
-                    <i :class="paymentStatusIcon" class="me-1"></i>
-                    {{ paymentStatusLabel }}
-                  </span>
-                </div>
-              </div>
-
-              <div v-if="mode === 'edit'" class="sale-payment-panel border rounded p-3 mb-3 bg-light">
-                <div class="d-flex align-items-center gap-2 mb-3">
-                  <i class="bi bi-cash-coin text-success"></i>
-                  <span class="fw-semibold">Paiement</span>
-                </div>
-                <p class="small text-muted mb-3">
-                  Les règlements ne se modifient plus ici. Utilisez le bouton
-                  <strong>Encaisser</strong> sur la fiche vente.
-                </p>
-                <div class="sale-payment-row mb-2">
-                  <span class="sale-payment-row__label">Total encaissé</span>
-                  <span class="sale-payment-row__value fw-semibold text-primary">
-                    {{ formatCurrency(form.down_payment_amount || 0) }}
-                  </span>
-                </div>
-                <div class="sale-payment-row mb-2">
-                  <span class="sale-payment-row__label">Reste à payer</span>
-                  <span class="sale-payment-row__value fw-semibold text-warning">
-                    {{ formatCurrency(paymentState.remainingAmount) }}
-                  </span>
-                </div>
-                <div class="sale-payment-row mb-3">
-                  <span class="sale-payment-row__label">Statut</span>
-                  <span :class="paymentStatusBadgeClass">
-                    <i :class="paymentStatusIcon" class="me-1"></i>
-                    {{ paymentStatusLabel }}
-                  </span>
-                </div>
-
-                <div class="mb-0">
-                  <label class="form-label mb-1" :class="{ 'text-muted': isSalePaid }">
-                    Échéance
-                    <i v-if="isSalePaid" class="bi bi-lock-fill ms-1 text-muted" title="Vente payée"></i>
-                  </label>
-                  <input
-                    v-model="form.due_date"
-                    type="date"
-                    class="form-control"
-                    :class="{ 'is-invalid': errors.due_date }"
-                    :disabled="isSalePaid"
-                    :aria-disabled="isSalePaid"
-                  />
-                  <div v-if="errors.due_date" class="invalid-feedback">{{ errors.due_date }}</div>
-                </div>
-              </div>
-
-              <div v-if="mode === 'create' && form.payment_method === 'cash'" class="border rounded p-3 sale-payment-cash-panel mb-3">
-                <div class="mb-2">
-                  <label class="form-label mb-1">Montant reçu (FCFA)</label>
-                  <div class="input-group">
-                    <input
-                      v-model.number="cashReceivedAmount"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      class="form-control"
-                      placeholder="0.00"
-                      :class="{ 'is-invalid': cashReceivedAmount > 0 && cashReceivedAmount < cashAmountExpected }"
-                    />
-                    <span class="input-group-text">FCFA</span>
-                  </div>
-                  <div
-                    v-if="cashReceivedAmount > 0 && cashReceivedAmount < cashAmountExpected"
-                    class="invalid-feedback d-block"
-                  >
-                    Le montant reçu doit être au moins égal à {{ formatCurrency(cashAmountExpected) }}
-                  </div>
-                  <div class="form-text text-muted">
-                    Montant attendu : {{ formatCurrency(cashAmountExpected) }}
-                  </div>
-                </div>
-                <div
-                  v-if="form.payment_method === 'cash' && cashReceivedAmount >= cashAmountExpected && cashAmountExpected > 0"
-                  class="d-flex justify-content-between p-2 sale-change-highlight rounded border"
-                >
-                  <span class="fw-semibold">Monnaie à rendre :</span>
-                  <span class="fw-bold text-info">{{ formatCurrency(changeAmount) }}</span>
-                </div>
-                <div v-if="effectiveDownPaymentAmount > (form.down_payment_amount || 0)" class="form-text text-muted mt-2">
-                  Paiement enregistré : {{ formatCurrency(effectiveDownPaymentAmount) }}
-                </div>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">
-                  <i class="bi bi-journal-text me-1 text-muted"></i>
-                  Notes
-                </label>
-                <textarea
-                  v-model="form.notes"
-                  rows="3"
-                  class="form-control"
-                  placeholder="Ajoutez des notes sur cette vente..."
-                  :class="{ 'is-invalid': errors.notes }"
-                ></textarea>
-                <div v-if="errors.notes" class="invalid-feedback">{{ errors.notes }}</div>
-              </div>
-            </div>
-          </div>
+      <!-- 4. Taxes et remises -->
+      <div class="card sale-card mb-3">
+        <div class="card-header sale-card-header">
+          <i class="bi bi-sliders me-2"></i>
+          Taxes et remises
         </div>
-
-        <div class="col-lg-6">
-          <div class="card sale-card h-100">
-            <div class="card-header sale-card-header">
-              <i class="bi bi-sliders me-2"></i>
-              Ajustements
-            </div>
-            <div class="card-body">
-              <!-- Taxes -->
-              <div class="sale-adjust-row mb-4">
+        <div class="card-body">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="sale-adjust-row h-100">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                   <label class="form-label mb-0 d-flex align-items-center gap-2">
                     Taxe
@@ -583,13 +360,13 @@
                   </div>
                 </div>
                 <div v-show="taxEnabled">
-                  <div class="btn-group w-100 mb-2" role="group">
+                  <div class="btn-group w-100 mb-2 flex-wrap" role="group">
                     <input id="tax-mode-amount" v-model="taxMode" type="radio" class="btn-check" value="amount" />
                     <label class="btn btn-outline-secondary btn-sm" for="tax-mode-amount">Montant</label>
                     <input id="tax-mode-percent" v-model="taxMode" type="radio" class="btn-check" value="percent" />
                     <label class="btn btn-outline-secondary btn-sm" for="tax-mode-percent">Pourcentage</label>
                   </div>
-                  <div v-if="taxMode === 'amount'" class="input-group input-group-sm">
+                  <div v-if="taxMode === 'amount'" class="input-group">
                     <input
                       v-model.number="form.tax_amount"
                       type="number"
@@ -601,7 +378,7 @@
                     />
                     <span class="input-group-text">FCFA</span>
                   </div>
-                  <div v-else class="input-group input-group-sm">
+                  <div v-else class="input-group">
                     <input
                       v-model.number="taxPercent"
                       type="number"
@@ -623,9 +400,9 @@
                   <div v-if="clientErrors.tax_amount" class="invalid-feedback d-block">{{ clientErrors.tax_amount }}</div>
                 </div>
               </div>
-
-              <!-- Remise -->
-              <div class="sale-adjust-row mb-4">
+            </div>
+            <div class="col-md-6">
+              <div class="sale-adjust-row h-100">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                   <label class="form-label mb-0">Remise</label>
                   <div class="form-check form-switch mb-0">
@@ -639,13 +416,13 @@
                   </div>
                 </div>
                 <div v-show="discountEnabled">
-                  <div class="btn-group w-100 mb-2" role="group">
+                  <div class="btn-group w-100 mb-2 flex-wrap" role="group">
                     <input id="discount-mode-amount" v-model="discountMode" type="radio" class="btn-check" value="amount" />
                     <label class="btn btn-outline-secondary btn-sm" for="discount-mode-amount">Montant</label>
                     <input id="discount-mode-percent" v-model="discountMode" type="radio" class="btn-check" value="percent" />
                     <label class="btn btn-outline-secondary btn-sm" for="discount-mode-percent">Pourcentage</label>
                   </div>
-                  <div v-if="discountMode === 'amount'" class="input-group input-group-sm">
+                  <div v-if="discountMode === 'amount'" class="input-group">
                     <input
                       v-model.number="form.discount_amount"
                       type="number"
@@ -657,7 +434,7 @@
                     />
                     <span class="input-group-text">FCFA</span>
                   </div>
-                  <div v-else class="input-group input-group-sm">
+                  <div v-else class="input-group">
                     <input
                       v-model.number="discountPercent"
                       type="number"
@@ -679,36 +456,371 @@
                   <div v-if="clientErrors.discount_amount" class="invalid-feedback d-block">{{ clientErrors.discount_amount }}</div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-              <!-- Récapitulatif -->
-              <div class="sale-summary-breakdown">
-                <div class="d-flex justify-content-between mb-2">
-                  <span class="text-muted">Sous-total</span>
-                  <span>{{ formatCurrency(subtotal) }}</span>
+      <!-- 5. Paiement -->
+      <div v-if="mode === 'create' || mode === 'edit'" class="card sale-card mb-3">
+        <div class="card-header sale-card-header">
+          <i class="bi bi-cash-coin me-2"></i>
+          Paiement
+        </div>
+        <div class="card-body">
+          <div v-if="mode === 'edit'" class="sale-payment-panel border rounded p-3 mb-0 bg-light">
+            <p class="small text-muted mb-3">
+              Les règlements ne se modifient plus ici. Utilisez le bouton
+              <strong>Encaisser</strong> sur la fiche vente.
+            </p>
+            <div class="sale-payment-row mb-2">
+              <span class="sale-payment-row__label">Total encaissé</span>
+              <span class="sale-payment-row__value fw-semibold text-primary">
+                {{ formatCurrency(form.down_payment_amount || 0) }}
+              </span>
+            </div>
+            <div class="sale-payment-row mb-2">
+              <span class="sale-payment-row__label">Reste à payer</span>
+              <span class="sale-payment-row__value fw-semibold text-warning">
+                {{ formatCurrency(paymentState.remainingAmount) }}
+              </span>
+            </div>
+            <div class="sale-payment-row mb-3">
+              <span class="sale-payment-row__label">Statut</span>
+              <span :class="paymentStatusBadgeClass">
+                <i :class="paymentStatusIcon" class="me-1"></i>
+                {{ paymentStatusLabel }}
+              </span>
+            </div>
+            <div class="mb-0">
+              <label class="form-label mb-1" :class="{ 'text-muted': isSalePaid }">
+                Échéance
+                <i v-if="isSalePaid" class="bi bi-lock-fill ms-1 text-muted" title="Vente payée"></i>
+              </label>
+              <input
+                v-model="form.due_date"
+                type="date"
+                class="form-control"
+                :class="{ 'is-invalid': errors.due_date }"
+                :disabled="isSalePaid"
+                :aria-disabled="isSalePaid"
+              />
+              <div v-if="errors.due_date" class="invalid-feedback">{{ errors.due_date }}</div>
+            </div>
+          </div>
+
+          <template v-else>
+            <div class="mb-3">
+              <label class="form-label mb-1">
+                Mode de paiement
+                <span v-if="isPaymentMethodRequired" class="text-danger">*</span>
+              </label>
+              <select
+                v-model="form.payment_method"
+                class="form-select"
+                :required="isPaymentMethodRequired"
+                :class="{ 'is-invalid': errors.payment_method || clientErrors.payment_method }"
+                @blur="validateField('payment_method', form.payment_method)"
+                @change="validateField('payment_method', form.payment_method)"
+              >
+                <option value="">Aucun / non renseigné</option>
+                <option value="cash">Espèces</option>
+                <option value="card">Carte</option>
+                <option value="bank_transfer">Virement bancaire</option>
+                <option value="check">Chèque</option>
+                <option value="orange_money">Orange Money</option>
+                <option value="wave">Wave</option>
+              </select>
+              <div v-if="errors.payment_method" class="invalid-feedback">{{ errors.payment_method }}</div>
+              <div v-if="clientErrors.payment_method" class="invalid-feedback">{{ clientErrors.payment_method }}</div>
+              <small v-if="paymentType === 'without_deposit' && totalAmount > 0" class="form-text text-muted">
+                Obligatoire — la vente sera enregistrée comme payée intégralement (total dû après taxes et remises).
+              </small>
+              <small v-else-if="!isPaymentMethodRequired" class="form-text text-muted">
+                Facultatif tant qu'aucun acompte n'est saisi.
+              </small>
+            </div>
+
+            <fieldset class="mb-3">
+              <legend class="form-label mb-2">Type de paiement</legend>
+              <div class="d-flex flex-column flex-sm-row gap-2">
+                <div class="form-check sale-payment-type-option flex-fill">
+                  <input
+                    id="payment-type-without-deposit"
+                    v-model="paymentType"
+                    class="form-check-input"
+                    type="radio"
+                    value="without_deposit"
+                    @change="onPaymentTypeChange"
+                  />
+                  <label class="form-check-label" for="payment-type-without-deposit">Paiement sans acompte</label>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                  <span class="text-muted">Taxes</span>
-                  <span :class="taxAmount > 0 ? 'text-success' : ''">{{ formatCurrency(taxAmount) }}</span>
+                <div class="form-check sale-payment-type-option flex-fill">
+                  <input
+                    id="payment-type-with-deposit"
+                    v-model="paymentType"
+                    class="form-check-input"
+                    type="radio"
+                    value="with_deposit"
+                    @change="onPaymentTypeChange"
+                  />
+                  <label class="form-check-label" for="payment-type-with-deposit">Paiement avec acompte</label>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                  <span class="text-muted">Remise</span>
-                  <span class="text-danger">{{ discountAmount > 0 ? `- ${formatCurrency(discountAmount)}` : formatCurrency(0) }}</span>
+              </div>
+            </fieldset>
+
+            <div v-if="paymentType === 'with_deposit'" class="mb-3">
+              <label class="form-label mb-1">Montant de l'acompte à encaisser aujourd'hui</label>
+              <div class="input-group">
+                <input
+                  v-model.number="form.down_payment_amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  :max="totalAmount"
+                  class="form-control"
+                  placeholder="0"
+                  :class="{ 'is-invalid': errors.down_payment_amount || clientErrors.down_payment_amount }"
+                  @input="onDownPaymentInput"
+                />
+                <span class="input-group-text">FCFA</span>
+              </div>
+              <p class="form-text text-muted mb-0">
+                Saisissez la somme conservée aujourd'hui comme acompte sur cette vente.
+              </p>
+              <div v-if="errors.down_payment_amount" class="invalid-feedback d-block">{{ errors.down_payment_amount }}</div>
+              <div v-if="clientErrors.down_payment_amount" class="invalid-feedback d-block">{{ clientErrors.down_payment_amount }}</div>
+            </div>
+
+            <div v-if="showCashReceivedField && paymentType === 'without_deposit'" class="mb-3">
+              <label class="form-label mb-1">Montant reçu</label>
+              <div class="input-group">
+                <input
+                  v-model.number="cashReceivedAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  class="form-control"
+                  placeholder="0"
+                  :class="{
+                    'is-invalid': cashReceivedAmount > 0 && cashReceivedAmount < cashAmountDue,
+                  }"
+                />
+                <span class="input-group-text">FCFA</span>
+              </div>
+              <p class="form-text text-muted mb-0">
+                Saisissez le montant total remis par le client, y compris la somme que vous lui rendrez
+                éventuellement en monnaie.
+              </p>
+              <div
+                v-if="cashReceivedAmount > 0 && cashReceivedAmount < cashAmountDue"
+                class="invalid-feedback d-block"
+              >
+                Le montant reçu doit être au moins égal au total ({{ formatCurrency(cashAmountDue) }}).
+              </div>
+            </div>
+
+            <div v-if="showCashReceivedField && paymentType === 'with_deposit'" class="mb-3">
+              <label class="form-label mb-1">Montant reçu</label>
+              <div class="input-group">
+                <input
+                  v-model.number="cashReceivedAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  class="form-control"
+                  placeholder="0"
+                  :class="{
+                    'is-invalid':
+                      (form.down_payment_amount || 0) > 0 &&
+                      cashReceivedAmount > 0 &&
+                      cashReceivedAmount < cashAmountDue,
+                  }"
+                />
+                <span class="input-group-text">FCFA</span>
+              </div>
+              <p class="form-text text-muted mb-0">
+                Saisissez la somme remise par le client aujourd'hui. La monnaie à rendre est calculée
+                automatiquement.
+              </p>
+              <div
+                v-if="
+                  (form.down_payment_amount || 0) > 0 &&
+                  cashReceivedAmount > 0 &&
+                  cashReceivedAmount < cashAmountDue
+                "
+                class="invalid-feedback d-block"
+              >
+                Le montant reçu doit être au moins égal à l'acompte ({{ formatCurrency(cashAmountDue) }}).
+              </div>
+            </div>
+
+            <div
+              v-if="showCashReceivedField && changeAmount > 0"
+              class="d-flex justify-content-between align-items-center p-3 sale-change-highlight rounded border mb-3"
+            >
+              <span class="fw-semibold">Monnaie à rendre</span>
+              <span class="fw-bold text-info">{{ formatCurrency(changeAmount) }}</span>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label mb-1" :class="{ 'text-muted': isSalePaid }">
+                Échéance
+                <i v-if="isSalePaid" class="bi bi-lock-fill ms-1 text-muted" title="Vente payée"></i>
+              </label>
+              <input
+                v-model="form.due_date"
+                type="date"
+                class="form-control"
+                :class="{ 'is-invalid': errors.due_date }"
+                :disabled="isSalePaid"
+                :min="today"
+                :aria-disabled="isSalePaid"
+              />
+              <div v-if="errors.due_date" class="invalid-feedback">{{ errors.due_date }}</div>
+              <small v-if="isSalePaid" class="form-text text-muted">
+                Non modifiable — la vente est entièrement payée.
+              </small>
+              <small v-else class="form-text text-muted">Date limite de paiement (optionnel)</small>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 6. Récapitulatif et validation -->
+      <div class="card sale-card mb-3 sale-recap-card">
+        <div class="card-header sale-card-header">
+          <i class="bi bi-clipboard-check me-2"></i>
+          Récapitulatif
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+              <div class="sale-stat-card h-100">
+                <div class="sale-stat-card__icon">
+                  <i class="bi bi-bag"></i>
                 </div>
-                <div v-if="effectiveDownPaymentAmount > 0" class="d-flex justify-content-between mb-2">
-                  <span class="text-muted">Montant payé</span>
-                  <span class="text-primary fw-semibold">{{ formatCurrency(effectiveDownPaymentAmount) }}</span>
-                </div>
-                <div v-if="paymentState.remainingAmount > 0" class="d-flex justify-content-between mb-2">
-                  <span class="text-muted">Reste à payer</span>
-                  <span class="text-warning fw-semibold">{{ formatCurrency(paymentState.remainingAmount) }}</span>
-                </div>
-                <hr class="my-3" />
-                <div class="d-flex justify-content-between align-items-center">
-                  <span class="fw-bold fs-5">TOTAL</span>
-                  <span class="fw-bold fs-4 text-success">{{ formatCurrency(totalAmount) }}</span>
+                <div class="min-w-0">
+                  <div class="sale-stat-card__value">{{ itemsCount }}</div>
+                  <div class="sale-stat-card__label">article{{ itemsCount > 1 ? 's' : '' }}</div>
                 </div>
               </div>
             </div>
+            <div class="col-6 col-md-3">
+              <div class="sale-stat-card h-100">
+                <div class="sale-stat-card__icon">
+                  <i class="bi bi-tag"></i>
+                </div>
+                <div class="min-w-0">
+                  <div class="sale-stat-card__value sale-stat-card__value--sm">{{ formatCurrency(subtotal) }}</div>
+                  <div class="sale-stat-card__label">Sous-total</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="sale-stat-card sale-stat-card--accent h-100">
+                <div class="sale-stat-card__icon">
+                  <i class="bi bi-percent"></i>
+                </div>
+                <div class="min-w-0">
+                  <div class="sale-stat-card__value sale-stat-card__value--sm">
+                    {{ discountAmount > 0 ? `- ${formatCurrency(discountAmount)}` : formatCurrency(0) }}
+                  </div>
+                  <div class="sale-stat-card__label">Remise</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="sale-stat-card sale-stat-card--total h-100">
+                <div class="sale-stat-card__icon">
+                  <i class="bi bi-wallet2"></i>
+                </div>
+                <div class="min-w-0">
+                  <div class="sale-stat-card__value sale-stat-card__value--total">{{ formatCurrency(totalAmount) }}</div>
+                  <div class="sale-stat-card__label">Total vente</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sale-summary-breakdown mb-4">
+            <div class="sale-payment-row mb-2">
+              <span class="sale-payment-row__label">Total de la vente</span>
+              <span class="sale-payment-row__value fw-semibold">{{ formatCurrency(totalAmount) }}</span>
+            </div>
+            <div v-if="mode === 'create'" class="sale-payment-row mb-2">
+              <span class="sale-payment-row__label">Type de paiement</span>
+              <span class="sale-payment-row__value">{{ paymentTypeLabel }}</span>
+            </div>
+            <div
+              v-if="mode === 'create' && paymentType === 'with_deposit' && (form.down_payment_amount || 0) > 0"
+              class="sale-payment-row mb-2"
+            >
+              <span class="sale-payment-row__label">Acompte conservé aujourd'hui</span>
+              <span class="sale-payment-row__value text-primary fw-semibold">
+                {{ formatCurrency(Math.min(form.down_payment_amount || 0, totalAmount)) }}
+              </span>
+            </div>
+            <div v-if="mode === 'create' && showCashReceivedField && cashReceivedAmount > 0" class="sale-payment-row mb-2">
+              <span class="sale-payment-row__label">Montant reçu</span>
+              <span class="sale-payment-row__value">{{ formatCurrency(cashReceivedAmount) }}</span>
+            </div>
+            <div v-if="mode === 'create' && showCashReceivedField && changeAmount > 0" class="sale-payment-row mb-2">
+              <span class="sale-payment-row__label">Monnaie à rendre</span>
+              <span class="sale-payment-row__value text-info fw-semibold">{{ formatCurrency(changeAmount) }}</span>
+            </div>
+            <div class="sale-payment-row mb-2">
+              <span class="sale-payment-row__label">Encaissement enregistré</span>
+              <span class="sale-payment-row__value fw-semibold text-primary">
+                {{ formatCurrency(effectiveDownPaymentAmount) }}
+              </span>
+            </div>
+            <div class="sale-payment-row mb-2">
+              <span class="sale-payment-row__label">Solde restant dû</span>
+              <span
+                class="sale-payment-row__value fw-semibold"
+                :class="paymentState.remainingAmount > 0 ? 'text-warning' : 'text-success'"
+              >
+                {{ formatCurrency(paymentState.remainingAmount) }}
+              </span>
+            </div>
+            <div class="sale-payment-row mb-3">
+              <span class="sale-payment-row__label">Statut de paiement</span>
+              <span :class="paymentStatusBadgeClass">
+                <i :class="paymentStatusIcon" class="me-1"></i>
+                {{ paymentStatusLabel }}
+              </span>
+            </div>
+            <hr class="my-3" />
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-muted">Sous-total articles</span>
+              <span>{{ formatCurrency(subtotal) }}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-muted">Taxes</span>
+              <span>{{ formatCurrency(taxAmount) }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Remise</span>
+              <span class="text-danger">
+                {{ discountAmount > 0 ? `- ${formatCurrency(discountAmount)}` : formatCurrency(0) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="mb-0">
+            <label class="form-label">
+              <i class="bi bi-journal-text me-1 text-muted"></i>
+              Notes
+            </label>
+            <textarea
+              v-model="form.notes"
+              rows="3"
+              class="form-control"
+              placeholder="Ajoutez des notes sur cette vente..."
+              :class="{ 'is-invalid': errors.notes }"
+            ></textarea>
+            <div v-if="errors.notes" class="invalid-feedback">{{ errors.notes }}</div>
           </div>
         </div>
       </div>
@@ -816,6 +928,11 @@ const {
   taxEnabled,
   discountEnabled,
   cashReceivedAmount,
+  paymentType,
+  paymentTypeLabel,
+  showCashReceivedField,
+  cashAmountDue,
+  onPaymentTypeChange,
   pageTitle,
   submitLabel,
   submitLoadingLabel,
@@ -833,7 +950,6 @@ const {
   paymentStatusIcon,
   isSalePaid,
   isPaymentMethodRequired,
-  cashAmountExpected,
   changeAmount,
   hasDuplicateProducts,
   getProduct,
@@ -842,11 +958,10 @@ const {
   handleProductSelected,
   getExcludedProductIds,
   updateItemTotal,
-  updateTaxFromPercent,
-  updateDiscountFromPercent,
   canIncrementQuantity,
   decrementQuantity,
   incrementQuantity,
+  setItemQuantity,
   isProductDuplicate,
   mergeDuplicateProducts,
   isQuantityExceedsStock,
@@ -872,7 +987,7 @@ const {
   products: toRef(props, 'products'),
 })
 
-const handleBarcodeSearchRequest = (_barcode: string) => {
+const handleBarcodeSearchRequest = () => {
   dismissBarcodeNotFound()
 
   if (form.items.length === 0) {

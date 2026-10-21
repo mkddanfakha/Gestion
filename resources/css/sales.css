@@ -200,11 +200,14 @@
 }
 
 .sale-qty-stepper__btn + .sale-qty-stepper__value,
-.sale-qty-stepper__value + .sale-qty-stepper__btn {
+.sale-qty-stepper__value + .sale-qty-stepper__btn,
+.sale-qty-stepper__btn + .sale-qty-stepper__input,
+.sale-qty-stepper__input + .sale-qty-stepper__btn {
     border-left: 1px solid var(--color-border);
 }
 
-.sale-qty-stepper__value {
+.sale-qty-stepper__value,
+.sale-qty-stepper__input {
     min-width: 2.5rem;
     padding: 0.45rem 0.5rem;
     text-align: center;
@@ -305,10 +308,112 @@
     color: var(--color-text-secondary);
 }
 
+.sale-qty-stepper__input {
+    width: 3rem;
+    min-width: 2.75rem;
+    max-width: 5rem;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    -moz-appearance: textfield;
+}
+
+.sale-qty-stepper__input:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--color-success);
+    border-radius: 0.25rem;
+}
+
+.sale-qty-stepper__input::-webkit-outer-spin-button,
+.sale-qty-stepper__input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.sale-customer-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+@media (min-width: 576px) {
+    .sale-customer-toolbar {
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    .sale-customer-toolbar .customer-autocomplete {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .sale-customer-toolbar__add {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        min-height: 2.75rem;
+    }
+}
+
+.sale-customer-toolbar__add {
+    min-height: 2.75rem;
+    width: 100%;
+}
+
+.sale-payment-type-option {
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    background: var(--color-surface-elevated);
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+}
+
+.sale-form-flow {
+    padding-bottom: 0.5rem;
+}
+
+@media (max-width: 991.98px) {
+    .sale-form-root.form-page--sticky-actions {
+        padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .sale-recap-card {
+        margin-bottom: 0.5rem;
+    }
+
+    .sale-payment-row {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .sale-payment-row__value {
+        text-align: left;
+        margin-left: auto;
+        max-width: 100%;
+        word-break: break-word;
+    }
+}
+
 @media (max-width: 575.98px) {
     .sale-qty-stepper__btn {
         width: 2.75rem;
         min-width: 2.75rem;
         min-height: 2.75rem;
+    }
+
+    .sale-stat-card {
+        padding: 0.75rem 0.85rem;
+        gap: 0.65rem;
+    }
+
+    .sale-stat-card__value {
+        font-size: 1.1rem;
+    }
+
+    .sale-stat-card__value--sm {
+        font-size: 0.9rem;
     }
 }

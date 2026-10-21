@@ -1,5 +1,7 @@
 export type SalePaymentStatus = 'pending' | 'partial' | 'paid'
 
+export type SaleCheckoutPaymentType = 'without_deposit' | 'with_deposit'
+
 export interface SalePaymentState {
   downPaymentAmount: number
   remainingAmount: number
@@ -76,36 +78,103 @@ export function getPaymentStatusIcon(status: SalePaymentStatus): string {
   return icons[status]
 }
 
-/**
- * Détermine le montant réellement enregistré comme paiement,
- * en tenant compte de la saisie espèces (montant reçu).
- */
 export function isPaymentMethodRequired(downPaymentAmount: number): boolean {
   return downPaymentAmount > 0
 }
 
+/**
+ * Mode de paiement obligatoire à la caisse (création de vente).
+ */
+export function isCheckoutPaymentMethodRequired(options: {
+  paymentType: SaleCheckoutPaymentType
+  totalAmount: number
+  downPaymentAmount: number
+}): boolean {
+  const total = Math.max(0, options.totalAmount)
+  if (total <= 0) {
+    return false
+  }
+  if (options.paymentType === 'without_deposit') {
+    return true
+  }
+  return Math.max(0, options.downPaymentAmount) > 0
+}
+
+/**
+ * Montant minimal que le client doit remettre (espèces) pour valider la saisie caisse.
+ */
+export function resolveCashAmountDue(options: {
+  totalAmount: number
+  downPaymentAmount: number
+  paymentType: SaleCheckoutPaymentType
+}): number {
+  const total = Math.max(0, options.totalAmount)
+
+  if (options.paymentType === 'without_deposit') {
+    return total
+  }
+
+  return Math.min(Math.max(0, options.downPaymentAmount), total)
+}
+
+/**
+ * Monnaie à rendre (jamais négative).
+ */
+export function calculateCashChangeAmount(options: {
+  totalAmount: number
+  downPaymentAmount: number
+  cashReceivedAmount: number
+  paymentType: SaleCheckoutPaymentType
+}): number {
+  const received = Math.max(0, options.cashReceivedAmount)
+
+  if (options.paymentType === 'without_deposit') {
+    const total = Math.max(0, options.totalAmount)
+    if (received < total) {
+      return 0
+    }
+    return received - total
+  }
+
+  const deposit = Math.min(Math.max(0, options.downPaymentAmount), Math.max(0, options.totalAmount))
+  if (received < deposit) {
+    return 0
+  }
+  return received - deposit
+}
+
+/**
+ * Montant réellement encaissé pour la vente (acompte conservé ou total payé).
+ */
 export function resolveEffectiveDownPaymentAmount(options: {
   totalAmount: number
   downPaymentAmount: number
   paymentMethod: string
   cashReceivedAmount: number
+  paymentType: SaleCheckoutPaymentType
 }): number {
   const total = Math.max(0, options.totalAmount)
-  let paid = Math.max(0, options.downPaymentAmount)
+  const deposit = Math.max(0, options.downPaymentAmount)
+  const received = Math.max(0, options.cashReceivedAmount)
 
-  if (options.paymentMethod !== 'cash') {
-    return Math.min(paid, total)
-  }
-
-  const remaining = Math.max(0, total - paid)
-
-  if (paid === 0 && options.cashReceivedAmount >= total && total > 0) {
+  if (options.paymentType === 'without_deposit') {
+    if (total <= 0 || !options.paymentMethod) {
+      return 0
+    }
+    if (options.paymentMethod === 'cash') {
+      if (received >= total) {
+        return total
+      }
+      return 0
+    }
     return total
   }
 
-  if (paid > 0 && paid < total && options.cashReceivedAmount >= remaining) {
-    return total
+  const cappedDeposit = Math.min(deposit, total)
+
+  if (options.paymentMethod === 'cash') {
+    return cappedDeposit
   }
 
-  return Math.min(paid, total)
+  return cappedDeposit
 }

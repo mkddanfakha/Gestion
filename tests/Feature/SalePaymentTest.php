@@ -174,6 +174,29 @@ test('creating sale with partial payment requires payment method', function () {
         ->assertSessionHasErrors(['payment_method']);
 });
 
+test('creating sale with full payment via each supported method marks sale paid once', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $methods = ['cash', 'card', 'bank_transfer', 'check', 'orange_money', 'wave'];
+
+    foreach ($methods as $method) {
+        $product = createSaleTestProduct();
+
+        $this->actingAs($admin)->post(route('sales.store'), saleStorePayload($product, [
+            'down_payment_amount' => 100000,
+            'payment_method' => $method,
+        ]))->assertRedirect();
+
+        $sale = Sale::query()->latest('id')->first();
+
+        expect($sale->payment_status)->toBe('paid')
+            ->and((float) $sale->down_payment_amount)->toBe(100000.0)
+            ->and((float) $sale->remaining_amount)->toBe(0.0)
+            ->and($sale->payment_method)->toBe($method);
+    }
+
+    expect(ActivityLog::query()->where('action', ActivityLog::ACTION_PAYMENT)->count())->toBe(count($methods));
+});
+
 test('collecting remaining balance via dedicated endpoint marks sale paid', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $product = createSaleTestProduct();
