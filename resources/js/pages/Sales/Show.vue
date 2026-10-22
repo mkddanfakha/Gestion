@@ -199,9 +199,7 @@
             <div class="d-flex justify-content-between mb-2">
               <span>Statut de paiement:</span>
               <span class="fw-medium">
-                <span :class="getPaymentStatusClass(paymentSummary.payment_status || 'pending')">
-                  {{ getPaymentStatusLabel(paymentSummary.payment_status || 'pending') }}
-                </span>
+                <SalePaymentStatusBadge :status="paymentSummary.payment_status || 'pending'" />
               </span>
             </div>
             <hr>
@@ -334,7 +332,8 @@ import { usePermissions } from '@/composables/usePermissions'
 import { computed, ref } from 'vue'
 import { formatDate, formatDateTime } from '@/utils/dateFormatter'
 import { formatCurrency } from '@/utils/currencyFormatter'
-import { getSalePaymentMethodLabel, getSalePaymentStatusLabel } from '@/utils/salePaymentLabels'
+import { getSalePaymentMethodLabel } from '@/utils/salePaymentLabels'
+import SalePaymentStatusBadge from '@/components/sales/SalePaymentStatusBadge.vue'
 
 const { success, error, confirm } = useSweetAlert()
 const { openFromUrl } = useDocumentPdfPreview()
@@ -444,19 +443,9 @@ const paymentTransactions = computed(() => props.payment_transactions ?? [])
 const paymentLedgerBlockedMessage = computed(() => props.payment_ledger_blocked_message)
 
 const getPaymentMethodLabel = getSalePaymentMethodLabel
-const getPaymentStatusLabel = getSalePaymentStatusLabel
 
 const openCollectModal = () => {
   collectModalOpen.value = true
-}
-
-const getPaymentStatusClass = (status: string) => {
-  const classes: Record<string, string> = {
-    'paid': 'badge bg-success',
-    'partial': 'badge bg-warning',
-    'pending': 'badge bg-danger'
-  }
-  return classes[status] || 'badge bg-secondary'
 }
 
 const deleteSale = async () => {
@@ -522,7 +511,7 @@ const downloadInvoice = async () => {
     setTimeout(() => {
       isDownloading.value = false
     }, 500)
-  } catch (err) {
+  } catch {
     isDownloading.value = false
     error('Erreur lors du téléchargement de la facture')
   }
@@ -564,7 +553,7 @@ const printInvoice = async () => {
     setTimeout(() => {
       isPrinting.value = false
     }, 3000)
-  } catch (err) {
+  } catch {
     isPrinting.value = false
     error('Erreur lors de l\'ouverture de la facture')
   }

@@ -70,12 +70,51 @@ export function getPaymentStatusBadgeClass(status: SalePaymentStatus): string {
 
 export function getPaymentStatusIcon(status: SalePaymentStatus): string {
   const icons: Record<SalePaymentStatus, string> = {
-    pending: 'bi-clock-history',
-    partial: 'bi-pie-chart',
+    pending: 'bi-clock-fill',
+    partial: 'bi-circle-half',
     paid: 'bi-check-circle-fill',
   }
 
   return icons[status]
+}
+
+export function getCheckoutPaymentTypeIcon(type: SaleCheckoutPaymentType): string {
+  const icons: Record<SaleCheckoutPaymentType, string> = {
+    without_deposit: 'bi-receipt',
+    with_deposit: 'bi-piggy-bank',
+  }
+
+  return icons[type]
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Espèces',
+  card: 'Carte',
+  bank_transfer: 'Virement bancaire',
+  check: 'Chèque',
+  orange_money: 'Orange Money',
+  wave: 'Wave',
+}
+
+export function getPaymentMethodLabel(method: string): string {
+  if (!method) {
+    return 'Non renseigné'
+  }
+
+  return PAYMENT_METHOD_LABELS[method] ?? method
+}
+
+export function getPaymentMethodIcon(method: string): string {
+  const icons: Record<string, string> = {
+    cash: 'bi-cash-coin',
+    card: 'bi-credit-card-2-front',
+    bank_transfer: 'bi-bank',
+    check: 'bi-journal-check',
+    orange_money: 'bi-phone',
+    wave: 'bi-phone',
+  }
+
+  return icons[method] || 'bi-wallet2'
 }
 
 export function isPaymentMethodRequired(downPaymentAmount: number): boolean {

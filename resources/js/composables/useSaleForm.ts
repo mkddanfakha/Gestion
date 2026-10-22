@@ -10,6 +10,8 @@ import { formatDateForInput, getTodayForInput, normalizeFormDateFields } from '@
 import {
   calculateCashChangeAmount,
   calculateSalePaymentState,
+  getCheckoutPaymentTypeIcon,
+  getPaymentMethodIcon,
   getPaymentStatusBadgeClass,
   getPaymentStatusIcon,
   getPaymentStatusLabel,
@@ -637,6 +639,10 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     paymentType.value === 'with_deposit' ? 'Paiement avec acompte' : 'Paiement sans acompte',
   )
 
+  const paymentTypeIcon = computed(() => getCheckoutPaymentTypeIcon(paymentType.value))
+
+  const paymentMethodIcon = computed(() => getPaymentMethodIcon(form.payment_method))
+
   const showCashReceivedField = computed(
     () => mode !== 'edit' && form.payment_method === 'cash' && totalAmount.value > 0,
   )
@@ -932,6 +938,8 @@ export function useSaleForm({ mode, sale, products }: UseSaleFormOptions) {
     cashReceivedAmount,
     paymentType,
     paymentTypeLabel,
+    paymentTypeIcon,
+    paymentMethodIcon,
     showCashReceivedField,
     cashAmountDue,
     onPaymentTypeChange,

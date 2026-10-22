@@ -33,9 +33,7 @@
               <td>{{ sale.sale_number }}</td>
               <td>{{ formatCurrency(sale.total_amount) }}</td>
               <td>
-                <span :class="getPaymentStatusBadgeClass(sale.payment_status)">
-                  {{ getPaymentStatusLabel(sale.payment_status) }}
-                </span>
+                <SalePaymentStatusBadge :status="sale.payment_status" />
               </td>
               <td class="text-end">
                 <Link :href="route('sales.show', { id: sale.id })" class="btn btn-sm btn-outline-primary">
@@ -97,9 +95,7 @@
               <td>{{ formatCurrency(invoice.remaining_amount) }}</td>
               <td>{{ invoice.due_date ? formatShortDate(invoice.due_date) : '—' }}</td>
               <td>
-                <span :class="getPaymentStatusBadgeClass(invoice.payment_status)">
-                  {{ getPaymentStatusLabel(invoice.payment_status) }}
-                </span>
+                <SalePaymentStatusBadge :status="invoice.payment_status" />
               </td>
               <td class="text-end">
                 <Link :href="route('sales.show', { id: invoice.id })" class="btn btn-sm btn-outline-primary">
@@ -168,11 +164,7 @@ import { Link } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { formatCurrency } from '@/utils/currencyFormatter'
 import { formatLongDate, formatShortDate } from '@/utils/dateFormatter'
-import {
-  getPaymentStatusBadgeClass,
-  getPaymentStatusLabel,
-  type SalePaymentStatus,
-} from '@/utils/salePaymentStatus'
+import SalePaymentStatusBadge from '@/components/sales/SalePaymentStatusBadge.vue'
 import EmptyState from '@/components/customers/CustomerCrmEmptyState.vue'
 import PaginationBar from '@/components/customers/CustomerCrmPagination.vue'
 

@@ -157,20 +157,7 @@
                 </span>
               </td>
               <td>
-                <span
-                  :class="[
-                    'badge',
-                    getPaymentStatusClass(sale.payment_status || 'paid')
-                  ]"
-                >
-                  <i 
-                    :class="[
-                      'me-1',
-                      getPaymentStatusIcon(sale.payment_status || 'paid')
-                    ]"
-                  ></i>
-                  {{ getPaymentStatusLabel(sale.payment_status || 'paid') }}
-                </span>
+                <SalePaymentStatusBadge :status="sale.payment_status || 'pending'" />
               </td>
               <td class="text-end">
                 <div class="btn-group" role="group">
@@ -224,6 +211,7 @@ import { route } from '@/lib/routes'
 import { useSweetAlert } from '@/composables/useSweetAlert'
 import { formatDate, formatTime } from '@/utils/dateFormatter'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import SalePaymentStatusBadge from '@/components/sales/SalePaymentStatusBadge.vue'
 
 interface Sale {
   id: number
@@ -311,37 +299,6 @@ const formatPaymentMethod = (method: string) => {
     wave: 'Wave'
   }
   return labels[method] || method
-}
-
-const getPaymentStatusLabel = (status: string) => {
-  const labels: Record<string, string> = {
-    'paid': 'Payé',
-    'partial': 'Paiement partiel',
-    'pending': 'En attente'
-  }
-  return labels[status] || status
-}
-
-const getPaymentStatusClass = (status: string) => {
-  const classes: Record<string, string> = {
-    'paid': 'bg-success',
-    'partial': 'bg-warning text-dark',
-    'pending': 'bg-danger'
-  }
-  return classes[status] || 'bg-secondary'
-}
-
-const getPaymentStatusIcon = (status: string) => {
-  const icons: Record<string, string> = {
-    'paid': 'bi bi-check-circle',
-    'partial': 'bi bi-clock',
-    'pending': 'bi bi-exclamation-circle'
-  }
-  return icons[status] || 'bi bi-question-circle'
-}
-
-const getPaymentMethodLabel = (method: string) => {
-  return formatPaymentMethod(method)
 }
 
 const search = () => {

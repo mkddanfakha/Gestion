@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateCashChangeAmount,
   calculateSalePaymentState,
+  getCheckoutPaymentTypeIcon,
+  getPaymentMethodIcon,
+  getPaymentStatusIcon,
+  getPaymentStatusLabel,
   isCheckoutPaymentMethodRequired,
   resolveCashAmountDue,
   resolveEffectiveDownPaymentAmount,
@@ -226,5 +230,29 @@ describe('resolveCashAmountDue', () => {
         paymentType: 'with_deposit',
       }),
     ).toBe(7000)
+  })
+})
+
+describe('libellés et icônes de statut', () => {
+  it('expose les libellés métier attendus', () => {
+    expect(getPaymentStatusLabel('paid')).toBe('Payé')
+    expect(getPaymentStatusLabel('partial')).toBe('Partiel')
+    expect(getPaymentStatusLabel('pending')).toBe('En attente')
+  })
+
+  it('expose des icônes Bootstrap pour chaque statut', () => {
+    expect(getPaymentStatusIcon('paid')).toContain('bi-')
+    expect(getPaymentStatusIcon('partial')).toContain('bi-')
+    expect(getPaymentStatusIcon('pending')).toContain('bi-')
+  })
+
+  it('expose des icônes pour le type de paiement caisse', () => {
+    expect(getCheckoutPaymentTypeIcon('without_deposit')).toBe('bi-receipt')
+    expect(getCheckoutPaymentTypeIcon('with_deposit')).toBe('bi-piggy-bank')
+  })
+
+  it('expose une icône pour les moyens de paiement courants', () => {
+    expect(getPaymentMethodIcon('cash')).toContain('bi-')
+    expect(getPaymentMethodIcon('card')).toContain('bi-')
   })
 })

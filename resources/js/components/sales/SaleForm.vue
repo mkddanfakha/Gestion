@@ -487,10 +487,7 @@
             </div>
             <div class="sale-payment-row mb-3">
               <span class="sale-payment-row__label">Statut</span>
-              <span :class="paymentStatusBadgeClass">
-                <i :class="paymentStatusIcon" class="me-1"></i>
-                {{ paymentStatusLabel }}
-              </span>
+              <SalePaymentStatusBadge :status="paymentState.paymentStatus" />
             </div>
             <div class="mb-0">
               <label class="form-label mb-1" :class="{ 'text-muted': isSalePaid }">
@@ -510,64 +507,59 @@
           </div>
 
           <template v-else>
-            <div class="mb-3">
-              <label class="form-label mb-1">
-                Mode de paiement
-                <span v-if="isPaymentMethodRequired" class="text-danger">*</span>
-              </label>
-              <select
-                v-model="form.payment_method"
-                class="form-select"
-                :required="isPaymentMethodRequired"
-                :class="{ 'is-invalid': errors.payment_method || clientErrors.payment_method }"
-                @blur="validateField('payment_method', form.payment_method)"
-                @change="validateField('payment_method', form.payment_method)"
-              >
-                <option value="">Aucun / non renseigné</option>
-                <option value="cash">Espèces</option>
-                <option value="card">Carte</option>
-                <option value="bank_transfer">Virement bancaire</option>
-                <option value="check">Chèque</option>
-                <option value="orange_money">Orange Money</option>
-                <option value="wave">Wave</option>
-              </select>
-              <div v-if="errors.payment_method" class="invalid-feedback">{{ errors.payment_method }}</div>
-              <div v-if="clientErrors.payment_method" class="invalid-feedback">{{ clientErrors.payment_method }}</div>
-              <small v-if="paymentType === 'without_deposit' && totalAmount > 0" class="form-text text-muted">
-                Obligatoire — la vente sera enregistrée comme payée intégralement (total dû après taxes et remises).
-              </small>
-              <small v-else-if="!isPaymentMethodRequired" class="form-text text-muted">
-                Facultatif tant qu'aucun acompte n'est saisi.
-              </small>
-            </div>
-
-            <fieldset class="mb-3">
-              <legend class="form-label mb-2">Type de paiement</legend>
-              <div class="d-flex flex-column flex-sm-row gap-2">
-                <div class="form-check sale-payment-type-option flex-fill">
-                  <input
-                    id="payment-type-without-deposit"
+            <div class="row g-3 mb-3 sale-payment-select-row">
+              <div class="col-md-6">
+                <label class="form-label mb-1" for="sale-payment-type">Type de paiement</label>
+                <div class="sale-select-with-icon">
+                  <i :class="paymentTypeIcon" class="sale-select-with-icon__icon" aria-hidden="true"></i>
+                  <select
+                    id="sale-payment-type"
                     v-model="paymentType"
-                    class="form-check-input"
-                    type="radio"
-                    value="without_deposit"
+                    class="form-select sale-select-with-icon__control"
                     @change="onPaymentTypeChange"
-                  />
-                  <label class="form-check-label" for="payment-type-without-deposit">Paiement sans acompte</label>
-                </div>
-                <div class="form-check sale-payment-type-option flex-fill">
-                  <input
-                    id="payment-type-with-deposit"
-                    v-model="paymentType"
-                    class="form-check-input"
-                    type="radio"
-                    value="with_deposit"
-                    @change="onPaymentTypeChange"
-                  />
-                  <label class="form-check-label" for="payment-type-with-deposit">Paiement avec acompte</label>
+                  >
+                    <option value="without_deposit">Paiement sans acompte</option>
+                    <option value="with_deposit">Paiement avec acompte</option>
+                  </select>
                 </div>
               </div>
-            </fieldset>
+              <div class="col-md-6">
+                <label class="form-label mb-1" for="sale-payment-method">
+                  Mode de paiement
+                  <span v-if="isPaymentMethodRequired" class="text-danger">*</span>
+                </label>
+                <div class="sale-select-with-icon">
+                  <i :class="paymentMethodIcon" class="sale-select-with-icon__icon" aria-hidden="true"></i>
+                  <select
+                    id="sale-payment-method"
+                    v-model="form.payment_method"
+                    class="form-select sale-select-with-icon__control"
+                    :required="isPaymentMethodRequired"
+                    :class="{ 'is-invalid': errors.payment_method || clientErrors.payment_method }"
+                    @blur="validateField('payment_method', form.payment_method)"
+                    @change="validateField('payment_method', form.payment_method)"
+                  >
+                    <option value="">Aucun / non renseigné</option>
+                    <option value="cash">Espèces</option>
+                    <option value="card">Carte</option>
+                    <option value="bank_transfer">Virement bancaire</option>
+                    <option value="check">Chèque</option>
+                    <option value="orange_money">Orange Money</option>
+                    <option value="wave">Wave</option>
+                  </select>
+                </div>
+                <div v-if="errors.payment_method" class="invalid-feedback d-block">{{ errors.payment_method }}</div>
+                <div v-if="clientErrors.payment_method" class="invalid-feedback d-block">
+                  {{ clientErrors.payment_method }}
+                </div>
+                <small v-if="paymentType === 'without_deposit' && totalAmount > 0" class="form-text text-muted">
+                  Obligatoire — la vente sera enregistrée comme payée intégralement (total dû après taxes et remises).
+                </small>
+                <small v-else-if="!isPaymentMethodRequired" class="form-text text-muted">
+                  Facultatif tant qu'aucun acompte n'est saisi.
+                </small>
+              </div>
+            </div>
 
             <div v-if="paymentType === 'with_deposit'" class="mb-3">
               <label class="form-label mb-1">Montant de l'acompte à encaisser aujourd'hui</label>
@@ -689,9 +681,27 @@
 
       <!-- 6. Récapitulatif et validation -->
       <div class="card sale-card mb-3 sale-recap-card">
-        <div class="card-header sale-card-header">
-          <i class="bi bi-clipboard-check me-2"></i>
-          Récapitulatif
+        <div class="card-header sale-card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <span>
+            <i class="bi bi-clipboard-check me-2"></i>
+            Récapitulatif
+          </span>
+          <button
+            v-if="mode === 'create'"
+            type="button"
+            class="btn btn-sm btn-outline-secondary sale-recap-toggle"
+            :aria-expanded="recapDetailsVisible"
+            aria-controls="sale-recap-details"
+            @click="recapDetailsVisible = !recapDetailsVisible"
+          >
+            <i :class="recapDetailsVisible ? 'bi-eye-slash' : 'bi-eye'" class="me-1" aria-hidden="true"></i>
+            {{ recapDetailsVisible ? 'Masquer les détails' : 'Afficher les détails' }}
+            <i
+              :class="recapDetailsVisible ? 'bi-chevron-up' : 'bi-chevron-down'"
+              class="ms-1 sale-recap-toggle__chevron"
+              aria-hidden="true"
+            ></i>
+          </button>
         </div>
         <div class="card-body">
           <div class="row g-3 mb-4">
@@ -743,32 +753,81 @@
             </div>
           </div>
 
-          <div class="sale-summary-breakdown mb-4">
-            <div class="sale-payment-row mb-2">
-              <span class="sale-payment-row__label">Total de la vente</span>
-              <span class="sale-payment-row__value fw-semibold">{{ formatCurrency(totalAmount) }}</span>
+          <div
+            v-if="mode === 'create' && recapDetailsVisible"
+            id="sale-recap-details"
+            class="sale-recap-details mb-4"
+          >
+            <div class="sale-recap-detail-row">
+              <span class="sale-recap-detail-row__label">Total de la vente</span>
+              <span class="sale-recap-detail-row__value">{{ formatCurrency(totalAmount) }}</span>
             </div>
-            <div v-if="mode === 'create'" class="sale-payment-row mb-2">
-              <span class="sale-payment-row__label">Type de paiement</span>
-              <span class="sale-payment-row__value">{{ paymentTypeLabel }}</span>
+            <div class="sale-recap-detail-row">
+              <span class="sale-recap-detail-row__label">Type de paiement</span>
+              <span class="sale-recap-detail-row__value">{{ paymentTypeLabel }}</span>
             </div>
-            <div
-              v-if="mode === 'create' && paymentType === 'with_deposit' && (form.down_payment_amount || 0) > 0"
-              class="sale-payment-row mb-2"
-            >
-              <span class="sale-payment-row__label">Acompte conservé aujourd'hui</span>
-              <span class="sale-payment-row__value text-primary fw-semibold">
-                {{ formatCurrency(Math.min(form.down_payment_amount || 0, totalAmount)) }}
+            <div class="sale-recap-detail-row">
+              <span class="sale-recap-detail-row__label">Montant reçu</span>
+              <span class="sale-recap-detail-row__value">{{ recapReceivedDisplay }}</span>
+            </div>
+            <div class="sale-recap-detail-row">
+              <span class="sale-recap-detail-row__label">Monnaie à rendre</span>
+              <span class="sale-recap-detail-row__value">{{ recapChangeDisplay }}</span>
+            </div>
+            <div class="sale-recap-detail-row">
+              <span class="sale-recap-detail-row__label">Encaissement enregistré</span>
+              <span class="sale-recap-detail-row__value text-primary">
+                {{ formatCurrency(effectiveDownPaymentAmount) }}
               </span>
             </div>
-            <div v-if="mode === 'create' && showCashReceivedField && cashReceivedAmount > 0" class="sale-payment-row mb-2">
-              <span class="sale-payment-row__label">Montant reçu</span>
-              <span class="sale-payment-row__value">{{ formatCurrency(cashReceivedAmount) }}</span>
+            <div class="sale-recap-detail-row">
+              <span class="sale-recap-detail-row__label">Solde restant dû</span>
+              <span
+                class="sale-recap-detail-row__value"
+                :class="paymentState.remainingAmount > 0 ? 'text-warning' : 'text-success'"
+              >
+                {{ formatCurrency(paymentState.remainingAmount) }}
+              </span>
             </div>
-            <div v-if="mode === 'create' && showCashReceivedField && changeAmount > 0" class="sale-payment-row mb-2">
-              <span class="sale-payment-row__label">Monnaie à rendre</span>
-              <span class="sale-payment-row__value text-info fw-semibold">{{ formatCurrency(changeAmount) }}</span>
+            <div class="sale-recap-detail-row">
+              <span class="sale-recap-detail-row__label">Statut de paiement</span>
+              <span class="sale-recap-detail-row__value">
+                <SalePaymentStatusBadge :status="paymentState.paymentStatus" />
+              </span>
             </div>
+          </div>
+
+          <div v-if="mode === 'create'" class="sale-recap-summary mb-4">
+            <div class="sale-recap-summary__item">
+              <div class="sale-recap-summary__head">
+                <i class="bi bi-cart3 sale-recap-summary__icon" aria-hidden="true"></i>
+                <span class="sale-recap-summary__label">Total vente</span>
+              </div>
+              <span class="sale-recap-summary__value">{{ formatCurrency(totalAmount) }}</span>
+            </div>
+            <div class="sale-recap-summary__item">
+              <div class="sale-recap-summary__head">
+                <i class="bi bi-cash-stack sale-recap-summary__icon" aria-hidden="true"></i>
+                <span class="sale-recap-summary__label">Montant reçu</span>
+              </div>
+              <span class="sale-recap-summary__value">{{ recapReceivedDisplay }}</span>
+            </div>
+            <div class="sale-recap-summary__item">
+              <div class="sale-recap-summary__head">
+                <i class="bi bi-coin sale-recap-summary__icon" aria-hidden="true"></i>
+                <span class="sale-recap-summary__label">Monnaie à rendre</span>
+              </div>
+              <span class="sale-recap-summary__value">{{ recapChangeDisplay }}</span>
+            </div>
+            <div class="sale-recap-summary__item sale-recap-summary__item--status">
+              <div class="sale-recap-summary__head">
+                <span class="sale-recap-summary__label">Statut</span>
+              </div>
+              <SalePaymentStatusBadge :status="paymentState.paymentStatus" />
+            </div>
+          </div>
+
+          <div v-else class="sale-summary-breakdown mb-4">
             <div class="sale-payment-row mb-2">
               <span class="sale-payment-row__label">Encaissement enregistré</span>
               <span class="sale-payment-row__value fw-semibold text-primary">
@@ -784,27 +843,9 @@
                 {{ formatCurrency(paymentState.remainingAmount) }}
               </span>
             </div>
-            <div class="sale-payment-row mb-3">
+            <div class="sale-payment-row mb-0">
               <span class="sale-payment-row__label">Statut de paiement</span>
-              <span :class="paymentStatusBadgeClass">
-                <i :class="paymentStatusIcon" class="me-1"></i>
-                {{ paymentStatusLabel }}
-              </span>
-            </div>
-            <hr class="my-3" />
-            <div class="d-flex justify-content-between mb-2">
-              <span class="text-muted">Sous-total articles</span>
-              <span>{{ formatCurrency(subtotal) }}</span>
-            </div>
-            <div class="d-flex justify-content-between mb-2">
-              <span class="text-muted">Taxes</span>
-              <span>{{ formatCurrency(taxAmount) }}</span>
-            </div>
-            <div class="d-flex justify-content-between">
-              <span class="text-muted">Remise</span>
-              <span class="text-danger">
-                {{ discountAmount > 0 ? `- ${formatCurrency(discountAmount)}` : formatCurrency(0) }}
-              </span>
+              <SalePaymentStatusBadge :status="paymentState.paymentStatus" />
             </div>
           </div>
 
@@ -868,7 +909,8 @@
 
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
-import { onMounted, ref, toRef } from 'vue'
+import { computed, onMounted, ref, toRef } from 'vue'
+import SalePaymentStatusBadge from '@/components/sales/SalePaymentStatusBadge.vue'
 import { route } from '@/lib/routes'
 import FormPageHeader from '@/components/page/FormPageHeader.vue'
 import FormActionsBar from '@/components/page/FormActionsBar.vue'
@@ -930,6 +972,8 @@ const {
   cashReceivedAmount,
   paymentType,
   paymentTypeLabel,
+  paymentTypeIcon,
+  paymentMethodIcon,
   showCashReceivedField,
   cashAmountDue,
   onPaymentTypeChange,
@@ -945,9 +989,6 @@ const {
   totalAmount,
   effectiveDownPaymentAmount,
   paymentState,
-  paymentStatusLabel,
-  paymentStatusBadgeClass,
-  paymentStatusIcon,
   isSalePaid,
   isPaymentMethodRequired,
   changeAmount,
@@ -985,6 +1026,24 @@ const {
   mode: props.mode,
   sale: props.sale,
   products: toRef(props, 'products'),
+})
+
+const recapDetailsVisible = ref(false)
+
+const recapReceivedDisplay = computed(() => {
+  if (!showCashReceivedField.value) {
+    return 'Non applicable'
+  }
+
+  return formatCurrency(cashReceivedAmount.value || 0)
+})
+
+const recapChangeDisplay = computed(() => {
+  if (form.payment_method !== 'cash') {
+    return 'Non applicable'
+  }
+
+  return formatCurrency(changeAmount.value)
 })
 
 const handleBarcodeSearchRequest = () => {
@@ -1050,6 +1109,7 @@ const applyInitialCustomer = () => {
 }
 
 onMounted(() => {
+  recapDetailsVisible.value = false
   applyInitialCustomer()
 })
 </script>

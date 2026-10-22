@@ -267,24 +267,47 @@
 .sale-payment-status {
     display: inline-flex;
     align-items: center;
+    gap: 0.35rem;
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
     font-size: 0.875rem;
     font-weight: 600;
+    line-height: 1.2;
+    border: 1px solid transparent;
+}
+
+.sale-payment-status__icon {
+    font-size: 0.95em;
+    flex-shrink: 0;
 }
 
 .sale-payment-status--pending {
     background: var(--color-sale-status-pending-bg);
+    color: var(--color-danger);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, transparent);
+}
+
+.sale-payment-status--pending .sale-payment-status__icon {
     color: var(--color-danger);
 }
 
 .sale-payment-status--partial {
     background: var(--color-sale-status-partial-bg);
     color: var(--color-warning);
+    border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
+}
+
+.sale-payment-status--partial .sale-payment-status__icon {
+    color: var(--color-warning);
 }
 
 .sale-payment-status--paid {
     background: var(--color-sale-status-paid-bg);
+    color: var(--color-success);
+    border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
+}
+
+.sale-payment-status--paid .sale-payment-status__icon {
     color: var(--color-success);
 }
 
@@ -356,19 +379,143 @@
     }
 }
 
+@media (min-width: 768px) {
+    .sale-customer-toolbar {
+        gap: 1rem;
+    }
+}
+
+@media (min-width: 992px) {
+    .sale-customer-toolbar {
+        gap: 1.25rem;
+    }
+}
+
 .sale-customer-toolbar__add {
     min-height: 2.75rem;
     width: 100%;
 }
 
-.sale-payment-type-option {
+.sale-select-with-icon {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.sale-select-with-icon__icon {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    font-size: 1.05rem;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.sale-select-with-icon__control {
+    min-height: 2.75rem;
+    padding-left: 2.5rem;
+}
+
+.sale-recap-toggle {
+    min-height: 2rem;
+}
+
+.sale-recap-toggle__chevron {
+    font-size: 0.75rem;
+    opacity: 0.85;
+}
+
+.sale-recap-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sale-recap-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.65rem 0.85rem;
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    padding: 0.65rem 0.85rem;
     background: var(--color-surface-elevated);
-    min-height: 2.75rem;
+}
+
+.sale-recap-detail-row__label {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.sale-recap-detail-row__value {
+    text-align: right;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    flex: 0 0 auto;
+    max-width: 55%;
+    word-break: break-word;
+}
+
+.sale-recap-summary {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem 1.1rem;
+    border-radius: 0.65rem;
+    background: var(--color-sale-panel-bg);
+    border: 1px solid var(--color-border);
+}
+
+@media (min-width: 576px) {
+    .sale-recap-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 992px) {
+    .sale-recap-summary {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.sale-recap-summary__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.sale-recap-summary__item--status {
+    justify-content: center;
+}
+
+.sale-recap-summary__head {
     display: flex;
     align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.sale-recap-summary__icon {
+    color: var(--color-success);
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.sale-recap-summary__label {
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--color-text-secondary);
+}
+
+.sale-recap-summary__value {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--color-text-primary);
+    word-break: break-word;
 }
 
 .sale-form-flow {

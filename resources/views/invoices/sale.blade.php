@@ -9,17 +9,20 @@
         /* Styles spécifiques aux factures */
         .status-paid {
             border-color: #28a745;
-            color: #28a745;
+            color: #155724;
+            background: #d4edda;
         }
-        
+
         .status-partial {
-            border-color: #ffc107;
+            border-color: #fd7e14;
             color: #856404;
+            background: #fff3cd;
         }
-        
+
         .status-pending {
             border-color: #dc3545;
-            color: #dc3545;
+            color: #721c24;
+            background: #f8d7da;
         }
     </style>
 </head>
