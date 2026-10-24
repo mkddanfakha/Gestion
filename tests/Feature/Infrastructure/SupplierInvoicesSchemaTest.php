@@ -6,6 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
 
+/**
+ * @return list<array<int, string>>
+ */
+function supplierInvoicesIndexColumnSets(): array
+{
+    return collect(DB::select('PRAGMA index_list(supplier_invoices)'))
+        ->pluck('name')
+        ->map(function (string $indexName) {
+            return collect(DB::select('PRAGMA index_info('.$indexName.')'))
+                ->pluck('name')
+                ->filter()
+                ->values()
+                ->all();
+        })
+        ->values()
+        ->all();
+}
+
 test('supplier_invoices table has expected columns', function () {
     expect(Schema::hasTable('supplier_invoices'))->toBeTrue();
 
@@ -48,27 +66,20 @@ test('supplier_invoices has composite unique supplier_id and invoice_number', fu
 });
 
 test('supplier_invoices indexes include due_date payment_status and status', function () {
-    $indexInfos = collect(DB::select('PRAGMA index_list(supplier_invoices)'))
-        ->pluck('name')
-        ->map(function (string $indexName) {
-            return collect(DB::select('PRAGMA index_info('.$indexName.')'))
-                ->pluck('name')
-                ->filter()
-                ->values()
-                ->all();
-        });
+    $indexInfos = supplierInvoicesIndexColumnSets();
 
-    expect($indexInfos->contains(fn (array $cols) => $cols === ['due_date']))->toBeTrue();
-    expect($indexInfos->contains(fn (array $cols) => $cols === ['payment_status']))->toBeTrue();
-    expect($indexInfos->contains(fn (array $cols) => $cols === ['status']))->toBeTrue();
+    expect(collect($indexInfos)->contains(fn (array $cols) => $cols === ['due_date']))->toBeTrue();
+    expect(collect($indexInfos)->contains(fn (array $cols) => $cols === ['payment_status']))->toBeTrue();
+    expect(collect($indexInfos)->contains(fn (array $cols) => $cols === ['status']))->toBeTrue();
 });
 
-test('supplier_invoices foreign keys reference suppliers purchase_orders and delivery_notes', function () {
-    $fks = collect(DB::select('PRAGMA foreign_key_list(supplier_invoices)'))
-        ->mapWithKeys(fn ($row) => [($row->from ?? '') => $row]);
+test('supplier_invoices indexes include parent lookup columns without physical foreign keys', function () {
+    $indexInfos = supplierInvoicesIndexColumnSets();
 
-    expect($fks->get('supplier_id')?->table)->toBe('suppliers');
-    expect($fks->get('purchase_order_id')?->table)->toBe('purchase_orders');
-    expect($fks->get('delivery_note_id')?->table)->toBe('delivery_notes');
-    expect($fks->get('user_id')?->table)->toBe('users');
+    foreach (['supplier_id', 'purchase_order_id', 'delivery_note_id', 'user_id'] as $column) {
+        expect(collect($indexInfos)->contains(fn (array $cols) => $cols === [$column]))
+            ->toBeTrue("missing index on {$column}");
+    }
+
+    expect(DB::select('PRAGMA foreign_key_list(supplier_invoices)'))->toBeEmpty();
 });
