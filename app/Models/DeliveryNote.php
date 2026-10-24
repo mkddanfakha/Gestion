@@ -73,6 +73,11 @@ class DeliveryNote extends Model
         return $this->hasMany(DeliveryNoteItem::class);
     }
 
+    public function supplierInvoices(): HasMany
+    {
+        return $this->hasMany(SupplierInvoice::class);
+    }
+
     /**
      * Générer automatiquement un numéro de bon de livraison unique
      */

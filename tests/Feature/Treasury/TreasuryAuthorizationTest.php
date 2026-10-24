@@ -12,7 +12,10 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\User;
+use App\Models\Supplier;
+use App\Models\SupplierInvoice;
 use App\Services\SalePaymentTransactionService;
+use App\Services\SupplierPaymentTransactionService;
 use App\Services\Treasury\AuthorizedTreasuryReadService;
 use App\Services\Treasury\TreasuryReadFilter;
 use App\Services\Treasury\TreasuryReport;
@@ -201,6 +204,66 @@ test('gestionnaire treasury excludes another gestionnaire expenses per Expense v
     expect($report->periodTotals->totalOutflows)->toBe(12000.0)
         ->and($report->periodTotals->net)->toBe(-12000.0)
         ->and($report->movements)->toHaveCount(1);
+});
+
+test('gestionnaire with treasury only does not see supplier invoice payments without supplier permissions', function () {
+    $gest = gestionnaireWithTreasury();
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $supplier = Supplier::create(['name' => 'Scope Test', 'status' => 'active']);
+    $invoice = SupplierInvoice::create([
+        'supplier_id' => $supplier->id,
+        'invoice_number' => 'SCOPE-'.uniqid(),
+        'invoice_date' => '2026-07-01',
+        'total_amount' => 50000,
+        'status' => SupplierInvoice::STATUS_OPEN,
+        'user_id' => $admin->id,
+    ]);
+
+    app(SupplierPaymentTransactionService::class)->recordForSupplierInvoice($invoice->id, $admin, [
+        'amount' => 50000,
+        'payment_method' => 'cash',
+        'paid_at' => '2026-07-02 10:00:00',
+    ]);
+
+    $filter = treasuryAuthFilter('2026-07-01', '2026-07-31');
+    $report = app(AuthorizedTreasuryReadService::class)->reportForUser($gest, $filter);
+
+    expect($report->movements)->toBe([])
+        ->and($report->periodTotals->totalOutflows)->toBe(0.0);
+});
+
+test('gestionnaire with supplier invoice view sees supplier payments in treasury', function () {
+    $gest = gestionnaireWithTreasury();
+    attachTreasuryPermissionNames($gest, [
+        'supplier-invoices.view',
+        'supplier-invoices.payments.view',
+    ]);
+
+    $supplier = Supplier::create(['name' => 'Visible Fournisseur', 'status' => 'active']);
+    $invoice = SupplierInvoice::create([
+        'supplier_id' => $supplier->id,
+        'invoice_number' => 'VIS-'.uniqid(),
+        'invoice_date' => '2026-07-05',
+        'total_amount' => 30000,
+        'status' => SupplierInvoice::STATUS_OPEN,
+        'user_id' => $gest->id,
+    ]);
+
+    app(SupplierPaymentTransactionService::class)->recordForSupplierInvoice($invoice->id, $gest, [
+        'amount' => 30000,
+        'payment_method' => 'cash',
+        'paid_at' => '2026-07-06 14:00:00',
+    ]);
+
+    $report = app(AuthorizedTreasuryReadService::class)->reportForUser(
+        $gest,
+        treasuryAuthFilter('2026-07-01', '2026-07-31'),
+    );
+
+    expect($report->periodTotals->totalOutflows)->toBe(30000.0)
+        ->and($report->movements)->toHaveCount(1)
+        ->and($report->movements[0]->sourceType)->toBe(\App\Services\Treasury\TreasuryMovement::SOURCE_SUPPLIER_INVOICE_PAYMENT);
 });
 
 test('gestionnaire with treasury does not see sale payments without sales permissions', function () {

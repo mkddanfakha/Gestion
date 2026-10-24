@@ -65,6 +65,11 @@ class PurchaseOrder extends Model
         return $this->hasMany(DeliveryNote::class, 'purchase_order_id');
     }
 
+    public function supplierInvoices(): HasMany
+    {
+        return $this->hasMany(SupplierInvoice::class);
+    }
+
     /**
      * Générer automatiquement un numéro de bon de commande unique
      */

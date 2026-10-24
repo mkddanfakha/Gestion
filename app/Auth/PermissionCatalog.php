@@ -433,6 +433,16 @@ final class PermissionCatalog
                     10,
                 ],
             ],
+            'supplier-invoices' => [
+                'view' => ['Voir les factures fournisseurs', 'Permet de consulter les factures fournisseurs et l\'historique des règlements.', 10],
+                'create' => ['Créer une facture fournisseur', 'Permet de saisir une facture fournisseur en brouillon.', 20],
+                'open' => ['Ouvrir une facture fournisseur', 'Permet de valider une facture brouillon pour autoriser les règlements.', 30],
+            ],
+            'supplier-invoices.payments' => [
+                'view' => ['Consulter les règlements fournisseurs', 'Permet de consulter l\'historique des règlements sur les factures fournisseurs.', 10],
+                'record' => ['Enregistrer un règlement fournisseur', 'Permet d\'enregistrer un règlement sur une facture fournisseur ouverte.', 20],
+                'void' => ['Annuler un règlement fournisseur', 'Permet d\'annuler un règlement fournisseur (réservé aux administrateurs).', 30],
+            ],
             'suppliers' => [
                 'view' => ['Voir les fournisseurs', 'Permet de consulter les fournisseurs.', 10],
                 'create' => ['Créer un fournisseur', 'Permet de créer un nouveau fournisseur.', 20],

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Supplier extends Model
 {
@@ -32,5 +33,10 @@ class Supplier extends Model
     public function getStatusLabelAttribute(): string
     {
         return $this->status === 'active' ? 'Actif' : 'Inactif';
+    }
+
+    public function supplierInvoices(): HasMany
+    {
+        return $this->hasMany(SupplierInvoice::class);
     }
 }

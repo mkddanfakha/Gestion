@@ -8,14 +8,19 @@ use App\Enums\PaymentTransactionStatus;
 use App\Models\Expense;
 use App\Models\PaymentTransaction;
 use App\Models\Sale;
+use App\Models\SupplierInvoice;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Lecture agrégée de trésorerie à partir de payment_transactions (ventes, posted) et expenses.
+ * Lecture agrégée de trésorerie à partir de payment_transactions (ventes et factures fournisseurs,
+ * posted) et expenses.
  *
  * - Les paiements voided sont exclus des totaux (lignes conservées en base).
- * - Les montants vente / commande ne sont jamais additionnés : seules les transactions posted comptent.
+ * - Seules les transactions posted comptent ; une ligne payment_transaction = un mouvement (clé unique).
+ * - Règlement fournisseur (supplier_invoice) = sortie de trésorerie ; la dette documentaire n'est
+ *   pas un mouvement. Les dépenses (Expense) restent des sorties distinctes : un règlement
+ *   fournisseur ne crée pas et ne remplace pas une Expense.
  * - Le solde net calculé n'est pas un solde bancaire ou de caisse physique certifié.
  *
  * Pour l'exposition HTTP, utiliser {@see AuthorizedTreasuryReadService} avec un {@see TreasuryQueryScope}.
@@ -64,9 +69,11 @@ final class TreasuryReadService
     private function collectMovements(TreasuryReadFilter $filter, ?TreasuryQueryScope $scope = null): array
     {
         $paymentMovements = $this->salePaymentMovements($filter, $scope);
+        $supplierPaymentMovements = $this->supplierInvoicePaymentMovements($filter, $scope);
         $expenseMovements = $this->expenseMovements($filter, $scope);
 
         return collect($paymentMovements)
+            ->merge($supplierPaymentMovements)
             ->merge($expenseMovements)
             ->sortBy(fn (TreasuryMovement $movement): int => $movement->occurredAt->getTimestamp())
             ->values()
@@ -212,6 +219,94 @@ final class TreasuryReadService
                 paymentOrigin: $origin,
                 isHistoricalBackfill: $payment->origin === PaymentTransactionOrigin::HistoricalBackfill,
                 saleId: $saleId,
+            );
+        }
+
+        return $movements;
+    }
+
+    /**
+     * Sorties trésorerie : règlements posted sur factures fournisseurs (une ligne ledger = un mouvement).
+     *
+     * @return list<TreasuryMovement>
+     */
+    private function supplierInvoicePaymentMovements(TreasuryReadFilter $filter, ?TreasuryQueryScope $scope = null): array
+    {
+        if ($scope !== null && ! $scope->includeSupplierInvoicePayments) {
+            return [];
+        }
+
+        $query = PaymentTransaction::query()
+            ->where('payable_type', PayableType::SupplierInvoice)
+            ->where('status', PaymentTransactionStatus::Posted)
+            ->whereBetween('paid_at', [
+                $filter->from->copy()->startOfSecond(),
+                $filter->to->copy()->endOfSecond(),
+            ])
+            ->orderBy('paid_at')
+            ->orderBy('id');
+
+        if ($filter->paymentMethodCanonical !== null && $filter->paymentMethodCanonical !== '') {
+            $rawValues = $this->paymentMethodNormalizer->rawValuesMatchingCanonical(
+                $filter->paymentMethodCanonical,
+            );
+
+            if ($rawValues === []) {
+                return [];
+            }
+
+            $query->whereIn('payment_method', $rawValues);
+        }
+
+        /** @var Collection<int, PaymentTransaction> $payments */
+        $payments = $query->get();
+
+        if ($payments->isEmpty()) {
+            return [];
+        }
+
+        $invoiceIds = $payments->pluck('payable_id')->unique()->all();
+
+        $invoices = SupplierInvoice::query()
+            ->with('supplier:id,name')
+            ->whereIn('id', $invoiceIds)
+            ->get()
+            ->keyBy('id');
+
+        $movements = [];
+
+        foreach ($payments as $payment) {
+            $normalized = $this->paymentMethodNormalizer->normalize($payment->payment_method);
+            $origin = $payment->origin instanceof PaymentTransactionOrigin
+                ? $payment->origin->value
+                : (string) $payment->origin;
+
+            $invoiceId = (int) $payment->payable_id;
+            /** @var SupplierInvoice|null $invoice */
+            $invoice = $invoices->get($invoiceId);
+            $invoiceNumber = $invoice?->invoice_number ?? (string) $invoiceId;
+            $supplierName = $invoice?->supplier?->name;
+
+            $label = $supplierName !== null && $supplierName !== ''
+                ? 'Règlement fournisseur '.$supplierName.' ('.$invoiceNumber.')'
+                : 'Règlement facture fournisseur '.$invoiceNumber;
+
+            $movements[] = new TreasuryMovement(
+                movementKey: 'supplier_invoice_payment:'.$payment->id,
+                sourceType: TreasuryMovement::SOURCE_SUPPLIER_INVOICE_PAYMENT,
+                sourceId: (int) $payment->id,
+                occurredAt: $payment->paid_at ?? Carbon::parse($payment->created_at),
+                label: $label,
+                paymentMethodRaw: $normalized->raw,
+                paymentMethodCanonical: $normalized->canonical,
+                paymentMethodKnown: $normalized->known,
+                amount: round(-1 * (float) $payment->amount, 2),
+                paymentOrigin: $origin,
+                isHistoricalBackfill: $payment->origin === PaymentTransactionOrigin::HistoricalBackfill,
+                saleId: null,
+                supplierInvoiceId: $invoice !== null ? $invoiceId : null,
+                supplierInvoiceNumber: $invoice !== null ? $invoiceNumber : null,
+                supplierName: $supplierName,
             );
         }
 

@@ -5,7 +5,7 @@ namespace App\Services\Treasury;
 use App\Models\User;
 
 /**
- * Périmètre RBAC pour la lecture trésorerie (ventes / dépenses visibles).
+ * Périmètre RBAC pour la lecture trésorerie (ventes, règlements fournisseurs, dépenses).
  */
 final readonly class TreasuryQueryScope
 {
@@ -13,5 +13,6 @@ final readonly class TreasuryQueryScope
         public User $user,
         public bool $includeSalePayments,
         public bool $includeExpenses,
+        public bool $includeSupplierInvoicePayments = true,
     ) {}
 }

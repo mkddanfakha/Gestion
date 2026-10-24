@@ -108,6 +108,14 @@ enum PermissionName: string
     // treasury
     case TreasuryView = 'treasury.view';
 
+    // supplier-invoices
+    case SupplierInvoicesView = 'supplier-invoices.view';
+    case SupplierInvoicesCreate = 'supplier-invoices.create';
+    case SupplierInvoicesOpen = 'supplier-invoices.open';
+    case SupplierInvoicesPaymentsView = 'supplier-invoices.payments.view';
+    case SupplierInvoicesPaymentsRecord = 'supplier-invoices.payments.record';
+    case SupplierInvoicesPaymentsVoid = 'supplier-invoices.payments.void';
+
     // suppliers
     case SuppliersView = 'suppliers.view';
     case SuppliersCreate = 'suppliers.create';

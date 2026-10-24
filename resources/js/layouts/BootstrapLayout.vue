@@ -97,12 +97,18 @@
             </Link>
           </li>
           
-          <li v-if="canView('suppliers') || canView('purchase-orders') || canView('delivery-notes')" class="nav-group-spacer" aria-hidden="true"></li>
+          <li v-if="canView('suppliers') || canView('supplier-invoices') || canView('purchase-orders') || canView('delivery-notes')" class="nav-group-spacer" aria-hidden="true"></li>
           
           <li v-if="canView('suppliers')" class="nav-item">
-            <Link :href="route('suppliers.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/suppliers') }">
+            <Link :href="route('suppliers.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/suppliers') && !$page.url.startsWith('/supplier-invoices') }">
               <span class="nav-icon-wrap nav-icon-wrap--supply"><i class="bi bi-truck"></i></span>
               <span class="nav-label">Fournisseurs</span>
+            </Link>
+          </li>
+          <li v-if="canView('supplier-invoices')" class="nav-item">
+            <Link :href="route('supplier-invoices.index')" class="nav-link nav-link-pill" :class="{ active: $page.url.startsWith('/supplier-invoices') }">
+              <span class="nav-icon-wrap nav-icon-wrap--supply"><i class="bi bi-receipt-cutoff"></i></span>
+              <span class="nav-label">Factures fournisseurs</span>
             </Link>
           </li>
           <li v-if="canView('purchase-orders')" class="nav-item">

@@ -140,6 +140,7 @@ class ActivityLog extends Model
             $subject instanceof Customer => $subject->name,
             $subject instanceof Supplier => $subject->name,
             $subject instanceof Sale => $subject->sale_number,
+            $subject instanceof SupplierInvoice => $subject->invoice_number,
             $subject instanceof PurchaseOrder => $subject->po_number,
             $subject instanceof DeliveryNote => $subject->delivery_number,
             $subject instanceof InventorySession => $subject->reference ?? ('#'.$subject->getKey()),

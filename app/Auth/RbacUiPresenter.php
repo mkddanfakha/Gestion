@@ -28,6 +28,8 @@ final class RbacUiPresenter
         'user-activities' => 'Activité des utilisateurs',
         'treasury' => 'Trésorerie',
         'sales.payments' => 'Règlements clients',
+        'supplier-invoices' => 'Factures fournisseurs',
+        'supplier-invoices.payments' => 'Règlements fournisseurs',
     ];
 
     /**

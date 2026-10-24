@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ActivityLog;
 use App\Models\PaymentTransaction;
 use App\Models\Sale;
+use App\Models\SupplierInvoice;
 use App\Models\User;
 use App\Services\Audit\ChangeDetector;
 use Illuminate\Database\Eloquent\Model;
@@ -184,6 +185,92 @@ class ActivityLogger
                 'payment_method_label' => $methodLabel,
                 'reference' => $transaction->reference,
             ],
+        );
+    }
+
+    public static function logSupplierPaymentRecorded(
+        SupplierInvoice $invoice,
+        PaymentTransaction $transaction,
+        ?User $user = null,
+    ): ActivityLog {
+        $existing = ActivityLog::query()
+            ->where('action', ActivityLog::ACTION_PAYMENT)
+            ->where('new_values->payment_transaction_id', $transaction->id)
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $invoiceLabel = ActivityLog::resolveSubjectLabel($invoice);
+        $amount = number_format((float) $transaction->amount, 2, ',', ' ');
+        $methodLabel = self::salePaymentMethodLabel($transaction->payment_method);
+        $referenceSuffix = filled($transaction->reference)
+            ? sprintf(', réf. %s', $transaction->reference)
+            : '';
+
+        return self::log(
+            ActivityLog::ACTION_PAYMENT,
+            'Paiement',
+            sprintf(
+                'a enregistré un règlement de %s FCFA (%s) sur la facture fournisseur %s%s',
+                $amount,
+                $methodLabel,
+                $invoiceLabel,
+                $referenceSuffix,
+            ),
+            $invoice,
+            $user,
+            newValues: [
+                'payment_transaction_id' => $transaction->id,
+                'supplier_invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'amount' => (float) $transaction->amount,
+                'currency' => 'FCFA',
+                'paid_at' => $transaction->paid_at?->toIso8601String(),
+                'payment_method' => $transaction->payment_method,
+                'payment_method_label' => $methodLabel,
+                'reference' => $transaction->reference,
+            ],
+        );
+    }
+
+    /**
+     * À appeler depuis le futur contrôleur HTTP après voidTransaction(), comme
+     * {@see SalePaymentController::void()} avec logPaymentVoid().
+     */
+    public static function logSupplierPaymentVoid(
+        SupplierInvoice $invoice,
+        PaymentTransaction $transaction,
+    ): ActivityLog {
+        $label = ActivityLog::resolveSubjectLabel($invoice);
+        $changes = ChangeDetector::detectChanges($invoice);
+        $amount = number_format((float) $transaction->amount, 2, ',', ' ');
+        $reason = trim((string) ($transaction->void_reason ?? ''));
+
+        return self::log(
+            ActivityLog::ACTION_CANCEL,
+            'Paiement',
+            sprintf(
+                'a annulé un règlement de %s FCFA sur la facture fournisseur %s (motif : %s)',
+                $amount,
+                $label,
+                $reason !== '' ? $reason : '—',
+            ),
+            $invoice,
+            oldValues: $changes['old_values'],
+            newValues: array_merge($changes['new_values'] ?? [], [
+                'payment_transaction_id' => $transaction->id,
+                'supplier_invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'amount' => (float) $transaction->amount,
+                'currency' => 'FCFA',
+                'voided_at' => $transaction->voided_at?->toIso8601String(),
+                'voided_by_user_id' => $transaction->voided_by_user_id,
+                'void_reason' => $transaction->void_reason,
+                'payment_method' => $transaction->payment_method,
+                'reference' => $transaction->reference,
+            ]),
         );
     }
 

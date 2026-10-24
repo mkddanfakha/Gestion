@@ -54,6 +54,8 @@ export const DEFAULT_MODULE_LABELS: Record<string, string> = {
   'user-activities': 'Activité des utilisateurs',
   treasury: 'Trésorerie',
   'sales.payments': 'Règlements clients',
+  'supplier-invoices': 'Factures fournisseurs',
+  'supplier-invoices.payments': 'Règlements fournisseurs',
 }
 
 /** Classification UI sensible (documentée) — indépendante du backend. */

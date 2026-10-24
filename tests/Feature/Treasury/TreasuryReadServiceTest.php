@@ -10,8 +10,11 @@ use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\Supplier;
+use App\Models\SupplierInvoice;
 use App\Models\User;
 use App\Services\SalePaymentTransactionService;
+use App\Services\SupplierPaymentTransactionService;
 use App\Services\Treasury\TreasuryMovement;
 use App\Services\Treasury\TreasuryReadFilter;
 use App\Services\Treasury\TreasuryReadService;
@@ -69,6 +72,23 @@ function treasurySale(User $user, float $total): Sale
 function treasuryFilter(Carbon $from, Carbon $to): TreasuryReadFilter
 {
     return new TreasuryReadFilter(from: $from, to: $to);
+}
+
+function treasuryOpenSupplierInvoice(User $user, float $total = 50000): SupplierInvoice
+{
+    $supplier = Supplier::create([
+        'name' => 'Trésorerie Fournisseur',
+        'status' => 'active',
+    ]);
+
+    return SupplierInvoice::create([
+        'supplier_id' => $supplier->id,
+        'invoice_number' => 'TREAS-'.uniqid(),
+        'invoice_date' => now()->toDateString(),
+        'total_amount' => $total,
+        'status' => SupplierInvoice::STATUS_OPEN,
+        'user_id' => $user->id,
+    ]);
 }
 
 test('treasury includes posted sale payments as positive inflows', function () {
@@ -270,6 +290,170 @@ test('treasury inflows use posted payments not full sale total', function () {
 
     expect($treasury->periodTotals($filter)->totalInflows)->toBe(25000.0)
         ->and($treasury->periodTotals($filter)->totalInflows)->not->toBe(100000.0);
+});
+
+test('treasury includes posted supplier invoice payments as negative outflows', function () {
+    $user = treasuryUser();
+    $invoice = treasuryOpenSupplierInvoice($user, 80000);
+
+    app(SupplierPaymentTransactionService::class)->recordForSupplierInvoice($invoice->id, $user, [
+        'amount' => 35000,
+        'payment_method' => 'bank_transfer',
+        'paid_at' => '2026-12-10 15:00:00',
+    ]);
+
+    $treasury = app(TreasuryReadService::class);
+    $filter = treasuryFilter(
+        Carbon::parse('2026-12-01'),
+        Carbon::parse('2026-12-31 23:59:59'),
+    );
+
+    $movements = $treasury->movements($filter);
+    $totals = $treasury->periodTotals($filter);
+
+    expect($totals->totalOutflows)->toBe(35000.0)
+        ->and($totals->totalInflows)->toBe(0.0)
+        ->and($totals->net)->toBe(-35000.0)
+        ->and($movements)->toHaveCount(1)
+        ->and($movements[0]->sourceType)->toBe(TreasuryMovement::SOURCE_SUPPLIER_INVOICE_PAYMENT)
+        ->and($movements[0]->amount)->toBe(-35000.0)
+        ->and($movements[0]->supplierInvoiceId)->toBe($invoice->id)
+        ->and($movements[0]->supplierName)->toBe('Trésorerie Fournisseur');
+});
+
+test('treasury excludes voided supplier invoice payments', function () {
+    $user = treasuryUser();
+    $invoice = treasuryOpenSupplierInvoice($user);
+    $service = app(SupplierPaymentTransactionService::class);
+
+    $payment = $service->recordForSupplierInvoice($invoice->id, $user, [
+        'amount' => 20000,
+        'payment_method' => 'cash',
+        'paid_at' => '2026-12-05 10:00:00',
+    ]);
+
+    $service->voidTransaction($payment, $user, 'Annulation test trésorerie');
+
+    $treasury = app(TreasuryReadService::class);
+    $filter = treasuryFilter(
+        Carbon::parse('2026-12-01'),
+        Carbon::parse('2026-12-31 23:59:59'),
+    );
+
+    expect($treasury->periodTotals($filter)->totalOutflows)->toBe(0.0)
+        ->and($treasury->movements($filter))->toBe([]);
+});
+
+test('treasury supplier payments ignore sale payable type rows', function () {
+    $user = treasuryUser();
+    $sale = treasurySale($user, 10000);
+    $invoice = treasuryOpenSupplierInvoice($user, 10000);
+
+    app(SalePaymentTransactionService::class)->recordForSale($sale->id, $user, [
+        'amount' => 10000,
+        'payment_method' => 'cash',
+        'paid_at' => '2026-12-20 10:00:00',
+    ]);
+
+    app(SupplierPaymentTransactionService::class)->recordForSupplierInvoice($invoice->id, $user, [
+        'amount' => 5000,
+        'payment_method' => 'cash',
+        'paid_at' => '2026-12-20 11:00:00',
+    ]);
+
+    $treasury = app(TreasuryReadService::class);
+    $filter = treasuryFilter(
+        Carbon::parse('2026-12-01'),
+        Carbon::parse('2026-12-31 23:59:59'),
+    );
+
+    $movements = $treasury->movements($filter);
+
+    expect($movements)->toHaveCount(2)
+        ->and(collect($movements)->where('sourceType', TreasuryMovement::SOURCE_SALE_PAYMENT)->count())->toBe(1)
+        ->and(collect($movements)->where('sourceType', TreasuryMovement::SOURCE_SUPPLIER_INVOICE_PAYMENT)->count())->toBe(1)
+        ->and($treasury->periodTotals($filter)->net)->toBe(5000.0);
+});
+
+test('treasury does not double count supplier payment with expense in same period', function () {
+    $user = treasuryUser();
+    $invoice = treasuryOpenSupplierInvoice($user, 40000);
+
+    app(SupplierPaymentTransactionService::class)->recordForSupplierInvoice($invoice->id, $user, [
+        'amount' => 15000,
+        'payment_method' => 'cash',
+        'paid_at' => '2026-12-18 09:00:00',
+    ]);
+
+    Expense::query()->create([
+        'expense_number' => Expense::generateExpenseNumber(),
+        'title' => 'Charge diverse',
+        'amount' => 8000,
+        'category' => 'autres',
+        'payment_method' => 'cash',
+        'expense_date' => '2026-12-19',
+        'user_id' => $user->id,
+    ]);
+
+    $treasury = app(TreasuryReadService::class);
+    $filter = treasuryFilter(
+        Carbon::parse('2026-12-01'),
+        Carbon::parse('2026-12-31 23:59:59'),
+    );
+
+    expect($treasury->periodTotals($filter)->totalOutflows)->toBe(23000.0)
+        ->and($treasury->movements($filter))->toHaveCount(2);
+});
+
+test('treasury supplier payment without matching invoice row still produces one outflow movement', function () {
+    $user = treasuryUser();
+
+    PaymentTransaction::query()->create([
+        'payable_type' => PayableType::SupplierInvoice,
+        'payable_id' => 999_999,
+        'amount' => 7777,
+        'paid_at' => '2026-12-22 12:00:00',
+        'payment_method' => 'cash',
+        'origin' => PaymentTransactionOrigin::Recorded,
+        'user_id' => $user->id,
+        'status' => PaymentTransactionStatus::Posted,
+        'idempotency_key' => 'orphan-supplier-invoice-payment:'.uniqid(),
+    ]);
+
+    expect(SupplierInvoice::query()->find(999_999))->toBeNull();
+
+    $treasury = app(TreasuryReadService::class);
+    $filter = treasuryFilter(
+        Carbon::parse('2026-12-01'),
+        Carbon::parse('2026-12-31 23:59:59'),
+    );
+
+    $movements = $treasury->movements($filter);
+
+    expect($movements)->toHaveCount(1)
+        ->and($movements[0]->amount)->toBe(-7777.0)
+        ->and($movements[0]->supplierInvoiceId)->toBeNull()
+        ->and($movements[0]->label)->toContain('999999');
+});
+
+test('treasury supplier payment outside date filter is excluded', function () {
+    $user = treasuryUser();
+    $invoice = treasuryOpenSupplierInvoice($user);
+
+    app(SupplierPaymentTransactionService::class)->recordForSupplierInvoice($invoice->id, $user, [
+        'amount' => 12000,
+        'payment_method' => 'wave',
+        'paid_at' => '2026-01-15 10:00:00',
+    ]);
+
+    $treasury = app(TreasuryReadService::class);
+    $filter = treasuryFilter(
+        Carbon::parse('2026-02-01'),
+        Carbon::parse('2026-02-28'),
+    );
+
+    expect($treasury->movements($filter))->toBe([])
+        ->and($treasury->periodTotals($filter)->totalOutflows)->toBe(0.0);
 });
 
 test('treasury filter by payment method canonical limits movements', function () {

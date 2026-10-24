@@ -10,6 +10,8 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\DeliveryNoteController;
+use App\Http\Controllers\SupplierInvoiceController;
+use App\Http\Controllers\SupplierInvoicePaymentController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\QuoteController;
@@ -115,6 +117,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('suppliers', SupplierController::class);
     Route::get('/suppliers/export/excel', [SupplierController::class, 'exportExcel'])->name('suppliers.export.excel');
     Route::get('/suppliers/export/pdf', [SupplierController::class, 'exportPdf'])->name('suppliers.export.pdf');
+
+    Route::get('/supplier-invoices', [SupplierInvoiceController::class, 'index'])->name('supplier-invoices.index');
+    Route::get('/supplier-invoices/create', [SupplierInvoiceController::class, 'create'])->name('supplier-invoices.create');
+    Route::post('/supplier-invoices', [SupplierInvoiceController::class, 'store'])->name('supplier-invoices.store');
+    Route::get('/supplier-invoices/{supplierInvoice}', [SupplierInvoiceController::class, 'show'])->name('supplier-invoices.show');
+    Route::post('/supplier-invoices/{supplierInvoice}/open', [SupplierInvoiceController::class, 'open'])->name('supplier-invoices.open');
+    Route::get('/supplier-invoices/{supplierInvoice}/payments', [SupplierInvoicePaymentController::class, 'index'])
+        ->name('supplier-invoices.payments.index');
+    Route::post('/supplier-invoices/{supplierInvoice}/payments', [SupplierInvoicePaymentController::class, 'store'])
+        ->name('supplier-invoices.payments.store');
+    Route::post('/supplier-invoices/payments/{payment}/void', [SupplierInvoicePaymentController::class, 'void'])
+        ->name('supplier-invoices.payments.void');
     
     // Bons de commande
     Route::resource('purchase-orders', PurchaseOrderController::class);

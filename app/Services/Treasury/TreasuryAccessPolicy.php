@@ -26,10 +26,17 @@ final class TreasuryAccessPolicy
         $includeExpenses = $user->isAdmin()
             || $this->authorization->allows($user, PermissionName::ExpensesView);
 
+        $includeSupplierInvoicePayments = $user->isAdmin()
+            || $this->authorization->any($user, [
+                PermissionName::SupplierInvoicesView,
+                PermissionName::SupplierInvoicesPaymentsView,
+            ]);
+
         return new TreasuryQueryScope(
             user: $user,
             includeSalePayments: $includeSalePayments,
             includeExpenses: $includeExpenses,
+            includeSupplierInvoicePayments: $includeSupplierInvoicePayments,
         );
     }
 }

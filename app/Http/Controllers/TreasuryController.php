@@ -121,6 +121,7 @@ class TreasuryController extends Controller
             TreasuryMovement::SOURCE_SALE_PAYMENT => $movement->isHistoricalBackfill
                 ? 'Reprise historique'
                 : 'Encaissement vente',
+            TreasuryMovement::SOURCE_SUPPLIER_INVOICE_PAYMENT => 'Règlement fournisseur',
             TreasuryMovement::SOURCE_EXPENSE => 'Dépense',
             default => $movement->sourceType,
         };
@@ -139,6 +140,9 @@ class TreasuryController extends Controller
             'amount' => $movement->amount,
             'is_historical_backfill' => $movement->isHistoricalBackfill,
             'sale_id' => $movement->saleId,
+            'supplier_invoice_id' => $movement->supplierInvoiceId,
+            'supplier_invoice_number' => $movement->supplierInvoiceNumber,
+            'supplier_name' => $movement->supplierName,
         ];
     }
 

@@ -11,6 +11,8 @@ final readonly class TreasuryMovement
 {
     public const SOURCE_SALE_PAYMENT = 'sale_payment';
 
+    public const SOURCE_SUPPLIER_INVOICE_PAYMENT = 'supplier_invoice_payment';
+
     public const SOURCE_EXPENSE = 'expense';
 
     public function __construct(
@@ -26,5 +28,8 @@ final readonly class TreasuryMovement
         public ?string $paymentOrigin,
         public bool $isHistoricalBackfill,
         public ?int $saleId,
+        public ?int $supplierInvoiceId = null,
+        public ?string $supplierInvoiceNumber = null,
+        public ?string $supplierName = null,
     ) {}
 }
