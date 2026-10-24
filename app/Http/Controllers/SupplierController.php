@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Supplier;
 use App\Models\Company;
 use App\Services\ActivityLogger;
+use App\Services\SupplierInvoiceReferentialGuard;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Exports\SuppliersExport;
@@ -188,8 +189,14 @@ class SupplierController extends Controller
     {
         $this->checkPermission($request, 'suppliers', 'delete');
 
+        $blockMessage = SupplierInvoiceReferentialGuard::blockingMessageForSupplierDeletion($supplier);
+
+        if ($blockMessage !== null) {
+            return back()->withErrors(['supplier' => $blockMessage]);
+        }
+
         ActivityLogger::logDelete('Fournisseur', $supplier);
-        
+
         $supplier->delete();
 
         return redirect()->route('suppliers.index')

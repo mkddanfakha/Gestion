@@ -7,6 +7,7 @@ use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\Company;
 use App\Services\ActivityLogger;
+use App\Services\SupplierInvoiceReferentialGuard;
 use App\Services\AttachmentService;
 use App\Services\PurchaseOrderDeliveryService;
 use Illuminate\Http\Request;
@@ -306,8 +307,14 @@ class PurchaseOrderController extends Controller
     {
         $this->checkPermission($request, 'purchase-orders', 'delete');
 
+        $blockMessage = SupplierInvoiceReferentialGuard::blockingMessageForPurchaseOrderDeletion((int) $purchaseOrder->id);
+
+        if ($blockMessage !== null) {
+            return back()->withErrors(['message' => $blockMessage]);
+        }
+
         ActivityLogger::logDelete('Bon de commande', $purchaseOrder);
-        
+
         $purchaseOrder->delete();
 
         return redirect()->route('purchase-orders.index')

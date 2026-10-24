@@ -12,6 +12,7 @@ use App\Auth\RolePresets;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\SupplierInvoiceReferentialGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -315,6 +316,17 @@ class UserController extends Controller
 
                     return redirect()->route('admin.users.index')
                         ->with('error', 'Vous ne pouvez pas supprimer votre propre compte. Un autre administrateur doit le faire.');
+                }
+
+                $invoiceBlockMessage = SupplierInvoiceReferentialGuard::blockingMessageForUserDeletion($lockedUser);
+
+                if ($invoiceBlockMessage !== null) {
+                    if ($request->expectsJson()) {
+                        return response()->json(['message' => $invoiceBlockMessage], 422);
+                    }
+
+                    return redirect()->route('admin.users.index')
+                        ->with('error', $invoiceBlockMessage);
                 }
 
                 $wasAdmin = $lockedUser->role === User::ROLE_ADMIN;

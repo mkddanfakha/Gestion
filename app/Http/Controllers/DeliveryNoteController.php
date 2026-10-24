@@ -7,6 +7,7 @@ use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Services\ActivityLogger;
+use App\Services\SupplierInvoiceReferentialGuard;
 use App\Services\AttachmentService;
 use App\Services\PurchaseOrderDeliveryService;
 use Illuminate\Http\Request;
@@ -435,6 +436,12 @@ class DeliveryNoteController extends Controller
         // Si le BL est validé, on ne peut pas le supprimer
         if ($deliveryNote->status === 'validated') {
             return back()->withErrors(['message' => 'Un bon de livraison validé ne peut pas être supprimé.']);
+        }
+
+        $blockMessage = SupplierInvoiceReferentialGuard::blockingMessageForDeliveryNoteDeletion((int) $deliveryNote->id);
+
+        if ($blockMessage !== null) {
+            return back()->withErrors(['message' => $blockMessage]);
         }
 
         ActivityLogger::logDelete('Bon de livraison', $deliveryNote);
