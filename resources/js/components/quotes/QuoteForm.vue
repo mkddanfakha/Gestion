@@ -22,6 +22,48 @@
 
     <form novalidate @submit.prevent="submit">
       <div class="form-page__body">
+        <div class="card sale-card mb-3">
+          <div class="card-header sale-card-header">
+            <i class="bi bi-person me-2"></i>
+            Client
+          </div>
+          <div class="card-body">
+            <label class="form-label">
+              <i class="bi bi-search me-1 text-muted"></i>
+              Rechercher un client
+            </label>
+            <div class="sale-customer-toolbar">
+              <CustomerAutocomplete
+                ref="customerAutocompleteRef"
+                v-model="form.customer_id"
+                :customers="localCustomers"
+                placeholder="Nom, téléphone, e-mail… (optionnel)"
+                :is-invalid="!!errors.customer_id"
+                :allow-create="false"
+              />
+              <button
+                v-if="canCreateCustomer"
+                type="button"
+                class="btn btn-outline-success sale-customer-toolbar__add"
+                @click="openCustomerCreateModal()"
+              >
+                <i class="bi bi-person-plus me-1"></i>
+                Ajouter un nouveau client
+              </button>
+            </div>
+            <div v-if="form.customer_id && canView('customers')" class="mt-2">
+              <Link
+                :href="route('customers.show', { id: form.customer_id })"
+                class="customer-profile-link"
+              >
+                <i class="bi bi-person-lines-fill me-1"></i>
+                Voir la fiche client
+              </Link>
+            </div>
+            <div v-if="errors.customer_id" class="invalid-feedback d-block">{{ errors.customer_id }}</div>
+          </div>
+        </div>
+
         <div class="row g-3 mb-4">
           <div class="col-6 col-md-3">
             <div class="sale-stat-card h-100">
@@ -286,36 +328,10 @@
           <div class="col-lg-6">
             <div class="card sale-card h-100">
               <div class="card-header sale-card-header">
-                <i class="bi bi-person me-2"></i>
-                Client &amp; devis
+                <i class="bi bi-file-earmark-text me-2"></i>
+                Devis
               </div>
               <div class="card-body">
-                <div class="mb-3">
-                  <label class="form-label">
-                    <i class="bi bi-search me-1 text-muted"></i>
-                    Client
-                  </label>
-                  <CustomerAutocomplete
-                    ref="customerAutocompleteRef"
-                    v-model="form.customer_id"
-                    :customers="localCustomers"
-                    placeholder="Rechercher un client (optionnel)..."
-                    :is-invalid="!!errors.customer_id"
-                    :allow-create="canCreateCustomer"
-                    @create-request="openCustomerCreateModal"
-                  />
-                  <div v-if="form.customer_id && canView('customers')" class="mt-2">
-                    <Link
-                      :href="route('customers.show', { id: form.customer_id })"
-                      class="customer-profile-link"
-                    >
-                      <i class="bi bi-person-lines-fill me-1"></i>
-                      Voir la fiche client
-                    </Link>
-                  </div>
-                  <div v-if="errors.customer_id" class="invalid-feedback d-block">{{ errors.customer_id }}</div>
-                </div>
-
                 <div class="row g-3 mb-3">
                   <div class="col-md-6">
                     <label class="form-label">Statut</label>
