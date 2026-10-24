@@ -9,7 +9,50 @@ import { detectLanIPv4, resolveDevServerHost } from './scripts/detect-lan-ipv4';
 
 const DEV_PORT = 5173;
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
+    const sharedConfig = {
+        resolve: {
+            alias: {
+                '@notification-center': path.resolve(
+                    __dirname,
+                    'resources/js/modules/NotificationCenter',
+                ),
+                '@NotificationCenter': path.resolve(
+                    __dirname,
+                    'resources/js/modules/NotificationCenter',
+                ),
+            },
+        },
+
+        plugins: [
+            laravel({
+                input: ['resources/js/app.ts'],
+                ssr: 'resources/js/ssr.ts',
+                refresh: true,
+            }),
+
+            wayfinder({
+                formVariants: true,
+            }),
+
+            tailwindcss(),
+
+            vue({
+                template: {
+                    transformAssetUrls: {
+                        base: null,
+                        includeAbsolute: false,
+                    },
+                },
+            }),
+        ],
+    };
+
+    // Production build must not depend on LAN detection or local HTTPS certificates.
+    if (command !== 'serve') {
+        return sharedConfig;
+    }
+
     const env = loadEnv(mode, process.cwd(), '');
 
     // Détection automatique à chaque `npm run dev`
@@ -26,12 +69,19 @@ export default defineConfig(({ mode }) => {
     const certPath = path.resolve(__dirname, '.cert/mkd-pro.pem');
     const keyPath = path.resolve(__dirname, '.cert/mkd-pro-key.pem');
 
-    const httpsConfig = useHttps
-        ? {
-              cert: fs.readFileSync(certPath),
-              key: fs.readFileSync(keyPath),
-          }
-        : undefined;
+    let httpsConfig: { cert: Buffer; key: Buffer } | undefined;
+
+    if (useHttps) {
+        const hasCerts =
+            fs.existsSync(certPath) && fs.existsSync(keyPath);
+
+        if (hasCerts) {
+            httpsConfig = {
+                cert: fs.readFileSync(certPath),
+                key: fs.readFileSync(keyPath),
+            };
+        }
+    }
 
     if (useLan) {
         console.log(
@@ -45,24 +95,17 @@ export default defineConfig(({ mode }) => {
         if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
             console.warn(
                 '[vite] Certificat HTTPS introuvable dans .cert/. ' +
-                'Vite ne pourra pas démarrer correctement en HTTPS.',
+                    'Vite ne pourra pas démarrer correctement en HTTPS.',
+            );
+
+            throw new Error(
+                '[vite] Certificats HTTPS requis pour le serveur de développement LAN (.cert/mkd-pro.pem, .cert/mkd-pro-key.pem).',
             );
         }
     }
 
     return {
-        resolve: {
-            alias: {
-                '@notification-center': path.resolve(
-                    __dirname,
-                    'resources/js/modules/NotificationCenter',
-                ),
-                '@NotificationCenter': path.resolve(
-                    __dirname,
-                    'resources/js/modules/NotificationCenter',
-                ),
-            },
-        },
+        ...sharedConfig,
 
         server: {
             // IPv4 explicite — évite que Vite annonce http://[::]:5173
@@ -92,28 +135,5 @@ export default defineConfig(({ mode }) => {
                 clientPort: DEV_PORT,
             },
         },
-
-        plugins: [
-            laravel({
-                input: ['resources/js/app.ts'],
-                ssr: 'resources/js/ssr.ts',
-                refresh: true,
-            }),
-
-            wayfinder({
-                formVariants: true,
-            }),
-
-            tailwindcss(),
-
-            vue({
-                template: {
-                    transformAssetUrls: {
-                        base: null,
-                        includeAbsolute: false,
-                    },
-                },
-            }),
-        ],
     };
 });

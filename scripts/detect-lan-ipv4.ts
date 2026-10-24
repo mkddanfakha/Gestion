@@ -55,8 +55,14 @@ export function detectLanIPv4(): string | null {
 }
 
 export function resolveDevServerHost(preferred?: string): string {
-    if (preferred && preferred !== 'localhost' && preferred !== '127.0.0.1') {
-        return preferred;
+    const normalized = preferred?.trim();
+
+    if (normalized === 'localhost' || normalized === '127.0.0.1') {
+        return normalized;
+    }
+
+    if (normalized) {
+        return normalized;
     }
 
     return detectLanIPv4() ?? 'localhost';
