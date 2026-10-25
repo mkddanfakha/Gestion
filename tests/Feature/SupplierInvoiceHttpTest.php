@@ -14,7 +14,7 @@ uses(RefreshDatabase::class);
 
 function seedSupplierInvoiceHttpPermissions(): void
 {
-    (new PermissionSeeder())->run();
+    (new PermissionSeeder)->run();
 }
 
 function supplierInvoiceHttpUser(array $permissionNames): User
@@ -88,7 +88,8 @@ test('authorized user can access supplier invoice inertia pages', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('SupplierInvoices/Create')
-            ->has('suppliers'));
+            ->has('suppliers')
+            ->has('attachmentConfig'));
 
     $this->actingAs($user)->post(route('supplier-invoices.store'), validSupplierInvoiceStorePayload($supplier))
         ->assertRedirect();

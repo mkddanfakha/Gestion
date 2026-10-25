@@ -9,6 +9,7 @@ use App\Models\Expense;
 use App\Models\PurchaseOrder;
 use App\Models\Quote;
 use App\Models\Supplier;
+use App\Models\SupplierInvoice;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -54,6 +55,12 @@ class AttachmentAuthorizer
             'update' => 'update',
             'delete' => 'delete',
         ],
+        SupplierInvoice::class => [
+            'resource' => 'supplier-invoices',
+            'view' => 'view',
+            'update' => 'create',
+            'delete' => 'create',
+        ],
     ];
 
     public function authorizeView(User $user, Attachment $attachment): void
@@ -75,47 +82,53 @@ class AttachmentAuthorizer
     {
         $attachable = $attachment->attachable;
 
-        if (!$attachable) {
+        if (! $attachable) {
             abort(404, 'Pièce jointe introuvable.');
         }
 
         $config = self::RESOURCE_MAP[$attachable::class] ?? null;
 
-        if (!$config) {
+        if (! $config) {
             abort(403, 'Type de pièce jointe non pris en charge.');
         }
 
         $user->refresh();
 
-        if (!$user->hasPermission($config['resource'], $config[$actionKey])) {
+        if (! $user->hasPermission($config['resource'], $config[$actionKey])) {
             abort(403, 'Accès refusé.');
         }
 
-        $this->authorizeAttachableScope($user, $attachable);
+        $this->authorizeAttachableScope($user, $attachable, $actionKey);
     }
 
     public function authorizeAttachable(User $user, object $attachable, string $actionKey): void
     {
         $config = self::RESOURCE_MAP[$attachable::class] ?? null;
 
-        if (!$config) {
+        if (! $config) {
             abort(403, 'Type de pièce jointe non pris en charge.');
         }
 
         $user->refresh();
 
-        if (!$user->hasPermission($config['resource'], $config[$actionKey])) {
+        if (! $user->hasPermission($config['resource'], $config[$actionKey])) {
             abort(403, 'Accès refusé.');
         }
 
-        $this->authorizeAttachableScope($user, $attachable);
+        $this->authorizeAttachableScope($user, $attachable, $actionKey);
     }
 
-    protected function authorizeAttachableScope(User $user, object $attachable): void
+    protected function authorizeAttachableScope(User $user, object $attachable, string $actionKey): void
     {
         if ($attachable instanceof Expense) {
             if ($user->isGestionnaire() && $attachable->user_id !== $user->id) {
                 abort(403, 'Accès refusé. Vous ne pouvez accéder qu\'à vos propres dépenses.');
+            }
+        }
+
+        if ($attachable instanceof SupplierInvoice && $actionKey === 'update') {
+            if ($attachable->status !== SupplierInvoice::STATUS_DRAFT) {
+                abort(403, 'Les pièces jointes ne peuvent être modifiées que sur une facture en brouillon.');
             }
         }
     }
@@ -124,7 +137,7 @@ class AttachmentAuthorizer
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401);
         }
 

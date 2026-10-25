@@ -26,11 +26,11 @@ class ActivityLogger
     ): ActivityLog {
         $request ??= request();
 
-        if (!$user && $request) {
+        if (! $user && $request) {
             $user = $request->user();
         }
 
-        if (!$user) {
+        if (! $user) {
             $user = Auth::user();
         }
 
@@ -504,6 +504,7 @@ class ActivityLogger
             \App\Models\DeliveryNote::class => 'Bon de livraison',
             \App\Models\Customer::class => 'Client',
             \App\Models\Supplier::class => 'Fournisseur',
+            \App\Models\SupplierInvoice::class => 'Facture fournisseur',
             default => class_basename($attachable),
         };
     }

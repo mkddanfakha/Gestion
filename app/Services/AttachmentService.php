@@ -9,14 +9,15 @@ use App\Models\Expense;
 use App\Models\PurchaseOrder;
 use App\Models\Quote;
 use App\Models\Supplier;
+use App\Models\SupplierInvoice;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Attachment Manager — stockage, métadonnées et cycle de vie des fichiers uploadés.
@@ -44,7 +45,7 @@ class AttachmentService
             basename($path)
         );
 
-        if (!$storedPath) {
+        if (! $storedPath) {
             throw new InvalidArgumentException('Impossible de stocker le fichier.');
         }
 
@@ -103,7 +104,7 @@ class AttachmentService
                     basename($path)
                 );
 
-                if (!$storedPath) {
+                if (! $storedPath) {
                     throw new InvalidArgumentException('Impossible de stocker le fichier.');
                 }
 
@@ -155,7 +156,7 @@ class AttachmentService
 
             $attachment->delete();
 
-            if (!Storage::disk($disk)->delete($path)) {
+            if (! Storage::disk($disk)->delete($path)) {
                 throw new InvalidArgumentException('Impossible de supprimer le fichier du stockage.');
             }
         });
@@ -173,7 +174,7 @@ class AttachmentService
 
     public function download(Attachment $attachment): StreamedResponse
     {
-        if (!Storage::disk($attachment->disk)->exists($attachment->path)) {
+        if (! Storage::disk($attachment->disk)->exists($attachment->path)) {
             abort(404, 'Fichier introuvable.');
         }
 
@@ -186,7 +187,7 @@ class AttachmentService
 
     public function stream(Attachment $attachment, bool $inline = true): StreamedResponse
     {
-        if (!Storage::disk($attachment->disk)->exists($attachment->path)) {
+        if (! Storage::disk($attachment->disk)->exists($attachment->path)) {
             abort(404, 'Fichier introuvable.');
         }
 
@@ -197,14 +198,14 @@ class AttachmentService
             $attachment->original_name,
             [
                 'Content-Type' => $attachment->mime_type,
-                'Content-Disposition' => $disposition . '; filename="' . addslashes($attachment->original_name) . '"',
+                'Content-Disposition' => $disposition.'; filename="'.addslashes($attachment->original_name).'"',
             ]
         );
     }
 
     public function validateFile(UploadedFile $file): void
     {
-        if (!$file->isValid()) {
+        if (! $file->isValid()) {
             throw new InvalidArgumentException('Le fichier uploadé n\'est pas valide.');
         }
 
@@ -225,14 +226,14 @@ class AttachmentService
 
         $allowedExtensions = config('attachments.allowed_extensions', []);
 
-        if (!in_array($extension, $allowedExtensions, true)) {
+        if (! in_array($extension, $allowedExtensions, true)) {
             throw new InvalidArgumentException('Ce type de fichier n\'est pas autorisé.');
         }
 
         $mime = $file->getMimeType();
         $allowedMimes = config('attachments.allowed_mimes', []);
 
-        if ($mime && !in_array($mime, $allowedMimes, true)) {
+        if ($mime && ! in_array($mime, $allowedMimes, true)) {
             throw new InvalidArgumentException('Ce type de fichier n\'est pas autorisé.');
         }
     }
@@ -246,6 +247,7 @@ class AttachmentService
             DeliveryNote::class => 'delivery-notes',
             Customer::class => 'customers',
             Supplier::class => 'suppliers',
+            SupplierInvoice::class => 'supplier-invoices',
             default => Str::kebab(class_basename($model)),
         };
     }
@@ -259,7 +261,7 @@ class AttachmentService
     {
         $extension = strtolower($file->getClientOriginalExtension());
 
-        return Str::uuid()->toString() . ($extension ? '.' . $extension : '');
+        return Str::uuid()->toString().($extension ? '.'.$extension : '');
     }
 
     protected function buildStoragePath(Model $attachable, string $storedName): string

@@ -110,6 +110,23 @@
             </div>
           </FormSection>
 
+          <FormSection title="Pièces jointes" icon="bi bi-paperclip">
+            <p class="text-muted small mb-3">
+              Formats acceptés : PDF, JPG, JPEG, PNG, WEBP (max. {{ attachmentConfig.maxFiles }} fichiers).
+            </p>
+            <AttachmentUploader
+              v-model="pendingFiles"
+              :show-existing="false"
+              :max-files="attachmentConfig.maxFiles"
+              :max-size-kb="attachmentConfig.maxSizeKb"
+              :accept="attachmentConfig.accept"
+              hint="Les fichiers seront enregistrés à la création de la facture."
+            />
+            <div v-if="form.errors.attachments" class="text-danger small mt-2">
+              {{ form.errors.attachments }}
+            </div>
+          </FormSection>
+
           <FormActionsBar class="form-actions-bar--split">
             <Link :href="route('supplier-invoices.index')" class="btn btn-outline-secondary">
               Annuler
@@ -133,12 +150,15 @@ import FormPageHeader from '@/components/page/FormPageHeader.vue'
 import FormSection from '@/components/page/FormSection.vue'
 import FormActionsBar from '@/components/page/FormActionsBar.vue'
 import SupplierCombobox from '@/components/forms/SupplierCombobox.vue'
+import AttachmentUploader from '@/components/attachments/AttachmentUploader.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
-import { ref } from 'vue'
+import { ref, withDefaults } from 'vue'
 import { getTodayForInput } from '@/utils/dateFormatter'
 import { usePermissions } from '@/composables/usePermissions'
 import type { SupplierOption } from '@/types/supplier'
+import type { AttachmentConfig } from '@/types/attachment'
+import { DEFAULT_ATTACHMENT_CONFIG } from '@/types/attachment'
 
 interface FormSupplier {
   id: number
@@ -148,9 +168,18 @@ interface FormSupplier {
   mobile?: string | null
 }
 
-const props = defineProps<{
-  suppliers: FormSupplier[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    suppliers: FormSupplier[]
+    attachmentConfig?: AttachmentConfig
+  }>(),
+  {
+    attachmentConfig: () => DEFAULT_ATTACHMENT_CONFIG,
+  },
+)
+
+const attachmentConfig = props.attachmentConfig
+const pendingFiles = ref<File[]>([])
 
 const { canCreate } = usePermissions()
 const canCreateSupplier = canCreate('suppliers')
@@ -185,14 +214,31 @@ function handleSupplierCreated(supplier: SupplierOption): void {
 
 function submit(): void {
   form
-    .transform((data) => ({
-      supplier_id: data.supplier_id,
-      invoice_number: data.invoice_number,
-      invoice_date: data.invoice_date,
-      due_date: data.due_date || null,
-      total_amount: data.total_amount,
-      notes: data.notes || null,
-    }))
-    .post(route('supplier-invoices.store'))
+    .transform((data) => {
+      const formData = new FormData()
+      const payload = data as Record<string, unknown>
+
+      if (payload.supplier_id != null && payload.supplier_id !== '') {
+        formData.append('supplier_id', String(payload.supplier_id))
+      }
+      formData.append('invoice_number', String(payload.invoice_number ?? ''))
+      formData.append('invoice_date', String(payload.invoice_date ?? ''))
+      if (payload.due_date) {
+        formData.append('due_date', String(payload.due_date))
+      }
+      formData.append('total_amount', String(payload.total_amount ?? ''))
+      if (payload.notes) {
+        formData.append('notes', String(payload.notes))
+      }
+
+      pendingFiles.value.forEach((file) => {
+        formData.append('attachments[]', file)
+      })
+
+      return formData
+    })
+    .post(route('supplier-invoices.store'), {
+      forceFormData: true,
+    })
 }
 </script>
