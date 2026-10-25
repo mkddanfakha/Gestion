@@ -1,7 +1,7 @@
 # Runbook — déploiement MKD-Pro / Gestion sur o2switch
 
-**Version :** 1.0 (documentaire)
-**Date :** 2026-10-20
+**Version :** 1.1 (documentaire)
+**Date :** 2026-10-20 (révision procédure archives frontend : 2026-10-25)
 **Référence fonctionnelle (dépôt Git) :** commit `3869017b1bbdb2fceb7297866559effe9772adb3`
 **Périmètre :** procédure opérationnelle pour hébergement **o2switch** — **ne remplace pas** les rapports PRE-PROD historiques OVH.
 
@@ -76,6 +76,9 @@ git status -sb
 
 - Fixer le **SHA exact** à déployer (ex. `3869017b1bbdb2fceb7297866559effe9772adb3`).
 - Vérifier que `origin/main` (ou la branche release) contient ce commit **avant** de livrer.
+- **Ne pas confondre** :
+  - le **SHA Git** (identifiant du commit **code source** livré) ;
+  - le **SHA-256** du `manifest.json` et de l’**archive frontend** (intégrité des **octets générés** — valeurs différentes, recalculées à chaque build).
 
 ### A.2 Working tree local et `public/build/`
 
@@ -89,6 +92,14 @@ git status -sb
 # Adapter COMMIT_SHA et le chemin du worktree
 git worktree add --detach ../gestion-build-COMMIT_SHA COMMIT_SHA
 ```
+
+**Build traçable — contrôles dans le worktree dédié [DÉPÔT — pratique validée]** :
+
+1. `git rev-parse HEAD` dans le worktree = **COMMIT_SHA** attendu (ou contenu source **identique** au commit cible — voir comparaison de blobs si le worktree est resté sur un parent avec correctif copié).
+2. `git status --short` : **aucune modification source parasite** (fichiers `app/`, `routes/`, `resources/` hors build, `config/`, etc.) non expliquée par la livraison. Les seuls écarts acceptables pour un build frontend sont typiquement : dépendances (`node_modules/`, `vendor/`), `.env` **local de build** (gitignoré), et `public/build/` **généré**.
+3. **Ne pas** compiler dans le dépôt de travail principal si celui-ci contient des centaines d’entrées locales (docs, ZIP, `public/build/` bruyant) — préserver ce worktree intact.
+4. **Ne jamais** `git add .`, `git add -A` ni `git commit -a` pour « embarquer » un build : les assets frontend se livrent par **archive**, pas par commit Git obligatoire.
+5. **Ne pas supprimer automatiquement** un worktree existant (`git worktree remove`) sans décision humaine et sans archive validée ; plusieurs worktrees peuvent coexister.
 
 ### A.3 Périmètre applicatif à livrer
 
@@ -182,20 +193,47 @@ Distinguer **quatre flux** :
 
 - Scripts npm : `"build": "vite build"` (`package.json`).
 - Plugin `@laravel/vite-plugin-wayfinder` dans `vite.config.ts` — le build prod génère types/routes (**observé en build** : message « Types generated for actions, routes »).
-- Certificats `.cert/` : requis pour **`npm run dev`** en HTTPS LAN, **pas** pour un build prod standard si Vite reste en mode localhost **[DÉPÔT]** (`vite.config.ts`).
+- Certificats `.cert/` (mkcert) : requis pour **`npm run dev`** en mode HTTPS LAN sur le réseau local ; **le build de production ne doit pas** lire les certificats du poste **[DÉPÔT]** (depuis le commit `a94bf25b5264574186d75dc77e0e1340feade4f1`, lorsque Vite n’est pas en mode serveur de développement (`command !== 'serve'`) dans `vite.config.ts`). Ne pas copier `.cert/` dans le worktree uniquement pour compiler.
+- Avant build : noter `node -v` et `npm -v` (à reporter dans la fiche de traçabilité, section C.4.3). `@zxing/library` peut émettre un avertissement moteur Node — documenter sans le masquer.
 
-**Environnement de build recommandé :** worktree propre au commit cible + `npm ci` (respecter `package-lock.json`).
+**Environnement de build recommandé :** worktree au **COMMIT_SHA** cible + dépendances verrouillées.
+
+**Ordre typique (worktree uniquement)** :
+
+```powershell
+# PowerShell — adapter les chemins
+cd C:\chemin\vers\gestion-build-COMMIT_SHA
+node -v
+npm -v
+npm ci
+```
+
+**Préparation PHP pour Wayfinder (worktree, sans base métier)** — si `npm run build` échoue sur `php artisan wayfinder:generate` :
+
+1. `[DÉPÔT]` Copier `.env.example` → `.env` **dans le worktree** (jamais commiter ; ne pas copier le `.env` du dépôt principal).
+2. `[DÉPÔT]` Pour le hook `package:discover`, aligner le broadcast de build : ajouter `BROADCAST_DRIVER=log` si `config/broadcasting.php` utilise ce nom (`.env.example` documente surtout `BROADCAST_CONNECTION` — les deux peuvent coexister pour le bootstrap Laravel).
+3. `[DÉPÔT]` **Ne pas** lancer `composer run setup` (migrations, `key:generate` automatique, build npm).
+4. `composer install --no-dev --optimize-autoloader --no-interaction` puis, si besoin, `composer dump-autoload --no-dev --optimize --no-interaction`.
+5. **Ne pas** exécuter `php artisan migrate` ni pointer vers la base `gestion` métier.
+
+**Build frontend :**
+
+```powershell
+# Optionnel pour cette session — ne pas persister dans le profil Windows
+$env:VITE_DEV_SERVER_HOST = "localhost"
+npm run build
+echo $LASTEXITCODE   # doit être 0 avant toute archive
+```
 
 ```bash
+# Linux / macOS — équivalent
 cd /chemin/vers/worktree-au-commit
 npm ci
 npm run build
 ```
 
-**[SERVEUR / local]** — Si le build échoue (Wayfinder, autoload PHP) :
-
-- `[DÉPÔT]` Présence de `vendor/` et exécution possible de `composer install --no-dev` **dans le worktree** (sans pointer vers une base métier pour des scripts post-install risqués).
-- `[DÉPÔT]` Commande Wayfinder (si le build échoue malgré le plugin Vite) : `php artisan wayfinder:generate` (options documentées dans `vendor/laravel/wayfinder/README.md`) — lister d’abord avec `php artisan list` ; exécuter **uniquement** dans l’environnement de build, pas en production métier sans plan.
+- **Ne pas** improviser d’autres correctifs si le build échoue : consigner la sortie complète et demander une décision.
+- `[DÉPÔT]` Commande Wayfinder manuelle (dernier recours, worktree seulement) : `php artisan wayfinder:generate --with-form` — voir `vendor/laravel/wayfinder/README.md` ; **pas** en production métier sans plan.
 
 ### C.2 Vérification manifest et assets
 
@@ -222,6 +260,10 @@ console.log('entries:', Object.keys(m).length, 'referenced:', files.size, 'missi
 if (missing.length) { console.log(missing.slice(0, 20)); process.exit(1); }
 ```
 
+- Le nombre de **clés** du manifest et de **fichiers référencés** **varie** à chaque build — ne pas utiliser de constante universelle.
+- Vérifier l’absence de chemins absolus locaux ou de contenu sensible dans `public/build/` (pas de `.env`, secrets, clés privées).
+- **Contrôles fonctionnels (exemples)** : pour une livraison incluant les factures fournisseurs, chercher dans le manifest les entrées source `resources/js/pages/SupplierInvoices/Index.vue`, `Create.vue`, `Show.vue` et un chunk du type `supplierInvoiceUi-*.js`. Adapter la liste aux pages réellement modifiées.
+
 ### C.3 Cohérence source ↔ build
 
 Pour une livraison RBAC / navigation (réf. `3869017`) **[DÉPÔT]** :
@@ -232,22 +274,144 @@ Pour une livraison RBAC / navigation (réf. `3869017`) **[DÉPÔT]** :
   - `resources/js/pages/Customers/Receivables.vue`
 - **Interdit** : déployer un `manifest.json` d’un commit **A** avec des fichiers `assets/` d’un commit **B**.
 
+Les chunks compilés (ex. `BootstrapLayout.vue_vue_type_script_setup_true_lang-*.js`) peuvent apparaître sans clé source exacte — contrôler la **cohérence manifest ↔ fichiers sur disque**, pas uniquement une clé source précise.
+
 ### C.4 Archive frontend (pratique validée, non scriptée dans le dépôt)
 
-Contenu **minimal** recommandé pour transfert :
+Contenu **autorisé** dans l’archive de transfert :
 
 - `public/build/manifest.json`
 - `public/build/assets/**`
 
-```bash
-# Depuis la racine du build validé — adapter OUTPUT
-tar -czf niane-public-build-COMMIT_SHA.tar.gz public/build/manifest.json public/build/assets
+**Interdit** dans l’archive : `.env`, `vendor/`, `node_modules/`, `.cert/`, code source PHP/Vue, rapports d’audit, fichiers temporaires.
+
+**Création (depuis la racine du worktree où le build a réussi)** — choisir un répertoire de stockage **hors** du dépôt principal (ex. dossier dédié sur le poste de build ; le chemin exact n’est pas imposé) :
+
+```powershell
+# PowerShell — COMMIT_SHA = SHA Git source déjà identifié ; OUTPUT_DIR = dossier existant
+$COMMIT_SHA = "86718366efafc568a42e732b2bf2cb0ecdab4e45"   # exemple : remplacer par le SHA livré
+$OUTPUT_DIR  = "C:\chemin\vers\archives-frontend-livraison"  # adapter
+$ARCHIVE     = Join-Path $OUTPUT_DIR "niane-public-build-$COMMIT_SHA.tar.gz"
+if (Test-Path $ARCHIVE) { throw "Archive déjà présente — ne pas écraser." }
+cd C:\chemin\vers\gestion-build-COMMIT_SHA
+tar -czf $ARCHIVE public/build/manifest.json public/build/assets
 ```
 
-Calculer SHA-256 local et **recontrôler après transfert** **[SERVEUR]** :
+```bash
+# Linux — COMMIT_SHA identifié avant la commande
+tar -czf "/chemin/staging/niane-public-build-${COMMIT_SHA}.tar.gz" \
+  public/build/manifest.json public/build/assets
+```
+
+Le suffixe `niane-public-build-` est un **exemple** de nommage ; le segment `COMMIT_SHA` désigne le **commit source Git**, pas le SHA-256 de l’archive.
+
+#### C.4.1 Vérification des entrées (avant transfert)
+
+**Allow-list** — chaque entrée listée par `tar -tzf` (sans extraction) doit être **exactement** `public/build/manifest.json` ou un chemin sous `public/build/assets/`. Chemins absolus, `..` et tout autre préfixe → **STOP**.
+
+```powershell
+# PowerShell — $ARCHIVE déjà défini ; ne pas extraire l’archive
+$listing = @(tar -tzf $ARCHIVE 2>&1)
+if ($LASTEXITCODE -ne 0) { throw "tar -tzf a échoué." }
+
+$lines = @($listing | ForEach-Object { "$_".Trim() } | Where-Object { $_ -ne "" })
+if ($lines.Count -eq 0) { throw "Listing vide — archive illisible ou vide." }
+
+$manifestSeen = $false
+$disallowed = [System.Collections.Generic.List[string]]::new()
+
+foreach ($raw in $lines) {
+  $p = ("$raw" -replace '\\', '/').Trim()
+  if ($p.StartsWith('./')) { $p = $p.Substring(2) }
+  if ($p -match '(^/|^[A-Za-z]:|\.\.)') {
+    $disallowed.Add($raw)
+    continue
+  }
+  if ($p -eq 'public/build/manifest.json') {
+    $manifestSeen = $true
+    continue
+  }
+  if ($p -eq 'public/build/assets' -or $p -eq 'public/build/assets/') {
+    continue
+  }
+  if ($p -match '^public/build/assets/.+') {
+    continue
+  }
+  $disallowed.Add($raw)
+}
+
+if (-not $manifestSeen) { throw "Entrée obligatoire absente : public/build/manifest.json" }
+if ($disallowed.Count -gt 0) {
+  throw ("Entrées hors allow-list :`n" + ($disallowed -join "`n"))
+}
+
+$lines.Count   # reporter dans la fiche C.4.3 (nombre d’entrées tar)
+```
+
+Le nombre d’**entrées** dans le tarball (manifest + fichiers assets) **n’est pas** égal au nombre de **clés** du manifest JSON.
+
+#### C.4.2 Empreintes SHA-256 (manifest et archive)
+
+**[DÉPÔT]** — Calculer et **archiver dans la fiche de traçabilité** (C.4.3) :
+
+```powershell
+Get-FileHash -Path public/build/manifest.json -Algorithm SHA256
+Get-FileHash -Path $ARCHIVE -Algorithm SHA256
+(Get-Item $ARCHIVE).Length
+```
 
 ```bash
+sha256sum public/build/manifest.json
 sha256sum niane-public-build-COMMIT_SHA.tar.gz
+```
+
+- Recontrôler le **SHA-256 de l’archive** après copie USB, sync ou upload **[SERVEUR / local]**.
+- Une empreinte identique prouve l’**intégrité des octets** comparés ; elle ne prouve **pas** à elle seule l’origine ou la sécurité du contenu (revue humaine + SHA Git source requis).
+
+**Exemple historique (oct. 2026 — build worktree parent `8671836`, correctif Vite ensuite commité en `a94bf25`)** — *valeurs de référence uniquement, pas attendues pour les prochains builds* :
+
+| Élément | Exemple observé |
+|---------|-----------------|
+| SHA-256 manifest | `9451E6D3ECD4CBF365B73D39578613A58CC43D91C7705522F7D555156398D999` |
+| SHA-256 archive | `792E194A29F08E7DD27F47BEAB9BEBDB9ACE757200C819284101958B05C811E6` |
+| Entrées archive | 187 (1 manifest + 185 assets référencés à l’époque) |
+| Clés manifest | 171 ; fichiers référencés : 185 ; manquants : 0 |
+
+#### C.4.3 Fiche de traçabilité minimale (par archive)
+
+Remplir **sans secrets** (pas de contenu `.env`, pas de mots de passe) :
+
+| Champ | Exemple |
+|-------|---------|
+| SHA Git source (complet) | `a94bf25b5264574186d75dc77e0e1340feade4f1` |
+| Date/heure génération (UTC ou locale, préciser) | |
+| Node / npm | |
+| Résultat `npm run build` (code sortie) | `0` |
+| SHA-256 `manifest.json` | |
+| SHA-256 archive `.tar.gz` | |
+| Taille archive (octets) | |
+| Nombre d’entrées `tar -tzf` | |
+| Contrôles manifest (0 manquant ?) | oui / non |
+| Pages / chunks fonctionnels vérifiés | ex. SupplierInvoices si applicable |
+| Cible prévue | domaine / client **[SERVEUR]** |
+| Statut | `générée` → `vérifiée` → `transférée` → `déployée` (étapes distinctes) |
+
+**`générée` ou `vérifiée` ne signifie pas `transférée` ni `déployée`.**
+
+#### C.4.4 Conservation
+
+- Conserver l’archive et la fiche dans un **emplacement contrôlé**, hors du tarball livré au serveur (copie locale, stockage d’équipe — **politique de rétention non fixée ici**).
+- Conserver une copie **tant que** traçabilité, audit ou reprise est nécessaire.
+- Les répertoires temporaires de **test d’extraction** ne remplacent pas une conservation durable.
+
+**Extraction de test (répertoire distinct, sans modifier l’archive source)** :
+
+```powershell
+$VERIFY_DIR = "C:\chemin\vers\verify-frontend-COMMIT_SHA"
+New-Item -ItemType Directory -Force -Path $VERIFY_DIR | Out-Null
+tar -xzf $ARCHIVE -C $VERIFY_DIR
+Get-FileHash "$VERIFY_DIR\public\build\manifest.json" -Algorithm SHA256
+# Rejouer le script de contrôle manifest (section C.2) depuis $VERIFY_DIR
 ```
 
 ### C.5 `public/build/` suivi dans Git
@@ -271,8 +435,10 @@ tar -tzf archive-source.tar.gz | head
 tar -tzf archive-frontend.tar.gz | head
 ```
 
-3. Comparer SHA-256 local / distant.
+3. Comparer SHA-256 local / distant (archive frontend : voir **C.4.2** ; mettre à jour le statut de la fiche **C.4.3** à `transférée` seulement après preuve).
 4. Copie de **secours horodatée** de la racine app (ou au minimum `app/`, `resources/`, `routes/`, `public/build/`) **vers un répertoire de backup** `[SERVEUR — chemins à définir]`.
+
+> **Transfert ≠ déploiement** : une archive frontend **vérifiée** en staging (sections **C.4**, **D.1**) n’est **pas** déployée tant que **D.4** (extraction ciblée vers `public/build/`) n’a pas été exécutée avec backup préalable et contrôles **D.6**.
 
 ### D.2 Éléments à protéger (ne jamais écraser depuis Git)
 
@@ -301,10 +467,14 @@ Pour un déploiement **complet** au commit, lister explicitement les chemins ou 
 
 ### D.4 Livraison des assets
 
-**[SERVEUR]** — Après backup de `public/build/` :
+**[SERVEUR]** — Étape **distincte** du transfert staging (**D.1**) et de la génération locale (**C.4**). Nécessite autorisation / fenêtre de maintenance selon l’installation.
 
-- Extraire **uniquement** `public/build/manifest.json` et `public/build/assets/` de l’archive frontend vers la racine application.
+Après backup de `public/build/` :
+
+- Vérifier que le SHA Git source de l’archive (**fiche C.4.3**) correspond au code PHP déjà déployé ou livré en parallèle (**D.3**).
+- Extraire **uniquement** `public/build/manifest.json` et `public/build/assets/` de l’archive frontend validée (**C.4.1**) vers la racine application.
 - Supprimer **manuellement** et **avec prudence** les anciens hashes obsolètes si l’espace disque l’exige — risque de 404 si manifest et assets divergent.
+- Mettre à jour la fiche **C.4.3** : statut `déployée` **uniquement** après **D.6** et smoke test **F.3** / **F.5**.
 
 ### D.5 Dépendances PHP sur le serveur
 
@@ -320,8 +490,9 @@ COMPOSER_BIN="$(command -v composer)"   # [SERVEUR] — ne pas supposer un chemi
 
 ### D.6 Intégrité post-transfert
 
-- SHA-256 archives.
-- `tar -tzf` vs fichiers déployés.
+- SHA-256 des archives (source + frontend) — identique à la fiche **C.4.3** / calcul local pré-transfert.
+- `tar -tzf archive-frontend.tar.gz` vs fichiers présents sous `public/build/` (manifest + assets).
+- SHA-256 de `public/build/manifest.json` sur le serveur = valeur enregistrée avant transfert (**C.4.2**).
 - Taille et date de `public/build/manifest.json`.
 
 ---
@@ -478,7 +649,7 @@ php artisan test tests/Feature/Rbac/PermissionSeederTest.php
 **[SERVEUR]** — Restaurer depuis la **copie horodatée** prise en section D.1 :
 
 - Code PHP / Vue source
-- `public/build/` complet (manifest + assets **ensemble**)
+- `public/build/` complet (manifest + assets **ensemble**) — ou redeployer une **archive frontend** conservée (**C.4.4**) dont le SHA-256 est connu
 - **Ne pas** restaurer `.env`, `storage/` (uploads, logs, sauvegardes locales), ni une base MySQL depuis ce runbook.
 - **Ne pas** écraser une sauvegarde Spatie ou un export métier par une archive Git ou un vieux tarball sans validation humaine.
 
@@ -494,6 +665,21 @@ Si une étape met en doute la base cible ou les chemins : **stop**, documenter l
 ---
 
 ## H. Liste de contrôle finale
+
+### Avant transfert de l’archive frontend (obligatoire si livraison par tarball)
+
+Checklist **C.4** — à cocher sur la machine de build **avant** tout upload vers staging **[SERVEUR]** :
+
+- [ ] SHA Git source identifié et consigné (complet, pas seulement l’abréviation).
+- [ ] Worktree isolé ; `git status` sans modification source parasite.
+- [ ] `npm run build` terminé avec code de sortie `0` (Node/npm notés).
+- [ ] `manifest.json` présent, JSON valide, **0** fichier référencé manquant (**C.2**).
+- [ ] Contrôles fonctionnels pertinents (pages/chunks modifiés — ex. SupplierInvoices si applicable).
+- [ ] Archive limitée à `public/build/manifest.json` + `public/build/assets/**` (**C.4.1**).
+- [ ] SHA-256 manifest + archive + taille + nombre d’entrées `tar -tzf` enregistrés.
+- [ ] Extraction de test dans un répertoire distinct ; manifest extrait = même SHA-256 (**C.4.4**).
+- [ ] Fiche de traçabilité **C.4.3** remplie ; statut au plus `vérifiée`.
+- [ ] **Pas** de statut `transférée` ou `déployée` sans preuve de transfert / déploiement réel.
 
 ### Avant déploiement (obligatoire)
 
