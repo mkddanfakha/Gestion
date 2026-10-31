@@ -95,6 +95,27 @@
           </div>
         </div>
 
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+              <i class="bi bi-paperclip me-2"></i>
+              Pièces jointes
+            </h5>
+            <span v-if="supplierInvoice.attachments?.length" class="badge bg-secondary">
+              {{ supplierInvoice.attachments.length }}
+            </span>
+          </div>
+          <div class="card-body">
+            <AttachmentList
+              v-if="supplierInvoice.attachments?.length"
+              :attachments="supplierInvoice.attachments"
+              :allow-delete="canManageAttachments"
+              @preview="openAttachmentPreview"
+            />
+            <p v-else class="text-muted mb-0">Aucune pièce jointe pour cette facture.</p>
+          </div>
+        </div>
+
         <SupplierInvoicePaymentHistory
           v-if="canViewPaymentHistory"
           :transactions="paymentTransactions"
@@ -188,6 +209,9 @@ import SupplierInvoicePaymentCollectModal from '@/components/supplier-invoices/S
 import SupplierInvoicePaymentHistory, {
   type SupplierInvoicePaymentTransactionRow,
 } from '@/components/supplier-invoices/SupplierInvoicePaymentHistory.vue'
+import AttachmentList from '@/components/attachments/AttachmentList.vue'
+import { useDocumentPreview } from '@/composables/useDocumentPreview'
+import type { AttachmentRecord } from '@/types/attachment'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { route } from '@/lib/routes'
 import { computed, ref } from 'vue'
@@ -220,6 +244,7 @@ interface SupplierInvoiceDetail {
   user?: { id: number; name: string } | null
   purchase_order?: { id: number; po_number: string } | null
   delivery_note?: { id: number; delivery_number: string } | null
+  attachments?: AttachmentRecord[]
 }
 
 const props = defineProps<{
@@ -231,7 +256,14 @@ const props = defineProps<{
   canVoidPayment: boolean
   paymentTransactions: SupplierInvoicePaymentTransactionRow[]
   paymentLedgerBlockedMessage?: string | null
+  canManageAttachments?: boolean
 }>()
+
+const { openAttachment } = useDocumentPreview()
+
+function openAttachmentPreview(attachment: AttachmentRecord): void {
+  openAttachment(attachment)
+}
 
 const page = usePage()
 const { confirm, success, error } = useSweetAlert()

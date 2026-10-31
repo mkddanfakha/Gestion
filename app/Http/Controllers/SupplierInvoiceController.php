@@ -11,15 +11,23 @@ use App\Http\Requests\StoreSupplierInvoiceRequest;
 use App\Models\PaymentTransaction;
 use App\Models\Supplier;
 use App\Models\SupplierInvoice;
+use App\Services\AttachmentService;
 use App\Services\SupplierPaymentTransactionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
+use InvalidArgumentException;
+use Throwable;
 
 class SupplierInvoiceController extends Controller
 {
+    public function __construct(
+        protected AttachmentService $attachmentService,
+    ) {}
+
     public function index(Request $request): JsonResponse|Response
     {
         $this->checkPermission($request, 'supplier-invoices', 'view');
@@ -65,6 +73,7 @@ class SupplierInvoiceController extends Controller
                 ->where('status', 'active')
                 ->orderBy('name')
                 ->get(['id', 'name', 'email', 'phone', 'mobile']),
+            'attachmentConfig' => $this->attachmentConfig(),
         ]);
     }
 
@@ -77,6 +86,7 @@ class SupplierInvoiceController extends Controller
             'purchaseOrder:id,po_number',
             'deliveryNote:id,delivery_number',
             'user:id,name',
+            'attachments.uploadedBy',
         ]);
 
         $paymentPayload = $this->paymentUiPayload($request, $supplierInvoice);
@@ -93,6 +103,10 @@ class SupplierInvoiceController extends Controller
         $authorization = app(AuthorizationService::class);
         $user = $request->user();
 
+        $canManageAttachments = $user !== null
+            && $user->hasPermission('supplier-invoices', 'create')
+            && $supplierInvoice->status === SupplierInvoice::STATUS_DRAFT;
+
         return Inertia::render('SupplierInvoices/Show', [
             'supplierInvoice' => $supplierInvoice,
             'paymentSummary' => $paymentPayload['payment_summary'],
@@ -105,6 +119,7 @@ class SupplierInvoiceController extends Controller
                 ? $paymentPayload['payment_transactions']
                 : [],
             'paymentLedgerBlockedMessage' => $paymentPayload['payment_ledger_blocked_message'],
+            'canManageAttachments' => $canManageAttachments,
         ]);
     }
 
@@ -117,9 +132,31 @@ class SupplierInvoiceController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
+        try {
+            if ($request->hasFile('attachments')) {
+                $this->attachmentService->addMany(
+                    $invoice,
+                    $request->file('attachments'),
+                    $request->user(),
+                );
+            }
+        } catch (InvalidArgumentException $e) {
+            $this->discardDraftSupplierInvoiceAfterAttachmentFailure($invoice);
+
+            if ($request->expectsJson()) {
+                return response()->json(['errors' => ['attachments' => [$e->getMessage()]]], 422);
+            }
+
+            return back()->withErrors(['attachments' => $e->getMessage()])->withInput();
+        } catch (Throwable $e) {
+            $this->discardDraftSupplierInvoiceAfterAttachmentFailure($invoice);
+
+            throw $e;
+        }
+
         if ($request->expectsJson()) {
             return response()->json([
-                'supplier_invoice' => $invoice->fresh(['supplier:id,name']),
+                'supplier_invoice' => $invoice->fresh(['supplier:id,name', 'attachments.uploadedBy']),
             ], 201);
         }
 
@@ -245,6 +282,41 @@ class SupplierInvoiceController extends Controller
             'payment_ledger_blocked_message' => $ledgerBlocked,
             'payment_transactions' => $transactions,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function attachmentConfig(): array
+    {
+        return [
+            'maxFiles' => config('attachments.max_files', 10),
+            'maxSizeKb' => config('attachments.max_size', 10240),
+            'allowedExtensions' => config('attachments.allowed_extensions', []),
+            'accept' => '.pdf,.jpg,.jpeg,.png,.webp',
+        ];
+    }
+
+    /**
+     * Annule une facture brouillon créée lors d'un store dont le traitement des PJ a échoué.
+     * La suppression du modèle déclenche HasAttachments::deleteFor pour les PJ restantes.
+     */
+    private function discardDraftSupplierInvoiceAfterAttachmentFailure(SupplierInvoice $invoice): void
+    {
+        if (! $invoice->exists) {
+            return;
+        }
+
+        try {
+            $invoice->delete();
+        } catch (Throwable $deleteException) {
+            Log::error('Échec de la suppression de la facture fournisseur après erreur de pièces jointes.', [
+                'supplier_invoice_id' => $invoice->getKey(),
+                'exception' => $deleteException,
+            ]);
+
+            throw $deleteException;
+        }
     }
 
     private function openFailureResponse(

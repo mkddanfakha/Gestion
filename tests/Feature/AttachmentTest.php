@@ -2,7 +2,6 @@
 
 use App\Models\ActivityLog;
 use App\Models\Attachment;
-use App\Models\Category;
 use App\Models\DeliveryNote;
 use App\Models\Expense;
 use App\Models\Permission;
@@ -10,6 +9,7 @@ use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Quote;
 use App\Models\Supplier;
+use App\Models\SupplierInvoice;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Http\UploadedFile;
@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
 
 function createUserWithExpensePermissions(array $actions = ['view', 'create', 'update', 'delete']): User
 {
-    (new PermissionSeeder())->run();
+    (new PermissionSeeder)->run();
 
     $user = User::factory()->create(['role' => 'user']);
 
@@ -44,7 +44,7 @@ function createTestExpense(User $user): Expense
 
 function createUserWithQuotePermissions(array $actions = ['view', 'create', 'update', 'delete']): User
 {
-    (new PermissionSeeder())->run();
+    (new PermissionSeeder)->run();
 
     $user = User::factory()->create(['role' => 'user']);
 
@@ -80,7 +80,7 @@ function createTestQuote(User $user, Product $product): Quote
 
 function createUserWithPurchaseOrderPermissions(array $actions = ['view', 'create', 'update', 'delete']): User
 {
-    (new PermissionSeeder())->run();
+    (new PermissionSeeder)->run();
 
     $user = User::factory()->create(['role' => 'user']);
 
@@ -95,7 +95,7 @@ function createUserWithPurchaseOrderPermissions(array $actions = ['view', 'creat
 function createTestSupplier(): Supplier
 {
     return Supplier::create([
-        'name' => 'Fournisseur test ' . uniqid(),
+        'name' => 'Fournisseur test '.uniqid(),
         'status' => 'active',
     ]);
 }
@@ -126,7 +126,7 @@ function createTestPurchaseOrder(User $user, Supplier $supplier, Product $produc
 
 function createUserWithDeliveryNotePermissions(array $actions = ['view', 'create', 'update', 'delete']): User
 {
-    (new PermissionSeeder())->run();
+    (new PermissionSeeder)->run();
 
     $user = User::factory()->create(['role' => 'user']);
 
@@ -224,7 +224,7 @@ test('user can download own expense attachment', function () {
 });
 
 test('gestionnaire cannot download attachment of another users expense', function () {
-    (new PermissionSeeder())->run();
+    (new PermissionSeeder)->run();
 
     $owner = User::factory()->create(['role' => 'gestionnaire']);
     $other = User::factory()->create(['role' => 'gestionnaire']);
@@ -602,4 +602,335 @@ test('deleting delivery note removes attachments', function () {
 
     expect(Attachment::count())->toBe(0);
     expect(Storage::disk('local')->exists($path))->toBeFalse();
+});
+
+function createUserWithSupplierInvoicePermissions(array $actions = ['view', 'create']): User
+{
+    (new PermissionSeeder)->run();
+
+    $user = User::factory()->create(['role' => 'user']);
+
+    foreach ($actions as $action) {
+        $permission = Permission::where('name', "supplier-invoices.{$action}")->firstOrFail();
+        $user->permissions()->attach($permission);
+    }
+
+    return $user;
+}
+
+function supplierInvoiceAttachmentStorePayload(Supplier $supplier, array $overrides = []): array
+{
+    return array_merge([
+        'supplier_id' => $supplier->id,
+        'invoice_number' => 'SI-ATT-'.uniqid(),
+        'invoice_date' => now()->toDateString(),
+        'total_amount' => 25000,
+    ], $overrides);
+}
+
+function createDraftSupplierInvoiceWithAttachment(User $user, Supplier $supplier): SupplierInvoice
+{
+    $file = UploadedFile::fake()->create('facture-fournisseur.pdf', 100, 'application/pdf');
+
+    test()->actingAs($user)
+        ->post(route('supplier-invoices.store'), [
+            ...supplierInvoiceAttachmentStorePayload($supplier),
+            'attachments' => [$file],
+        ])
+        ->assertRedirect();
+
+    $invoice = SupplierInvoice::query()->latest('id')->firstOrFail();
+    expect($invoice->attachments)->toHaveCount(1);
+
+    return $invoice;
+}
+
+test('user can upload attachments on supplier invoice create', function () {
+    Storage::fake('local');
+
+    $user = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $file1 = UploadedFile::fake()->create('scan-facture.pdf', 100, 'application/pdf');
+    $file2 = UploadedFile::fake()->image('photo-facture.jpg');
+
+    $this->actingAs($user)
+        ->post(route('supplier-invoices.store'), [
+            ...supplierInvoiceAttachmentStorePayload($supplier),
+            'attachments' => [$file1, $file2],
+        ])
+        ->assertRedirect();
+
+    $invoice = SupplierInvoice::first();
+    expect($invoice)->not->toBeNull();
+    expect($invoice->attachments)->toHaveCount(2);
+    expect(Storage::disk('local')->exists($invoice->attachments->first()->path))->toBeTrue();
+    expect(ActivityLog::where('action', ActivityLog::ACTION_ATTACHMENT_ADDED)->exists())->toBeTrue();
+});
+
+test('supplier invoice create rolls back when attachment is invalid', function () {
+    Storage::fake('local');
+
+    $user = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $file = UploadedFile::fake()->create('script.php', 10, 'application/x-php');
+
+    $this->actingAs($user)
+        ->post(route('supplier-invoices.store'), [
+            ...supplierInvoiceAttachmentStorePayload($supplier),
+            'attachments' => [$file],
+        ])
+        ->assertSessionHasErrors('attachments');
+
+    expect(SupplierInvoice::count())->toBe(0);
+    expect(Attachment::count())->toBe(0);
+});
+
+test('supplier invoice create does not persist attachment when validation fails before create', function () {
+    Storage::fake('local');
+
+    $user = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $file = UploadedFile::fake()->create('facture.pdf', 100, 'application/pdf');
+    $payload = supplierInvoiceAttachmentStorePayload($supplier);
+
+    SupplierInvoice::query()->create([
+        'supplier_id' => $supplier->id,
+        'invoice_number' => $payload['invoice_number'],
+        'invoice_date' => $payload['invoice_date'],
+        'total_amount' => $payload['total_amount'],
+        'status' => SupplierInvoice::STATUS_DRAFT,
+        'user_id' => $user->id,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('supplier-invoices.store'), [
+            ...$payload,
+            'attachments' => [$file],
+        ])
+        ->assertSessionHasErrors('invoice_number');
+
+    expect(SupplierInvoice::count())->toBe(1);
+    expect(Attachment::count())->toBe(0);
+});
+
+test('user can download supplier invoice attachment with view permission', function () {
+    Storage::fake('local');
+
+    $creator = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $invoice = createDraftSupplierInvoiceWithAttachment($creator, $supplier);
+    $attachment = $invoice->attachments()->first();
+
+    $viewer = createUserWithSupplierInvoicePermissions(['view']);
+
+    $this->actingAs($viewer)
+        ->get(route('attachments.download', $attachment))
+        ->assertOk();
+});
+
+test('user without supplier invoice view permission cannot download attachment', function () {
+    Storage::fake('local');
+
+    $owner = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $invoice = createDraftSupplierInvoiceWithAttachment($owner, $supplier);
+    $attachment = $invoice->attachments()->first();
+
+    $stranger = User::factory()->create(['role' => 'user']);
+
+    $this->actingAs($stranger)
+        ->get(route('attachments.download', $attachment))
+        ->assertForbidden();
+});
+
+test('user without supplier invoice create permission cannot delete attachment', function () {
+    Storage::fake('local');
+
+    $creator = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $invoice = createDraftSupplierInvoiceWithAttachment($creator, $supplier);
+    $attachment = $invoice->attachments()->first();
+
+    $viewer = createUserWithSupplierInvoicePermissions(['view']);
+
+    $this->actingAs($viewer)
+        ->delete(route('attachments.destroy', $attachment))
+        ->assertForbidden();
+});
+
+test('user with create permission can delete attachment on draft supplier invoice', function () {
+    Storage::fake('local');
+
+    $user = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $invoice = createDraftSupplierInvoiceWithAttachment($user, $supplier);
+    $attachment = $invoice->attachments()->first();
+    $path = $attachment->path;
+
+    $this->actingAs($user)
+        ->delete(route('attachments.destroy', $attachment))
+        ->assertRedirect();
+
+    expect(Attachment::count())->toBe(0);
+    expect(Storage::disk('local')->exists($path))->toBeFalse();
+    expect(ActivityLog::where('action', ActivityLog::ACTION_ATTACHMENT_DELETED)->exists())->toBeTrue();
+});
+
+test('user cannot delete attachment on open supplier invoice even with create permission', function () {
+    Storage::fake('local');
+
+    $user = createUserWithSupplierInvoicePermissions(['view', 'create', 'open']);
+    $supplier = createTestSupplier();
+    $invoice = createDraftSupplierInvoiceWithAttachment($user, $supplier);
+    $attachment = $invoice->attachments()->first();
+
+    $invoice->update(['status' => SupplierInvoice::STATUS_OPEN]);
+
+    $this->actingAs($user)
+        ->delete(route('attachments.destroy', $attachment))
+        ->assertForbidden();
+
+    expect(Attachment::count())->toBe(1);
+});
+
+test('user cannot delete attachment on cancelled supplier invoice even with create permission', function () {
+    Storage::fake('local');
+
+    $user = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $invoice = createDraftSupplierInvoiceWithAttachment($user, $supplier);
+    $attachment = $invoice->attachments()->first();
+
+    $invoice->update(['status' => SupplierInvoice::STATUS_CANCELLED]);
+
+    $this->actingAs($user)
+        ->delete(route('attachments.destroy', $attachment))
+        ->assertForbidden();
+});
+
+test('supplier invoice attachment download requires parent resource permission not another module', function () {
+    Storage::fake('local');
+
+    $invoiceUser = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $invoice = createDraftSupplierInvoiceWithAttachment($invoiceUser, $supplier);
+    $attachment = $invoice->attachments()->first();
+
+    $quoteUser = createUserWithQuotePermissions(['view']);
+    $product = createTestProduct();
+    $quote = createTestQuote($quoteUser, $product);
+    $quoteFile = UploadedFile::fake()->create('devis.pdf', 100, 'application/pdf');
+    app(\App\Services\AttachmentService::class)->add($quote, $quoteFile, $quoteUser);
+    $quoteAttachment = $quote->attachments()->first();
+
+    $this->actingAs($quoteUser)
+        ->get(route('attachments.download', $attachment))
+        ->assertForbidden();
+
+    $this->actingAs($invoiceUser)
+        ->get(route('attachments.download', $quoteAttachment))
+        ->assertForbidden();
+});
+
+test('supplier invoice create rejects oversized attachment', function () {
+    Storage::fake('local');
+
+    $user = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $maxKb = (int) config('attachments.max_size', 10240);
+    $file = UploadedFile::fake()->create('huge.pdf', $maxKb + 512, 'application/pdf');
+
+    $this->actingAs($user)
+        ->post(route('supplier-invoices.store'), [
+            ...supplierInvoiceAttachmentStorePayload($supplier),
+            'attachments' => [$file],
+        ])
+        ->assertSessionHasErrors('attachments');
+
+    expect(SupplierInvoice::count())->toBe(0);
+    expect(Attachment::count())->toBe(0);
+});
+
+test('supplier invoice create rolls back partial multi-file upload when second file is invalid', function () {
+    Storage::fake('local');
+
+    $user = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $file1 = UploadedFile::fake()->create('premier.pdf', 100, 'application/pdf');
+    $file2 = UploadedFile::fake()->create('second.php', 10, 'application/x-php');
+
+    $this->actingAs($user)
+        ->post(route('supplier-invoices.store'), [
+            ...supplierInvoiceAttachmentStorePayload($supplier),
+            'attachments' => [$file1, $file2],
+        ])
+        ->assertSessionHasErrors('attachments');
+
+    expect(SupplierInvoice::count())->toBe(0);
+    expect(Attachment::count())->toBe(0);
+    expect(Storage::disk('local')->allFiles())->toBe([]);
+});
+
+test('supplier invoice create discards draft and rethrows unexpected attachment processing errors', function () {
+    Storage::fake('local');
+
+    $user = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $file = UploadedFile::fake()->create('facture.pdf', 100, 'application/pdf');
+
+    $this->partialMock(\App\Services\AttachmentService::class, function ($mock): void {
+        $mock->shouldReceive('addMany')
+            ->once()
+            ->andThrow(new RuntimeException('simulated attachment pipeline failure'));
+    });
+
+    try {
+        $this->withoutExceptionHandling()
+            ->actingAs($user)
+            ->post(route('supplier-invoices.store'), [
+                ...supplierInvoiceAttachmentStorePayload($supplier),
+                'attachments' => [$file],
+            ]);
+        expect(false)->toBeTrue('Expected RuntimeException was not thrown.');
+    } catch (RuntimeException $exception) {
+        expect($exception->getMessage())->toBe('simulated attachment pipeline failure');
+    }
+
+    expect(SupplierInvoice::count())->toBe(0);
+    expect(Attachment::count())->toBe(0);
+    expect(session('errors'))->toBeNull();
+});
+
+test('supplier invoice create cleans storage when attachment row creation fails mid upload', function () {
+    Storage::fake('local');
+
+    $user = createUserWithSupplierInvoicePermissions(['view', 'create']);
+    $supplier = createTestSupplier();
+    $file1 = UploadedFile::fake()->create('premier.pdf', 100, 'application/pdf');
+    $file2 = UploadedFile::fake()->create('second.pdf', 100, 'application/pdf');
+
+    Attachment::creating(function (): void {
+        if (Attachment::count() >= 1) {
+            throw new RuntimeException('simulated attachment insert failure');
+        }
+    });
+
+    try {
+        $this->withoutExceptionHandling()
+            ->actingAs($user)
+            ->post(route('supplier-invoices.store'), [
+                ...supplierInvoiceAttachmentStorePayload($supplier),
+                'attachments' => [$file1, $file2],
+            ]);
+        expect(false)->toBeTrue('Expected RuntimeException was not thrown.');
+    } catch (RuntimeException $exception) {
+        expect($exception->getMessage())->toBe('simulated attachment insert failure');
+    } finally {
+        Attachment::flushEventListeners();
+    }
+
+    expect(SupplierInvoice::count())->toBe(0);
+    expect(Attachment::count())->toBe(0);
+    expect(Storage::disk('local')->allFiles())->toBe([]);
+    expect(session('errors'))->toBeNull();
 });

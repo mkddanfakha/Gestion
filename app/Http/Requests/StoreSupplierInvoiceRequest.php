@@ -38,6 +38,8 @@ class StoreSupplierInvoiceRequest extends FormRequest
             'purchase_order_id' => ['nullable', 'integer', 'exists:purchase_orders,id'],
             'delivery_note_id' => ['nullable', 'integer', 'exists:delivery_notes,id'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'attachments' => ['nullable', 'array', 'max:'.config('attachments.max_files', 10)],
+            'attachments.*' => ['file'],
             'status' => ['prohibited'],
             'paid_amount' => ['prohibited'],
             'remaining_amount' => ['prohibited'],
