@@ -8,7 +8,7 @@ declare(strict_types=1);
  *
  * Ne modifie aucun fichier et n'exécute pas Composer.
  *
- * Usage : php scripts/verify-composer-autoload-root.php [chemin-racine-app]
+ * Usage : php bin/verify-composer-autoload-root.php [chemin-racine-app]
  * Code de sortie : 0 = OK, 1 = échec, 2 = prérequis manquants.
  */
 
