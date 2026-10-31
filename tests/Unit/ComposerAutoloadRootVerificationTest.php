@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 use Symfony\Component\Process\Process;
 
-require_once __DIR__.'/../../scripts/verify-composer-autoload-root.php';
+require_once __DIR__.'/../../bin/verify-composer-autoload-root.php';
 
 test('verify-composer-autoload-root script succeeds on local project vendor', function () {
     $root = dirname(__DIR__, 2);
 
     $process = Process::fromShellCommandline(
-        'php '.escapeshellarg($root.'/scripts/verify-composer-autoload-root.php').' '.escapeshellarg($root),
+        'php '.escapeshellarg($root.'/bin/verify-composer-autoload-root.php').' '.escapeshellarg($root),
         $root,
     );
     $process->run();

@@ -32,7 +32,7 @@ composer install --no-dev --optimize-autoloader
   ```
 - **Vérifier l'autoload** après installation ou déploiement (lecture seule, ne modifie rien) :
   ```bash
-  php scripts/verify-composer-autoload-root.php
+  php bin/verify-composer-autoload-root.php
   ```
   Le script doit afficher `verify-composer-autoload-root: OK`. En cas d'échec, ne pas mettre en production : régénérer `vendor/` depuis la racine du site (voir ci-dessus), sans copier `vendor/` d'ailleurs.
 
@@ -82,7 +82,7 @@ git pull origin main
 
 # Installer les dépendances PHP (depuis cette racine — ne pas copier vendor/ ailleurs)
 composer install --no-dev --optimize-autoloader
-php scripts/verify-composer-autoload-root.php
+php bin/verify-composer-autoload-root.php
 
 # Installer les dépendances Node.js (si nécessaire)
 npm install --production
@@ -115,7 +115,7 @@ php artisan optimize
 ## Vérifications après déploiement
 
 1. Vérifier que l'application fonctionne : visitez votre site
-2. Vérifier l'autoload Composer : `php scripts/verify-composer-autoload-root.php` (doit retourner OK)
+2. Vérifier l'autoload Composer : `php bin/verify-composer-autoload-root.php` (doit retourner OK)
 3. Vérifier les logs d'erreurs : `tail -f storage/logs/laravel.log`
 4. Vérifier les permissions : `ls -la storage/` et `ls -la bootstrap/cache/`
 
