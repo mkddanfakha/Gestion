@@ -17,9 +17,28 @@ class UnhealthyBackupWasFoundNotification extends BaseNotification
      */
     public function via(): array
     {
-        \Log::warning('backup.unhealthy', [
+        $backupDestinationStatus = $this->event->backupDestinationStatus;
+        $backupDestination = $backupDestinationStatus->backupDestination();
+
+        $context = [
             'message' => 'unhealthy_backup_was_found',
-        ]);
+            'disk' => $backupDestination->diskName(),
+            'backup_name' => $backupDestination->backupName(),
+            'health_check' => null,
+            'exception_class' => null,
+            'exception_message' => null,
+        ];
+
+        $healthCheckFailure = $backupDestinationStatus->getHealthCheckFailure();
+        if ($healthCheckFailure !== null) {
+            $context['health_check'] = $healthCheckFailure->healthCheck()::class;
+
+            $exception = $healthCheckFailure->exception();
+            $context['exception_class'] = $exception::class;
+            $context['exception_message'] = $exception->getMessage();
+        }
+
+        \Log::warning('backup.unhealthy', $context);
 
         return BackupAlertChannels::mailWhenConfigured();
     }
